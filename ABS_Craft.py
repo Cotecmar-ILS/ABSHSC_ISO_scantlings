@@ -118,18 +118,27 @@ class Pressures:
 
     def __init__(self, craft: Craft):
         self.craft = craft
-        # self.lp = val_data("\nDigite el borde más largo del panel de la placa, en cm: ")
-        # self.sp = val_data("Digite el borde más corto del panel de la placa, en cm: ")
-        # self.l = val_data("\nIngrese la longitud sin apoyo del refuerzo en cm: ")
-        # self.s = val_data("Ingrese la separación de los longitudinales o rigidizadores del fondo, en cm: ")
+        # self.lp = val_data("borde más largo del panel de la placa (cm): ")
+        # self.sp = val_data("borde más corto del panel de la placa (cm): ")
+        # self.l = val_data("longitud sin apoyo del refuerzo (cm): ")
+        # self.s = val_data("separación entre refuerzos (cm): ")
+        self.Fx = self.calculate_Fx()
         self.FD = self.calculate_FD()
         # self.FV = self.calculate_FV()
+        
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
-        self.tau = val_data("\nÁngulo de trimado a máxima velocidad (grados): ", True, True, -1, 3)
+        self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
         self.ncg = self.calculate_ncg()
 
+
+    def calculate_Fx(self):
+        print("¿Desea realizar el analisis en algun punto especifico?\n")
+        lx = val_data("Distancia desde proa hasta el punto de analisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
+        Fx = lx / self.craft.L
+
+        return Fx
 
     def calculate_ncg(self) -> float:
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
@@ -149,52 +158,44 @@ class Pressures:
         return ncg
 
     def calculate_FD(self):
-        ADp = min(self.s * self.l, 2.5 * pow(self.s, 2))
-        ADs = max(self.s * self.l, 0.33 * pow(self.l, 2))
-        
-        # Calculo de AR
         AR = 6.95 * self.craft.W / self.craft.d
-        
-        # Valores de AD/AR
-        ADRp = ADp / AR
-        ADRs = ADs / AR
-        
-        # Puntos conocidos y sus valores correspondientes
+
+        if self.craft.context == 1:
+            AD = min(self.s * self.l, 2.5 * pow(self.s, 2))
+        else:
+            AD = max(self.s * self.l, 0.33 * pow(self.l, 2))
+
+        ADR = AD / AR
+
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
         y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
-        
-        # Interpolación usando numpy
-        FDp = np.interp(ADRp, x_known, y_known)
-        FDs = np.interp(ADRs, x_known, y_known)
-        
-        # Asegurar que FDp y FDs estén dentro [0.4, 1.0]
-        FDp = min(max(FDp, 0.4), 1.0)
-        FDs = min(max(FDs, 0.4), 1.0)
-        
-        return FDp, FDs
+
+        FD = np.interp(ADR, x_known, y_known)
+
+        FD = min(max(FD, 0.4), 1.0)
+
+        return FD
 
     def calculate_FV(self) -> float:
-        print("\n*Nota: Pulse Enter si desea tomar el valor mayor de FV")
-        Lx = val_data("Ingrese la distancia a popa donde se esta realizando los calculos (metros): ", True, True, 0)
-        Fx = Lx / self.craft.L
-        # Puntos conocidos y sus valores correspondientes
+        
         x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
         y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
-        # Si Fx es exactamente 0 o 1, retornar los valores correspondientes
-        if Fx == 0:
-            return 1
-        if Fx == 1:
-            return 0.25
-        # Interpolación manual
-        FV = 1  # Valor por defecto
-        for i in range(len(x_known) - 1):
-            if x_known[i] >= Fx >= x_known[i + 1]:
-                FV = y_known[i] + (y_known[i + 1] - y_known[i]) * (Fx - x_known[i]) / (x_known[i + 1] - x_known[i])
-                break
-        # Asegurar que FV esté dentro [0.25, 1.0]
-        FV = min(max(FV, 0.25), 1.0)      
+
+        FV = np.interp(self.Fx, x_known, y_known)
+
+        FV = min(max(FV, 0.25), 1.0)
+
         return FV
 
+    def calculate_F1(self, lx) -> float:
+        Fx = lx / self.L
+
+        x_known = [0, 0.2, 0.7, 0.8, 1.0]
+        y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
+
+        F1 = np.interp(Fx, x_known, y_known)
+
+        return F1
 
     def bottom_pressure(self):
         slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * self.FDp * self.FV)
