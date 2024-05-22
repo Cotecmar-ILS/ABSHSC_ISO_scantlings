@@ -221,9 +221,8 @@ class Pressures:
 
         return max(slamming_pressure, hidrostatic_pressure) if self.craft.L < 30 else max(slamming_pressure, hidrostatic_pressure), fore_end
 
-    #revisar de aqui para abajo
     def wet_deck_pressure(self):
-        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, -1, 0, self.craft.D - self.craft.d)
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.D - self.craft.d)
 
         if self.craft.L < 61:
             v1 = ((4 * self.h13) / (np.sqrt(self.craft.L))) + 1
@@ -236,19 +235,66 @@ class Pressures:
         return deck_pressure
 
     def decks_pressures(self):
-        pass
+        cubiertas_proa = 0.20 * self.craft.L +7.6
+        cubiertas_popa = 0.10 * self.craft.L + 6.1
+        cubiertas_alojamientos = 5
+        carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)
+        cubiertas_carga = carga * (1 + 0.5 * self.nxx)
+        cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)
+        height = val_data("Altura del almacén (metros): ", True, True, -1)
+        almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)
 
     def superstructures_pressures(self):
-        pass
+        plating_pressures = {
+            "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
+            "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
+            "Chapado de los techos que están en al proa": (6.9, 8.6),
+            "Chapado de los techos que estánen la popa": (3.4, 6.9)
+        }
 
-    def bulkheads_pressures(self):
-        pass
+        stiffeners_pressures = {
+            "Refuerzos delanteros de la superestructura y caseta": (24.1, 24.1),
+            "Refuerzos traseros de la superestructura y caseta, y refuerzos laterales de la caseta": (10.3, 10.3),
+            "Refuerzos de los techos que están en la proa": (6.9, 8.6),
+            "Refuerzos de los techos que están en la popa": (3.4, 6.9)
+        }
 
+        result = {}
 
+        if self.craft.context == 1:
+            pressures = plating_pressures
+        else:
+            pressures = stiffeners_pressures
+
+        for location, (P1, P2) in pressures.items():
+            if self.craft.L <= 12.2:
+                result[location] = P1
+            elif self.craft.L > 30.5:
+                result[location] = P2
+            else:
+                result[location] = np.interp(self.craft.L, [12.2, 30.5], [P1, P2])
+
+        return result
+
+    def tank_boundaries_pressure(self):
+        h = None
+        pressure_1 = self.N3 * h
+        pg = max(10.05, val_data("Peso especifico del liquido: "))
+        h2 = val_data("Distancia desde el borde inferior del panel de chapa o el centro de la zona soportada por el refuerzo hasta la parte superior del depósito (metros): ")
+        pressure_2 = pg * (1 + 0.5 * self.nxx) * h2
+        tank_pressure = max(pressure_1, pressure_2)
+
+        return tank_pressure    
+
+    def watertight_boundaries_pressure(self):
+        h = val_data("Distancia desde el borde inferior del panel de chapa o el centro del área soportada por el refuerzo hasta la cubierta de cierre en la línea central (metros): ")
+        watertight_pressure = self.N3 * h
+
+        return watertight_pressure
 
 class Plating_acero_aluminio:
-    
-    
+
+
     def __init__(self, craft: Craft, pressure: Pressures):
         self.craft = craft
         self.pressure = pressure
@@ -290,7 +336,7 @@ class Plating_acero_aluminio:
 
             1 sigma_y = yield strength of steel or of welded aluminum in N/mm2, but not to be taken 
             greater than 70% of the ultimate strength of steel or welded aluminum
-    
+
             2 The design stress for bottom shell plates under slamming pressure may be taken as 
             sigma_y for plates outside the midship 0.4L.
 
