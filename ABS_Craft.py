@@ -29,7 +29,7 @@ class Craft:
         self.d = val_data("Calado (metros): ")
         self.V = val_data("Velocidad maxima (nudos): ")
         self.W = val_data("Desplazamiento de la embarcación (kg): ")
-        self.Bcg = val_data("Astilla muerta fondo en LCG (°grados): ")
+        self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
         self.material = self.select_material()
         self.context = self.select_context()
         self.zone = self.select_zone()
@@ -122,28 +122,31 @@ class Pressures:
         # self.sp = val_data("borde más corto del panel de la placa (cm): ")
         # self.l = val_data("longitud sin apoyo del refuerzo (cm): ")
         # self.s = val_data("separación entre refuerzos (cm): ")
-        self.Fx = self.calculate_Fx()
+        self.Fx, self.y = self.calculate_Fx_y()
         self.FD = self.calculate_FD()
         self.FV = self.calculate_FV()
-        self.ncg = self.calculate_ncg_nxx_h13()[0]
-        self.nxx = self.calculate_ncg_nxx_h13()[1]
-        self.h13 = self.calculate_ncg_nxx_h13()[2]
+        self.F1 = self.calculate_F1()
+        self.ncg, self.nxx, self.h13 = self.calculate_ncg_nxx_h13()
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
         self.H = max(0.0172 * self.craft.L + 3.653, self.h13)
+        self.Hs = max(0.083 * self.craft.L * self.craft.d, self.craft.D + 1.22) if self.craft.L < 30 else (0.64 * self.H + self.craft.d)
         self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
 
 
 
-    def calculate_Fx(self):
+    def calculate_Fx_y(self) -> tuple: #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
         print("¿Desea realizar el análisis en algún punto específico?\n")
         lx = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
         Fx = lx / self.craft.L
+        
+        #Altura sobre la linea base hasta el punto de analisis
+        y = val_data("Altura sobre la linea base hasta el punto de analisis (metros): ", True, True, 0, 0, self.craft.D)
+        
+        return Fx, y
 
-        return Fx
-
-    def calculate_ncg_nxx_h13(self) -> float:
+    def calculate_ncg_nxx_h13(self) -> tuple:
         #Calculo de h13
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
         h13 = max(h13_values.get(self.craft.tipo_embarcacion), (self.craft.L / 12))
@@ -173,12 +176,10 @@ class Pressures:
             AD = min(self.s * self.l, 2.5 * pow(self.s, 2))
         else:
             AD = max(self.s * self.l, 0.33 * pow(self.l, 2))
-
         ADR = AD / AR
 
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
         y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
-
         FD = np.interp(ADR, x_known, y_known)
 
         FD = min(max(FD, 0.4), 1.0)
@@ -188,9 +189,7 @@ class Pressures:
     def calculate_FV(self) -> float:
         x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
         y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
-
         FV = np.interp(self.Fx, x_known, y_known)
-
         FV = min(max(FV, 0.25), 1.0)
 
         return FV
@@ -198,23 +197,30 @@ class Pressures:
     def calculate_F1(self) -> float:
         x_known = [0, 0.2, 0.7, 0.8, 1.0]
         y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
-
         F1 = np.interp(self.Fx, x_known, y_known)
 
         return F1
 
-    def bottom_pressure(self):
+    def bottom_pressure(self) -> float:
         slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * self.FD * self.FV)
         hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
         return max (slamming_pressure_less61, hidrostatic_pressure)
 
     def side_transom_pressure(self):
-        slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.nxx) * ((70 - self.Bsx) / (70 - self.Bcg)) * self.FD
-        hidrostatic_pressure = self.N3 * (self.Hs - y)
-        # where L is generally not to be taken less than 30 m page 71
-        fore_end = 0.28 * Fa * Cp * N3 * (0.22 + 0.15 * math.tan(alfa)) * ((0.4 * self.craft.V * math.cos(beta) + 0.6 * self.craft.L ** 0.5) ** 2)
-        return max(slamming_pressure, hidrostatic_pressure) if self.craft.L < 30 else max(slamming_pressure, hidrostatic_pressure), fore_end
+        #Ángulo de astilla muerta en el punto de análisis
+        Bsx = val_data("Angulo de astilla muerta de costado en el punto de analisis (grados): ", True, True, -1, 0, 55)
+        slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.nxx) * ((70 - Bsx) / (70 - self.craft.Bcg)) * self.FD
+        hidrostatic_pressure = self.N3 * (self.Hs - self.y)
 
+        #Fore End
+        if self.craft.L >= 30:
+            Fa = 3.25 if self.craft.context == 1 else 1
+            Cf = 0.0125 if self.craft.L < 80 else 1.0
+            alfa = val_data("Ángulo de ensanchamiento (grados): ") #Ver imagen adjunta
+            beta = val_data("Ángulo de entrada (grados): ") #Ver imagen adjunta
+            fore_end = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * self.craft.V * np.cos(beta) + 0.6 * self.craft.L ** 0.5) ** 2)
+
+        return max(slamming_pressure, hidrostatic_pressure) if self.craft.L < 30 else max(slamming_pressure, hidrostatic_pressure), fore_end
 
     #revisar de aqui para abajo
     def wet_deck_pressure(self):
