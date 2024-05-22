@@ -124,13 +124,16 @@ class Pressures:
         # self.s = val_data("separación entre refuerzos (cm): ")
         self.Fx = self.calculate_Fx()
         self.FD = self.calculate_FD()
-        # self.FV = self.calculate_FV()
-
+        self.FV = self.calculate_FV()
+        self.ncg = self.calculate_ncg_nxx_h13()[0]
+        self.nxx = self.calculate_ncg_nxx_h13()[1]
+        self.h13 = self.calculate_ncg_nxx_h13()[2]
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
+        self.H = max(0.0172 * self.craft.L + 3.653, self.h13)
         self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
-        self.ncg = self.calculate_ncg()
+
 
 
     def calculate_Fx(self):
@@ -140,24 +143,30 @@ class Pressures:
 
         return Fx
 
-    def calculate_ncg(self) -> float:
+    def calculate_ncg_nxx_h13(self) -> float:
+        #Calculo de h13
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
-        h13 = max(h13_values.get(self.craft.tipo_embarcacion, 0.5), (self.craft.L / 12))
+        h13 = max(h13_values.get(self.craft.tipo_embarcacion), (self.craft.L / 12))
 
+        #Calculo de ncg
         kn = 0.256
         ncg_limit = 1.39 + kn * (self.craft.V / math.sqrt(self.craft.L))
         _ncg = self.N2 * (((12 * h13) / self.craft.BW) + 1) * self.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
         ncg = min(ncg_limit, _ncg)
-
         if self.V > (18 * math.sqrt(self.L)):
             ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
-
         if self.L < 24 and ncg < 1:
             ncg = 1
 
-        return ncg
+        #Calculo de nxx
+        x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
+        Kv = np.interp((self.craft.L - self.Fx), x_known, y_known)
+        nxx = Kv * ncg
+        
+        return ncg, nxx, h13
 
-    def calculate_FD(self):
+    def calculate_FD(self) -> float:
         AR = 6.95 * self.craft.W / self.craft.d
 
         if self.craft.context == 1:
@@ -177,7 +186,6 @@ class Pressures:
         return FD
 
     def calculate_FV(self) -> float:
-        
         x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
         y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
 
@@ -187,19 +195,17 @@ class Pressures:
 
         return FV
 
-    def calculate_F1(self, lx) -> float:
-        Fx = lx / self.L
-
+    def calculate_F1(self) -> float:
         x_known = [0, 0.2, 0.7, 0.8, 1.0]
         y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
 
-        F1 = np.interp(Fx, x_known, y_known)
+        F1 = np.interp(self.Fx, x_known, y_known)
 
         return F1
 
     def bottom_pressure(self):
-        slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * self.FDp * self.FV)
-        hidrostatic_pressure = self.N3 * (0.64 * self.h13 + self.craft.d)
+        slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * self.FD * self.FV)
+        hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
         return max (slamming_pressure_less61, hidrostatic_pressure)
 
     def side_transom_pressure(self):
