@@ -135,7 +135,6 @@ class Pressures:
         self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
 
 
-
     def calculate_Fx_y(self) -> tuple: #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
         print("¿Desea realizar el análisis en algún punto específico?\n")
         lx = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
@@ -224,7 +223,16 @@ class Pressures:
 
     #revisar de aqui para abajo
     def wet_deck_pressure(self):
-        deck_pressure = 30 * self.N1 * self.FD * self.F1 * self.craft.V * self.v1 * (1 - 0.85 * self.ha / self.h13)
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, -1, 0, self.craft.D - self.craft.d)
+
+        if self.craft.L < 61:
+            v1 = ((4 * self.h13) / (np.sqrt(self.craft.L))) + 1
+            deck_pressure = 30 * self.N1 * self.FD * self.F1 * self.craft.V * v1 * (1 - 0.85 * ha / self.h13)
+        else:
+            #V is not to be greater than 20 knots for craft greater than 61 meters
+            v1 = 5 * np.sqrt(self.h13 / self.craft.L) + 1
+            deck_pressure = 55 * self.FD * self.F1 * np.pow(self.craft.V, 0.1) * v1 * (1 - 0.35 * (ha / self.h13))
+
         return deck_pressure
 
     def decks_pressures(self):
