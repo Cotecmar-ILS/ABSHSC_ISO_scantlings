@@ -46,7 +46,7 @@ class Craft:
     def select_material(self) -> int:
         print("\nLista de materiales disponibles")
         self.display_menu(self.MATERIALS)
-        opcion = val_data("Seleccione un material (Ingrese el número correspondiente): ", False, True, -1, 1, len(self.MATERIALS))
+        opcion = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(self.MATERIALS))
         return opcion
 
     def select_context(self) -> int:    #Revisar esta función
@@ -125,7 +125,7 @@ class Pressures:
         self.Fx = self.calculate_Fx()
         self.FD = self.calculate_FD()
         # self.FV = self.calculate_FV()
-        
+
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
@@ -134,8 +134,8 @@ class Pressures:
 
 
     def calculate_Fx(self):
-        print("¿Desea realizar el analisis en algun punto especifico?\n")
-        lx = val_data("Distancia desde proa hasta el punto de analisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
+        print("¿Desea realizar el análisis en algún punto específico?\n")
+        lx = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
         Fx = lx / self.craft.L
 
         return Fx
@@ -143,7 +143,7 @@ class Pressures:
     def calculate_ncg(self) -> float:
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
         h13 = max(h13_values.get(self.craft.tipo_embarcacion, 0.5), (self.craft.L / 12))
-        
+
         kn = 0.256
         ncg_limit = 1.39 + kn * (self.craft.V / math.sqrt(self.craft.L))
         _ncg = self.N2 * (((12 * h13) / self.craft.BW) + 1) * self.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
@@ -151,7 +151,7 @@ class Pressures:
 
         if self.V > (18 * math.sqrt(self.L)):
             ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
-        
+
         if self.L < 24 and ncg < 1:
             ncg = 1
 
@@ -270,10 +270,10 @@ class Plating_acero_aluminio:
 
             1 sigma_y = yield strength of steel or of welded aluminum in N/mm2, but not to be taken 
             greater than 70% of the ultimate strength of steel or welded aluminum
-            
+    
             2 The design stress for bottom shell plates under slamming pressure may be taken as 
             sigma_y for plates outside the midship 0.4L.
-            
+
             3 The design stress for steel deckhouse plates may be taken as 0.90 * sigma_y
         """
 
