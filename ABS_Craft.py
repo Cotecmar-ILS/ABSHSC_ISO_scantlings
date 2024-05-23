@@ -7,7 +7,6 @@
 # Water Jet Tunnels
 
 
-import math
 import numpy as np
 from validations import val_data
 
@@ -114,10 +113,10 @@ class Pressures:
 
         #Calculo de ncg
         kn = 0.256
-        ncg_limit = 1.39 + kn * (self.craft.V / math.sqrt(self.craft.L))
+        ncg_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
         _ncg = self.N2 * (((12 * h13) / self.craft.BW) + 1) * self.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
         ncg = min(ncg_limit, _ncg)
-        if self.V > (18 * math.sqrt(self.L)):
+        if self.V > (18 * np.sqrt(self.L)):
             ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
         if self.L < 24 and ncg < 1:
             ncg = 1
@@ -330,7 +329,7 @@ class Plating_acero_aluminio:
 
     #The thickness of the shell, deck or bulkhead plating
     def lateral_loading(self) -> float:
-        t1 = self.s * 10 * math.sqrt((self.pressure * self.k)/(1000*self.d_stressp))
+        t1 = self.s * 10 * np.sqrt((self.pressure * self.k)/(1000*self.d_stressp))
         return t1
 
     def secondary_stiffening(self) -> float:
@@ -343,24 +342,24 @@ class Plating_acero_aluminio:
 
         if self.craft.zone == 1:    #Fondo
             if self.craft.material == "Acero":
-                return max(0.44 * math.sqrt(self.craft.L * self.q) + 2, 3.5)
+                return max(0.44 * np.sqrt(self.craft.L * self.q) + 2, 3.5)
             else:
-                return max(0.70 * math.sqrt(self.craft.L * self.q) + 1, 4.0)
+                return max(0.70 * np.sqrt(self.craft.L * self.q) + 1, 4.0)
         elif self.craft.zone == 2:  #Costados y Espejo
             if self.craft.material == "Acero":
-                return max(0.40 * math.sqrt(self.craft.L * self.q) + 2, 3.0)
+                return max(0.40 * np.sqrt(self.craft.L * self.q) + 2, 3.0)
             else:
-                return max(0.62 * math.sqrt(self.craft.L * self.q) + 1, 3.5)
+                return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
         elif self.craft.zone == 3:  #Cubierta principal
             if self.craft.material == "Acero":
-                return max(0.40 * math.sqrt(self.craft.L * self.q) + 1, 3.0)
+                return max(0.40 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
             else:
-                return max(0.62 * math.sqrt(self.craft.L * self.q) + 1, 3.5)
+                return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
         elif self.craft.zone == 4:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
             if self.craft.material == "Acero":
-                return max(0.35 * math.sqrt(self.craft.L * self.q) + 1, 3.0)
+                return max(0.35 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
             else:
-                return max(0.52 * math.sqrt(self.craft.L * self.q) + 1, 3.5)
+                return max(0.52 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
 
     #Water Jet Tunnels
     t = self.s * np.sqrt(pressure * self.k / (1000 * self.d_stressp))
