@@ -373,20 +373,13 @@ class Plating_acero_aluminio:
 
 
 class Internals:
-    
-    
-    def __init__(self) -> None:
-        pass
 
-    
-    def calculate_section_modulus(self) -> float:
-        SM = (83.3 * pressure * s * l**2) / (sigma_a)
-        return SM
-    
-    def calculate_moment_inertia(self):
-        I = (260 * pressure * s * np.pow(l, 3)) / (K4 * E)
-        return I 
-    
+
+    def __init__(self, craft: Craft, pressure: Pressures) -> None:
+        self.craft = craft
+        self.pressure = pressure
+
+
     def dstress_internals(self, zone) -> tuple:  #Corregir
         """Calcula el esfuerzo de diseño basado en la zona seleccionada."""
         zones = {
@@ -419,6 +412,15 @@ class Internals:
         selected_zone = zones[zone]
         stress_values = tuple(selected_zone.values())
         return stress_values
+
+    def calculate_section_modulus(self) -> float:
+        SM = (83.3 * self.pressure * s * l**2) / (sigma_a)
+        return SM
+
+    def calculate_moment_inertia(self):
+        I = (260 * self.pressure * s * np.pow(l, 3)) / (K4 * E)
+        return I 
+
 
 
 def main():
