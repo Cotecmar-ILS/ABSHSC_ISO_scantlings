@@ -421,9 +421,27 @@ class Internals:
         return I 
 
 
+def seleccionar_zonas():
+    """Permite al usuario seleccionar las zonas a analizar."""
+    zonas_disponibles = [
+        'fondo', 'costado', 'cubierta', 'superestructura', 'mamparos estancos',
+        'fronteras de tanques', 'almacenes de carga'
+    ]
+    print("Zonas disponibles para análisis de escantillonado:")
+    for idx, zona in enumerate(zonas_disponibles, 1):
+        print(f"{idx}. {zona}")
+    
+    seleccion = input("Ingrese los números de las zonas a analizar, separados por comas: ")
+    indices_zonas = [int(x) - 1 for x in seleccion.split(",")]
+    zonas_seleccionadas = [zonas_disponibles[i] for i in indices_zonas]
+    
+    return zonas_seleccionadas
 
 def main():
-    pass
+    craft = Craft()
+    pressure = Pressures()
+    
+    
 
 
 if __name__ == "__main__":
