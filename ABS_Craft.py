@@ -78,50 +78,12 @@ class Craft:
         choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
         return choice
 
-    def dstress_internals(self, zone) -> tuple:  #Corregir
-        """Calcula el esfuerzo de diseño basado en la zona seleccionada."""
-        zones = {
-            'Fondo': {
-                'Bottom Longitudinals Slamming Pressure': 0.65 * self.sigma_y,
-                'Bottom Transverse and Girders Slamming pressure': 0.80 * self.sigma_y,
-                'Bottom Longitudinals Sea Pressure': 0.50 * self.sigma_y,
-                'Bottom Transverses and Girders Sea pressure': 0.60 * self.sigma_y
-            },
-            'Costado': {
-                'Side Longitudinals Slamming Pressure': 0.60 * self.sigma_y,
-                'Side Transverses and Girders Slamming Pressure': 0.80 * self.sigma_y,
-                'Side Longitudinals Sea Pressure': 0.50 * self.sigma_y,
-                'Side Transverses and Girders Sea Pressure': 0.60 * self.sigma_y,
-            },
-            'Cubiertas, Mamparos y Superestructura': {
-                'Deck Longitudinals - Strength Decks': 0.33 * self.sigma_y,
-                'Deck Longitudinals - Other Decks': 0.40 * self.sigma_y,
-                'Deck Transverses and Girders Strength Decks': 0.75 * self.sigma_y,
-                'Deck Transverses and Girders Other Decks': 0.75 * self.sigma_y, 
-                'Wet Deck Longitudinals': 0.75 * self.sigma_y,
-                'Wet Deck Transverses and Girders': 0.75 * self.sigma_y,
-                'Watertight Bulkheads': 0.85 * self.sigma_y,
-                'Tank Bulkheads': 0.60 * self.sigma_y,
-                'Superstructure and Deckhouse': 0.70 * self.sigma_y
-            },
-        }
-        if zone == 'Cuaderna Maestra':
-            zone = 'Fondo'
-        selected_zone = zones[zone]
-        stress_values = tuple(selected_zone.values())
-        return stress_values 
-
-
 
 class Pressures:
 
 
     def __init__(self, craft: Craft):
         self.craft = craft
-        # self.lp = val_data("borde más largo del panel de la placa (cm): ")
-        # self.sp = val_data("borde más corto del panel de la placa (cm): ")
-        # self.l = val_data("longitud sin apoyo del refuerzo (cm): ")
-        # self.s = val_data("separación entre refuerzos (cm): ")
         self.Fx, self.y = self.calculate_Fx_y()
         self.FD = self.calculate_FD()
         self.FV = self.calculate_FV()
@@ -172,9 +134,9 @@ class Pressures:
         AR = 6.95 * self.craft.W / self.craft.d
 
         if self.craft.context == 1:
-            AD = min(self.s * self.l, 2.5 * pow(self.s, 2))
+            AD = min(self.s * l, 2.5 * pow(s, 2))
         else:
-            AD = max(self.s * self.l, 0.33 * pow(self.l, 2))
+            AD = max(self.s * l, 0.33 * pow(l, 2))
         ADR = AD / AR
 
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
@@ -234,15 +196,18 @@ class Pressures:
 
         return deck_pressure
 
+    #De aqui para abajo las zonas son opcionales para el usuario
+    #Se debe hacer una checklist con las zonas que el usuario desee antes de realizar el analisis
     def decks_pressures(self):
-        cubiertas_proa = 0.20 * self.craft.L +7.6
-        cubiertas_popa = 0.10 * self.craft.L + 6.1
-        cubiertas_alojamientos = 5
-        carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)
-        cubiertas_carga = carga * (1 + 0.5 * self.nxx)
-        cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)
+        """ Las diferentes cubiertas posibles están enumeradas """
+        cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
+        cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
+        cubiertas_alojamientos = 5                                                                  #3     
+        carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
+        cubiertas_carga = carga * (1 + 0.5 * self.nxx)                                              #4
+        cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
         height = val_data("Altura del almacén (metros): ", True, True, -1)
-        almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)
+        almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
     def superstructures_pressures(self):
         plating_pressures = {
@@ -292,6 +257,7 @@ class Pressures:
 
         return watertight_pressure
 
+
 class Plating_acero_aluminio:
 
 
@@ -300,6 +266,7 @@ class Plating_acero_aluminio:
         self.pressure = pressure
         self.k = self.calculate_k_k1()[0] if self.craft.material in ['Acero', 'Aluminio'] else self.calculate_k_k1()[1]
         self.q = self.calculate_q()
+
 
     def calculate_k_k1(self) -> tuple:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
@@ -396,11 +363,67 @@ class Plating_acero_aluminio:
                 return max(0.52 * math.sqrt(self.craft.L * self.q) + 1, 3.5)
 
     #Water Jet Tunnels
-    t = self.s * math.sqrt(pressure * self.k / (1000 * self.d_stressp))
+    t = self.s * np.sqrt(pressure * self.k / (1000 * self.d_stressp))
 
-    #Transverse Thruster Tubes
-    t = 0.008 *self.d * math.sqrt(Q) + 3.0
+    #Transverse Thruster Tunnels/Tubes
+    t = 0.008 *self.d * np.sqrt(Q) + 3.0
 
     #Decks Provided for the Operation or Stowage of Vehicles
-    t = math.sqrt((self.beta * self.W *(1 + 0.5 * self.nxx)) / self.sigma_a)
+    t = np.sqrt((self.beta * self.W *(1 + 0.5 * self.nxx)) / self.sigma_a)
 
+
+class Internals:
+    
+    
+    def __init__(self) -> None:
+        pass
+
+    
+    def calculate_section_modulus(self) -> float:
+        SM = (83.3 * pressure * s * l**2) / (sigma_a)
+        return SM
+    
+    def calculate_moment_inertia(self):
+        I = (260 * pressure * s * np.pow(l, 3)) / (K4 * E)
+        return I 
+    
+    def dstress_internals(self, zone) -> tuple:  #Corregir
+        """Calcula el esfuerzo de diseño basado en la zona seleccionada."""
+        zones = {
+            'Fondo': {
+                'Bottom Longitudinals Slamming Pressure': 0.65 * self.sigma_y,
+                'Bottom Transverse and Girders Slamming pressure': 0.80 * self.sigma_y,
+                'Bottom Longitudinals Sea Pressure': 0.50 * self.sigma_y,
+                'Bottom Transverses and Girders Sea pressure': 0.60 * self.sigma_y
+            },
+            'Costado': {
+                'Side Longitudinals Slamming Pressure': 0.60 * self.sigma_y,
+                'Side Transverses and Girders Slamming Pressure': 0.80 * self.sigma_y,
+                'Side Longitudinals Sea Pressure': 0.50 * self.sigma_y,
+                'Side Transverses and Girders Sea Pressure': 0.60 * self.sigma_y,
+            },
+            'Cubiertas, Mamparos y Superestructura': {
+                'Deck Longitudinals - Strength Decks': 0.33 * self.sigma_y,
+                'Deck Longitudinals - Other Decks': 0.40 * self.sigma_y,
+                'Deck Transverses and Girders Strength Decks': 0.75 * self.sigma_y,
+                'Deck Transverses and Girders Other Decks': 0.75 * self.sigma_y, 
+                'Wet Deck Longitudinals': 0.75 * self.sigma_y,
+                'Wet Deck Transverses and Girders': 0.75 * self.sigma_y,
+                'Watertight Bulkheads': 0.85 * self.sigma_y,
+                'Tank Bulkheads': 0.60 * self.sigma_y,
+                'Superstructure and Deckhouse': 0.70 * self.sigma_y
+            },
+        }
+        if zone == 'Cuaderna Maestra':
+            zone = 'Fondo'
+        selected_zone = zones[zone]
+        stress_values = tuple(selected_zone.values())
+        return stress_values
+
+
+def main():
+    pass
+
+
+if __name__ == "__main__":
+    main()
