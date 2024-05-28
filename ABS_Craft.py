@@ -195,8 +195,8 @@ class Pressures:
 
         return deck_pressure
 
-    #De aqui para abajo las zonas son opcionales para el usuario
-    #Se debe hacer una checklist con las zonas que el usuario desee antes de realizar el analisis
+    #   De aqui para abajo las zonas son opcionales para el usuario
+    #   Se debe hacer una checklist con las zonas que el usuario desee antes de realizar el analisis
     def decks_pressures(self):
         """ Las diferentes cubiertas posibles están enumeradas """
         cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
@@ -370,6 +370,20 @@ class Plating_acero_aluminio:
     #Decks Provided for the Operation or Stowage of Vehicles
     t = np.sqrt((self.beta * self.W *(1 + 0.5 * self.nxx)) / self.sigma_a)
 
+class Plating_Others_Aluminum:
+    #Aluminum Extruded Planking, Sandwich Panels and Corrugated Panels
+
+    def __init__(self, craft: Craft, pressure: Pressures, material) -> None:
+        self.craft = craft
+        self.pressure = pressure
+        self.material = material
+
+    def aluminum_extruded(self, ):
+        pass
+
+def lateral_loading(self, pressure) -> float:
+    t1 = self.s * 10 * np.sqrt((self.pressure * self.k)/(1000*self.d_stressp))
+    return t1
 
 class Internals:
 
