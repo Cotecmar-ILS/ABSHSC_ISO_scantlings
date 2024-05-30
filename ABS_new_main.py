@@ -307,6 +307,31 @@ core_shear = (v * p * self.s) / tau     #The thickness of core and sandwich is t
 
 
 #   Fiber Reinforced Plastic 
+sigma_a = 0.33 * sigma_u   # Design Stresses
+
+def calculate_ks_kl(l, s, Es, El):
+    # Calcular (l/s) * (Es / El)^0.25
+    aspect_ratio = (l / s) * np.power((Es / El), 0.25)
+
+    # Valores de la tabla
+    aspect_ratios = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+    ks_values = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.497]
+    kl_values = [0.308, 0.323, 0.333, 0.338, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342]
+
+    # Determinar ks y kl basado en aspect_ratio
+    if aspect_ratio > 2.0:
+        ks = 0.500
+        kl = 0.342
+    elif aspect_ratio < 1.0:
+        ks = 0.308
+        kl = 0.308
+    else:
+        # Interpolación usando numpy
+        ks = np.interp(aspect_ratio, aspect_ratios, ks_values)
+        kl = np.interp(aspect_ratio, aspect_ratios, kl_values)
+
+    return aspect_ratio, ks, kl
+
 #   With Essentially Same Properties in 0° and 90° Axes
 c = max((1-A/s), 0.70)
 t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
@@ -317,8 +342,9 @@ t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
 t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
 
 #Strength deck and bottom shell
-t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A)
+t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
+
 
 #With Different Properties in 0° and 90° Axes
-t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))
-t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow(El / Es, 0.25)
+t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
+t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
