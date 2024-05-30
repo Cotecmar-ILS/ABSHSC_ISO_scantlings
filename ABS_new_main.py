@@ -306,7 +306,9 @@ I_skins = (np.pow(self.s, 3) * self.pressure * self.k1) / (120e5 * 0.24 * E)
 core_shear = (v * p * self.s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
 
 
-#   Fiber Reinforced Plastic
+#   Fiber Reinforced Plastic 
+#   With Essentially Same Properties in 0° and 90° Axes
+c = max((1-A/s), 0.70)
 t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
 
 t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
@@ -315,4 +317,8 @@ t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
 t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
 
 #Strength deck and bottom shell
-t = (s/kb) * np.sq
+t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A)
+
+#With Different Properties in 0° and 90° Axes
+t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))
+t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow(El / Es, 0.25)
