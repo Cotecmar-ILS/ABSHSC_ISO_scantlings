@@ -257,7 +257,7 @@ class Pressures:
         return watertight_pressure
 
 
-#Acero_Aluminio && Aluminum Extruded Planking
+#   Acero_Aluminio && Aluminum Extruded Planking && Corrugated Panels
 def calculate_lateral_loading(s, pressure, k, d_stress) -> float:
     lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
     return lateral_loading
@@ -294,10 +294,25 @@ def minimun_thickness(self) -> float:
 #Water Jet Tunnels
 t = self.s * np.sqrt(pressure * self.k / (1000 * self.d_stressp))
 
-#Transverse Thruster Tunnels/Tubes
+#Transverse Thruster Tunnels/Tubes (Boat Thruster)
 t = 0.008 *self.d * np.sqrt(Q) + 3.0
 
 #Decks Provided for the Operation or Stowage of Vehicles
 t = np.sqrt((self.beta * self.W *(1 + 0.5 * self.nxx)) / self.sigma_a)
 
 # Aluminium Sandwich Panels
+sm_skins = (np.pow(self.s, 2) * self.pressure * self.k) / (6e5 * self.d_stressp)
+I_skins = (np.pow(self.s, 3) * self.pressure * self.k1) / (120e5 * 0.24 * E)
+core_shear = (v * p * self.s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
+
+
+#   Fiber Reinforced Plastic
+t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+
+t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
+
+#Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+
+#Strength deck and bottom shell
+t = (s/kb) * np.sq
