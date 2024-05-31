@@ -31,7 +31,7 @@ class Craft:
         self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
         self.material = self.select_material()
         self.context = self.select_context()
-        self.zone = self.select_zone()
+        self.zones = self.select_zones()
         self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
@@ -65,7 +65,7 @@ class Craft:
         else:
             return 'Ordinaria'
 
-    def select_zone(self) -> int:
+    def select_zones(self) -> int:
         print("\nSeleccione la zona que desea escantillonar")
         self.display_menu(self.ZONES)
         choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.ZONES))
@@ -257,56 +257,152 @@ class Pressures:
         return watertight_pressure
 
 
-#   Acero_Aluminio && Aluminum Extruded Planking && Corrugated Panels
-def calculate_lateral_loading(s, pressure, k, d_stress) -> float:
-    lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
-    return lateral_loading
+class A_A:  # Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
+    
+    
+    def __init__(self, craft: Craft):
+        self.craft = craft
+        
+        
+    def calculate_k_k1(self) -> tuple:
+        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
+        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
 
-def secondary_stiffening(self) -> float:
-        if self.craft.material == "Acero":
-            return 0.01 * self.s
+        ls = self.l / self.s
+
+        if ls > 2.0:
+            k = 0.500
+            k1 = 0.028
+        elif ls < 1.0:
+            k = 0.308
+            k1 = 0.014
         else:
-            return 0.012 * self.s
+            k = np.interp(ls, ls_known, k_known)
+            k1 = np.interp(ls, ls_known, k1_known)
 
-def minimun_thickness(self) -> float:
+        return k, k1
 
-    if self.craft.zone == 1:    #Fondo
-        if self.craft.material == "Acero":
-            return max(0.44 * np.sqrt(self.craft.L * self.q) + 2, 3.5)
+    def calculate_q(self) -> float:
+        if self.craft.material == 'Acero':
+            return 1.0 if self.craft.resistencia == "Alta" else 245 / self.sigma_y
         else:
-            return max(0.70 * np.sqrt(self.craft.L * self.q) + 1, 4.0)
-    elif self.craft.zone == 2:  #Costados y Espejo
-        if self.craft.material == "Acero":
-            return max(0.40 * np.sqrt(self.craft.L * self.q) + 2, 3.0)
-        else:
-            return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-    elif self.craft.zone == 3:  #Cubierta principal
-        if self.craft.material == "Acero":
-            return max(0.40 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
-        else:
-            return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-    elif self.craft.zone == 4:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-        if self.craft.material == "Acero":
-            return max(0.35 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
-        else:
-            return max(0.52 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
+            return 115 / self.sigma_y
 
-#Water Jet Tunnels
-t = self.s * np.sqrt(pressure * self.k / (1000 * self.d_stressp))
+    def design_stress(self):
+        """
+        Calcula el esfuerzo de diseño 'sigma_a' basado en las zonas seleccionadas.
+        En las cubiertas y los mamparos no hay Slamming ni Hydrostatic pressure,
+        solo una para ambos.
 
-#Transverse Thruster Tunnels/Tubes (Boat Thruster)
-t = 0.008 *self.d * np.sqrt(Q) + 3.0
+        Notes:
 
-#Decks Provided for the Operation or Stowage of Vehicles
-t = np.sqrt((self.beta * self.W *(1 + 0.5 * self.nxx)) / self.sigma_a)
+        1 sigma_y = yield strength of steel or of welded aluminum in N/mm2, but not to be taken 
+        greater than 70% of the ultimate strength of steel or welded aluminum
+
+        2 The design stress for bottom shell plates under slamming pressure may be taken as 
+        sigma_y for plates outside the midship 0.4L.
+
+        3 The design stress for steel deckhouse plates may be taken as 0.90 * sigma_y
+        """
+
+        stress_mapping = {
+            1: {  # Bottom
+                'Slamming_Pressure': 0.90 * self.sigma_y,
+                'Hydrostatic_Pressure': 0.55 * self.sigma_y,
+            },
+            2: {  # Side
+                'Slamming_Pressure': 0.90 * self.sigma_y,
+                'Hydrostatic_Pressure': 0.55 * self.sigma_y,
+            },
+            3: {  # Decks
+                'all_decks': 0.60 * self.sigma_y,
+                'wet_decks': 0.90 * self.sigma_y,
+            },
+            4: {  # Bulkheads
+                'deep_tank': 0.60 * self.sigma_y,
+                'watertight': 0.95 * self.sigma_y,
+            },
+            5: {  # Superstructure
+                'super_deckhouse': 0.60 * self.sigma_y,
+            },
+            6: {  # Water Jet Tunnels
+                'Slamming_Pressure': 0.60 * self.sigma_y,
+                'Hydrostatic_Pressure': 0.55 * self.sigma_y,
+            },
+        }
+
+        # Diccionario para almacenar los resultados
+        results = {}
+
+        # Iterar sobre las zonas seleccionadas y calcular los esfuerzos de diseño
+        for zone in self.craft.zones:
+            if zone in stress_mapping:
+                results[zone] = stress_mapping[zone]
+            else:
+                results[zone] = "Zona no definida"
+
+        return results
+    
+    def calculate_lateral_loading(s, pressure, k, d_stress) -> float:
+        lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
+        return lateral_loading
+
+    def secondary_stiffening(self) -> float:
+            if self.craft.material == "Acero":
+                return 0.01 * self.s
+            else:
+                return 0.012 * self.s
+
+    def minimun_thickness(self) -> float:
+
+        if self.craft.zone == 1:    #Fondo
+            if self.craft.material == "Acero":
+                return max(0.44 * np.sqrt(self.craft.L * self.q) + 2, 3.5)
+            else:
+                return max(0.70 * np.sqrt(self.craft.L * self.q) + 1, 4.0)
+        elif self.craft.zone == 2:  #Costados y Espejo
+            if self.craft.material == "Acero":
+                return max(0.40 * np.sqrt(self.craft.L * self.q) + 2, 3.0)
+            else:
+                return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
+        elif self.craft.zone == 3:  #Cubierta principal
+            if self.craft.material == "Acero":
+                return max(0.40 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
+            else:
+                return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
+        elif self.craft.zone == 4:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
+            if self.craft.material == "Acero":
+                return max(0.35 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
+            else:
+                return max(0.52 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
+
+    def waterjet_tunnels(self) -> float:
+        #Water Jet Tunnels
+        t = s * np.sqrt(pressure * k / (1000 * d_stress))
+        return t
+
+    def boat_thrusters_tunnels(self) -> float:
+        #Transverse Thruster Tunnels/Tubes (Boat Thruster)
+        t = 0.008 * d * np.sqrt(Q) + 3.0
+        return t
+    
+    def other_decks(self) -> float:
+        #Decks Provided for the Operation or Stowage of Vehicles
+        t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
+        return t
+
+
 
 # Aluminium Sandwich Panels
-sm_skins = (np.pow(self.s, 2) * self.pressure * self.k) / (6e5 * self.d_stressp)
-I_skins = (np.pow(self.s, 3) * self.pressure * self.k1) / (120e5 * 0.24 * E)
-core_shear = (v * p * self.s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
+sm_skins = (np.pow(s, 2) * pressure * k) / (6e5 *d_stress)
+I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
+core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
+#core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
 
 
-#   Fiber Reinforced Plastic 
+
+#   Fiber Reinforced Plastic
 sigma_a = 0.33 * sigma_u   # Design Stresses
 
 def calculate_ks_kl(l, s, Es, El):
