@@ -1,11 +1,22 @@
-# Bottom Shell
-# Side Shell
-# Strenght Deck and other Decks
-# Superstructure and Deckhouses – Front, Sides, Ends, and Tops
-# Tank Bulkheads
-# Watertight Bulkheads
-# Water Jet Tunnels
+"""
+Se debe hacer una checklist con las zonas que el usuario desee 
+antes de realizar el analisis
 
+ZONES:
+    Shell:
+        #1 Bottom Shell
+        #2 Side Shell
+    Decks:
+        #3 Strength Deck
+        #4 Lower Decks/Other Decks
+        #5 Wet Decks
+        #6 Superstructure and deckhouses Decks
+        #7 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
+    Bulkheads:
+        #8 Deep Tank Bulkheads
+        #9 Water Tight Bulkheads
+        #10 Water Jet Tunnels
+"""
 
 import numpy as np
 from validations import val_data
@@ -96,7 +107,7 @@ class Pressures:
         self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
 
 
-    def calculate_Fx_y(self) -> tuple: #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
+    def calculate_Fx_y(self) -> tuple:  #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
         print("¿Desea realizar el análisis en algún punto específico?\n")
         lx = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
         Fx = lx / self.craft.L
@@ -129,7 +140,7 @@ class Pressures:
         
         return ncg, nxx, h13
 
-    def calculate_FD(self) -> float:
+    def calculate_FD(self) -> float:    #Revisar AD
         AR = 6.95 * self.craft.W / self.craft.d
 
         if self.craft.context == 1:
@@ -195,8 +206,6 @@ class Pressures:
 
         return deck_pressure
 
-    #   De aqui para abajo las zonas son opcionales para el usuario
-    #   Se debe hacer una checklist con las zonas que el usuario desee antes de realizar el analisis
     def decks_pressures(self):
         """ Las diferentes cubiertas posibles están enumeradas """
         cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
@@ -257,8 +266,8 @@ class Pressures:
         return watertight_pressure
 
 
-class A_A:  # Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
-    
+class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
+    #Falta implementar l y s
     
     def __init__(self, craft: Craft):
         self.craft = craft
@@ -285,9 +294,9 @@ class A_A:  # Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
 
     def calculate_q(self) -> float:
         if self.craft.material == 'Acero':
-            return 1.0 if self.craft.resistencia == "Alta" else 245 / self.sigma_y
+            return 1.0 if self.craft.resistencia == "Alta" else 245 / self.craft.sigma_y
         else:
-            return 115 / self.sigma_y
+            return 115 / self.craft.sigma_y
 
     def design_stress(self):
         """
@@ -308,27 +317,27 @@ class A_A:  # Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
 
         stress_mapping = {
             1: {  # Bottom
-                'Slamming_Pressure': 0.90 * self.sigma_y,
-                'Hydrostatic_Pressure': 0.55 * self.sigma_y,
+                'Slamming_Pressure': 0.90 * self.craft.sigma_y,
+                'Hydrostatic_Pressure': 0.55 * self.craft.sigma_y,
             },
             2: {  # Side
-                'Slamming_Pressure': 0.90 * self.sigma_y,
-                'Hydrostatic_Pressure': 0.55 * self.sigma_y,
+                'Slamming_Pressure': 0.90 * self.craft.sigma_y,
+                'Hydrostatic_Pressure': 0.55 * self.craft.sigma_y,
             },
             3: {  # Decks
-                'all_decks': 0.60 * self.sigma_y,
-                'wet_decks': 0.90 * self.sigma_y,
+                'all_decks': 0.60 * self.craft.sigma_y,
+                'wet_decks': 0.90 * self.craft.sigma_y,
             },
             4: {  # Bulkheads
-                'deep_tank': 0.60 * self.sigma_y,
-                'watertight': 0.95 * self.sigma_y,
+                'deep_tank': 0.60 * self.craft.sigma_y,
+                'watertight': 0.95 * self.craft.sigma_y,
             },
             5: {  # Superstructure
-                'super_deckhouse': 0.60 * self.sigma_y,
+                'super_deckhouse': 0.60 * self.craft.sigma_y,
             },
             6: {  # Water Jet Tunnels
-                'Slamming_Pressure': 0.60 * self.sigma_y,
-                'Hydrostatic_Pressure': 0.55 * self.sigma_y,
+                'Slamming_Pressure': 0.60 * self.craft.sigma_y,
+                'Hydrostatic_Pressure': 0.55 * self.craft.sigma_y,
             },
         }
 
@@ -344,15 +353,15 @@ class A_A:  # Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
 
         return results
     
-    def calculate_lateral_loading(s, pressure, k, d_stress) -> float:
+    def lateral_loading(self) -> float:
         lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
         return lateral_loading
 
     def secondary_stiffening(self) -> float:
-            if self.craft.material == "Acero":
-                return 0.01 * self.s
-            else:
-                return 0.012 * self.s
+        if self.craft.material == "Acero":
+            return 0.01 * self.s
+        else:
+            return 0.012 * self.s
 
     def minimun_thickness(self) -> float:
 
@@ -392,6 +401,26 @@ class A_A:  # Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
         t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
         return t
 
+    def thickness(self) -> float:
+    #ZONES:
+        #1 Bottom Shell LL, SS, MT
+        #2 Side Shell   LL, SS, MT
+    # Decks
+        #3 Strength Deck LL, SS, MT
+        #4 Lower Decks/Other Decks LL, SS, MT
+        #5 Wet Decks
+        #6 Superstructure and deckhouses Decks
+        #7 Superstructure and Deckhouses (Front, Sides, Ends, and Tops)
+    # Bulkheads
+        #8 Deep Tank Bulkheads LL, SS, MT
+        #9 Water Tight Bulkheads LL, SS, MT
+    # Water Jet Tunnels
+        #10 Water Jet Tunnels
+
+        if self.craft.zones in [1, 2, 3, 4, 8, 9]:
+            return max(self.lateral_loading(), self.secondary_stiffening(), self.minimun_thickness())
+        else: #self.craft.zones in [5, 6, 7, 10]:
+            return self.lateral_loading()
 
 
 # Aluminium Sandwich Panels
