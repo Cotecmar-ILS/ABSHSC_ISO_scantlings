@@ -348,3 +348,5 @@ t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
 #With Different Properties in 0° and 90° Axes
 t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
 t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+
+
