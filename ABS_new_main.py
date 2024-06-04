@@ -3,20 +3,22 @@ Se debe hacer una checklist con las zonas que el usuario desee
 antes de realizar el analisis
 
 ZONES
-    Shell:
+    # Shell:
         #1 Bottom Shell
-        #2 Side Shell
-    Decks:
+        #2 Side and transom Shell
+    # Decks:
         #3 Strength Deck
         #4 Lower Decks/Other Decks
         #5 Wet Decks
         #6 Superstructure and deckhouses Decks 
-    Bulkheads:
+    # Bulkheads:
         #7 Water Tight Bulkheads
         #8 Deep Tank Bulkheads
-    Others:
+    # Others:
         #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
         #10 Water Jet Tunnels
+        #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
+        #12 Decks Provided for the Operation or Stowage of Vehicles
 """
 
 import numpy as np
@@ -88,6 +90,14 @@ class Craft:
         self.display_menu(self.TIPO_EMBARCACION)
         choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
         return choice
+
+    @property
+    def l(self):
+        return val_data("Longitud sin apoyo del refuerzo o lado mayor del panel, en cm: ", True, True, -1)
+    
+    @property
+    def s(self):
+        return val_data("Separación entre refuerzos o lado mas corto del panel, en cm: ", True, True, -1)
 
 
 class Pressures:
@@ -278,6 +288,7 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
         self.craft = craft
         self.pressure = pressure
         
+    
     def calculate_k_k1(self) -> tuple:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
@@ -358,7 +369,7 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
 
         return results
     
-    def lateral_loading(self) -> float:
+    def lateral_loading(self, pressure) -> float: #revisar
         lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
         return lateral_loading
 

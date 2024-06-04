@@ -48,7 +48,7 @@ def val_data(
         valor = float(valor) if is_float else int(valor)
   
         # Validaciones
-        if is_positive and valor < 0:
+        if is_positive and valor <= 0: #Cambio realizado, si es positivo debe ser mayor a 0 por ley
           error_msg = "El valor ingresado debe ser un número real positivo mayor a 0\n"
         elif range_min is not None and valor < range_min:
           error_msg = f"El valor ingresado debe ser mayor o igual a {range_min}\n"
@@ -61,4 +61,4 @@ def val_data(
   
         print(f"Error: {error_msg}\n")
       except ValueError as e:
-        print(f"Error: {str(e)}Intente nuevamente.\n")
+        print(f"Error: {str(e)}. Intente nuevamente.\n")
