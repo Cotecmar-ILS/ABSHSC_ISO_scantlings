@@ -151,13 +151,13 @@ class Pressures:
         
         return ncg, nxx, h13
 
-    def calculate_FD(self) -> float:    #Revisar AD
+    def calculate_FD(self) -> float:
         AR = 6.95 * self.craft.W / self.craft.d
 
         if self.craft.context == 1:
-            AD = min(self.s * l, 2.5 * pow(s, 2))
+            AD = min(self.craft.s * self.craft.l, 2.5 * pow(self.craft.s, 2))
         else:
-            AD = max(self.s * l, 0.33 * pow(l, 2))
+            AD = max(self.craft.s * self.craft.l, 0.33 * pow(self.craft.l, 2))
         ADR = AD / AR
 
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
@@ -281,7 +281,7 @@ class Pressures:
         return pt
 
 
-class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
+class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
     #Falta implementar l y s
     
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
@@ -294,7 +294,7 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
         k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
 
-        ls = self.l / self.s
+        ls = self.craft.l / self.craft.s
 
         if ls > 2.0:
             k = 0.500
@@ -368,9 +368,9 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
                 results[zone] = "Zona no definida"
 
         return results
-    
+
     def lateral_loading(self, pressure) -> float: #revisar
-        lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
+        lateral_loading = self.craft.s * 10 * np.sqrt((pressure * self.k)/(1000 * d_stress))
         return lateral_loading
 
     def secondary_stiffening(self) -> float:
@@ -503,5 +503,3 @@ t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
 #With Different Properties in 0° and 90° Axes
 t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
 t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
-
-
