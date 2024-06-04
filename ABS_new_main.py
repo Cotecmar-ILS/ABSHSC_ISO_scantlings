@@ -2,7 +2,7 @@
 Se debe hacer una checklist con las zonas que el usuario desee 
 antes de realizar el analisis
 
-ZONES:
+ZONES
     Shell:
         #1 Bottom Shell
         #2 Side Shell
@@ -10,11 +10,12 @@ ZONES:
         #3 Strength Deck
         #4 Lower Decks/Other Decks
         #5 Wet Decks
-        #6 Superstructure and deckhouses Decks
-        #7 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
+        #6 Superstructure and deckhouses Decks 
     Bulkheads:
+        #7 Water Tight Bulkheads
         #8 Deep Tank Bulkheads
-        #9 Water Tight Bulkheads
+    Others:
+        #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
         #10 Water Jet Tunnels
 """
 
@@ -265,13 +266,17 @@ class Pressures:
 
         return watertight_pressure
 
+    def water_jet__tunnels_pressure(self):
+        pt = val_data("Presión máxima positiva o negativa de diseño del túnel, en kN/m^2, facilitada por el fabricante: ", True, True, -1)
+        return pt
+
 
 class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
     #Falta implementar l y s
     
-    def __init__(self, craft: Craft):
+    def __init__(self, craft: Craft, pressure: Pressures) -> None:
         self.craft = craft
-        
+        self.pressure = pressure
         
     def calculate_k_k1(self) -> tuple:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
@@ -365,22 +370,22 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
 
     def minimun_thickness(self) -> float:
 
-        if self.craft.zone == 1:    #Fondo
+        if self.craft.zones == 1:    #Fondo
             if self.craft.material == "Acero":
                 return max(0.44 * np.sqrt(self.craft.L * self.q) + 2, 3.5)
             else:
                 return max(0.70 * np.sqrt(self.craft.L * self.q) + 1, 4.0)
-        elif self.craft.zone == 2:  #Costados y Espejo
+        elif self.craft.zones == 2:  #Costados y Espejo
             if self.craft.material == "Acero":
                 return max(0.40 * np.sqrt(self.craft.L * self.q) + 2, 3.0)
             else:
                 return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-        elif self.craft.zone == 3:  #Cubierta principal
+        elif self.craft.zones == 3:  # Strength Deck - Cubierta principal
             if self.craft.material == "Acero":
                 return max(0.40 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
             else:
                 return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-        elif self.craft.zone == 4:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
+        else: #self.craft.zones in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
             if self.craft.material == "Acero":
                 return max(0.35 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
             else:
@@ -388,7 +393,8 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
 
     def waterjet_tunnels(self) -> float:
         #Water Jet Tunnels
-        t = s * np.sqrt(pressure * k / (1000 * d_stress))
+        
+        t = s * np.sqrt(self.pressure.water_jet__tunnels_pressure * k / (1000 * sigma_a_))
         return t
 
     def boat_thrusters_tunnels(self) -> float:
@@ -396,31 +402,44 @@ class A_A:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrug
         t = 0.008 * d * np.sqrt(Q) + 3.0
         return t
     
-    def other_decks(self) -> float:
+    def operation_decks(self) -> float:
         #Decks Provided for the Operation or Stowage of Vehicles
         t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
         return t
 
     def thickness(self) -> float:
-    #ZONES:
-        #1 Bottom Shell LL, SS, MT
-        #2 Side Shell   LL, SS, MT
-    # Decks
-        #3 Strength Deck LL, SS, MT
-        #4 Lower Decks/Other Decks LL, SS, MT
+    #ZONES
+    # Shell:
+        #1 Bottom Shell
+        #2 Side and transom Shell
+    # Decks:
+        #3 Strength Deck
+        #4 Lower Decks/Other Decks
         #5 Wet Decks
-        #6 Superstructure and deckhouses Decks
-        #7 Superstructure and Deckhouses (Front, Sides, Ends, and Tops)
-    # Bulkheads
-        #8 Deep Tank Bulkheads LL, SS, MT
-        #9 Water Tight Bulkheads LL, SS, MT
-    # Water Jet Tunnels
+        #6 Superstructure and deckhouses Decks 
+    # Bulkheads:
+        #7 Water Tight Bulkheads
+        #8 Deep Tank Bulkheads
+    # Others:
+        #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
         #10 Water Jet Tunnels
+        #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
+        #12 Decks Provided for the Operation or Stowage of Vehicles
 
-        if self.craft.zones in [1, 2, 3, 4, 8, 9]:
+        if self.craft.zones in [1, 2, 3, 4, 7, 8]:
             return max(self.lateral_loading(), self.secondary_stiffening(), self.minimun_thickness())
-        else: #self.craft.zones in [5, 6, 7, 10]:
-            return self.lateral_loading()
+        elif self.craft.zones in [5, 6, 9]:
+            return max(self.lateral_loading(), self.secondary_stiffening())
+        elif self.craft.zones == 10:
+            return self.waterjet_tunnels()
+        elif self.craft.zones == 11:
+            return self.boat_thrusters_tunnels()
+        else: #self.craft.zones == 12:
+            return self.operation_decks()
+
+
+
+
 
 
 # Aluminium Sandwich Panels
