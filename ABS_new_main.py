@@ -1,7 +1,9 @@
 """
+                    ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS
+--------------------------------------------------------------------------
 Se debe hacer una checklist con las zonas que el usuario desee 
 antes de realizar el analisis
-
+--------------------------------------------------------------------------
 ZONES
     # Shell:
         #1 Bottom Shell
@@ -19,7 +21,28 @@ ZONES
         #10 Water Jet Tunnels
         #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
         #12 Decks Provided for the Operation or Stowage of Vehicles
+--------------------------------------------------------------------------
+ZONAS
+    Casco:
+        1. Casco de Fondo
+        2. Casco de Costado y Espejo de Popa
+        3. Vagra Maestra
+    Cubiertas:
+        4. Cubierta Principal
+        5. Cubiertas Inferiores/Otras Cubiertas
+        6. Cubiertas Humedas
+        7. Cubiertas de Superestructura y Casetas de Cubierta
+    Mamparos:
+        8. Mamparos Estancos
+        9. Mamparos de Tanques Profundos
+    Otros:
+        10. Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos
+        11. Túneles de Waterjets
+        12. Túneles de Bow Thrusters
+        13. Cubiertas de Operación o Almacenamiento de Vehículos
+--------------------------------------------------------------------------
 """
+
 
 import numpy as np
 from validations import val_data
@@ -29,11 +52,24 @@ class Craft:
 
 
     MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
-    ZONES = ('Fondo', 'Costado', 'Cubierta Principal', 'Mamparos Estancos y de Tanques', 'Superestructura y Casetas', 'Vagra Maestra')
+    ZONES = ('Casco de Fondo', 
+             'Casco de Costado y Espejo de Popa',
+             'Vagra Maestra',
+             'Cubierta Principal',
+             'Cubiertas Inferiores/Otras Cubiertas',
+             'Cubiertas Humedas',
+             'Cubiertas de Superestructura y Casetas de Cubierta',
+             'Mamparos Estancos',
+             'Mamparos de Tanques Profundos',
+             'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+             'Túneles de Waterjets',
+             'Túneles de Bow Thrusters',
+             'Cubiertas de Operación o Almacenamiento de Vehículos')
     TIPO_EMBARCACION = ('Alta velocidad', 'Costera', 'Fluvial', 'Busqueda y rescate')
 
+
     def __init__(self):
-        print("\nEscantillonados ABS Highspeed Craft --- ABS Highspeed Craft Scantlings\n")
+        print("\nESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
         self.L = val_data("Eslora del casco (metros): ")
         self.LW = val_data("Eslora de flotación (metros): ")
         self.B = val_data("Manga Total (metros): ")
@@ -50,6 +86,7 @@ class Craft:
         self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
         self.tipo_embarcacion = self.select_tipo_embarcacion()
+
 
     def display_menu(self, items) -> None:  #Función para mostrar el menú en consola
         """Muestra un menú basado en una lista de items."""
@@ -85,12 +122,21 @@ class Craft:
         choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.ZONES))
         return choice
 
+    def l_s(self):
+        l_values = ()
+        s_values = ()
+        for i in range (0, len(self.zones)):
+            l_values.append(self.l)
+            s_values.append(self.s)
+        return l_values, s_values
+
     def select_tipo_embarcacion(self) -> int:
         print("\nSeleccione el tipo de embarcación")
         self.display_menu(self.TIPO_EMBARCACION)
         choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
         return choice
 
+        
     @property
     def l(self):
         return val_data("Longitud sin apoyo del refuerzo o lado mayor del panel, en cm: ", True, True, -1)
@@ -281,7 +327,7 @@ class Pressures:
         return pt
 
 
-class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking && Corrugated Panels
+class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking and aluminum Corrugated Panels
     #Falta implementar l y s
     
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
