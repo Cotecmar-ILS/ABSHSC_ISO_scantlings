@@ -1,32 +1,33 @@
 """
-                    ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS
+                ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS
 --------------------------------------------------------------------------
 Se debe hacer una checklist con las zonas que el usuario desee 
 antes de realizar el analisis
 --------------------------------------------------------------------------
 ZONES
     # Shell:
-        #1 Bottom Shell
-        #2 Side and transom Shell
+        #1 Vagra Maestra
+        #2 Bottom Shell
+        #3 Side and transom Shell
     # Decks:
-        #3 Strength Deck
-        #4 Lower Decks/Other Decks
-        #5 Wet Decks
-        #6 Superstructure and deckhouses Decks 
+        #4 Strength Deck
+        #5 Lower Decks/Other Decks
+        #6 Wet Decks
+        #7 Superstructure and deckhouses Decks 
     # Bulkheads:
-        #7 Water Tight Bulkheads
-        #8 Deep Tank Bulkheads
+        #8 Water Tight Bulkheads
+        #9 Deep Tank Bulkheads
     # Others:
-        #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
-        #10 Water Jet Tunnels
-        #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
-        #12 Decks Provided for the Operation or Stowage of Vehicles
+        #10 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
+        #11 Water Jet Tunnels
+        #12 Transverse Thruster Tunnels/Tubes (Boat Thruster)
+        #13 Decks Provided for the Operation or Stowage of Vehicles
 --------------------------------------------------------------------------
 ZONAS
     Casco:
-        1. Casco de Fondo
-        2. Casco de Costado y Espejo de Popa
-        3. Vagra Maestra
+        1. Vagra Maestra
+        2. Casco de Fondo
+        3. Casco de Costado y Espejo de Popa
     Cubiertas:
         4. Cubierta Principal
         5. Cubiertas Inferiores/Otras Cubiertas
@@ -52,9 +53,9 @@ class Craft:
 
 
     MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
-    ZONES = ('Casco de Fondo', 
+    ZONES = ('Vagra Maestra',
+             'Casco de Fondo', 
              'Casco de Costado y Espejo de Popa',
-             'Vagra Maestra',
              'Cubierta Principal',
              'Cubiertas Inferiores/Otras Cubiertas',
              'Cubiertas Humedas',
@@ -116,34 +117,49 @@ class Craft:
         else:
             return 'Ordinaria'
 
-    def select_zones(self) -> int:
-        print("\nSeleccione la zona que desea escantillonar")
+    def select_zones(self) -> list:
+        print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar):")
         self.display_menu(self.ZONES)
-        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.ZONES))
-        return choice
+        selected_zones = []
+        while True:
+            try:
+                choice = val_data("Ingrese el número correspondiente y presione Enter o '0' para finalizar: ", False, True, -1, 0, len(self.ZONES))
+                if choice == 0:
+                    if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
+                        raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
+                    break  # Finaliza si hay al menos una zona seleccionada
+                elif 1 <= choice <= len(self.ZONES):
+                    selected_zone = self.ZONES[choice - 1]
+                    if selected_zone in selected_zones:
+                        raise ValueError("Zona ya seleccionada, elija otra.")
+                    selected_zones.append(selected_zone)
+                    print(f"Añadida: {selected_zone}")
+                else:
+                    print("Selección no válida, intente de nuevo.")
+            except ValueError as e:
+                print(e)
 
-    def l_s(self):
-        l_values = ()
-        s_values = ()
-        for i in range (0, len(self.zones)):
-            l_values.append(self.l)
-            s_values.append(self.s)
-        return l_values, s_values
+        return selected_zones
 
+    def l_panel_dimensions(self):
+        l_values = []
+        for zone in self.zones:
+            l = val_data(f"Longitud sin apoyo del refuerzo o lado mayor del panel en {zone}, en cm: ", True, True, -1)
+            l_values.append(l)
+        return l_values
+    
+    def s_panel_dimensions(self):
+        s_values = []
+        for zone in self.zones:
+            s = val_data(f"Separación entre refuerzos o lado mas corto del panel en {zone}, en cm: ", True, True, -1)
+            s_values.append(s)
+        return s_values
+    
     def select_tipo_embarcacion(self) -> int:
         print("\nSeleccione el tipo de embarcación")
         self.display_menu(self.TIPO_EMBARCACION)
         choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
         return choice
-
-        
-    @property
-    def l(self):
-        return val_data("Longitud sin apoyo del refuerzo o lado mayor del panel, en cm: ", True, True, -1)
-    
-    @property
-    def s(self):
-        return val_data("Separación entre refuerzos o lado mas corto del panel, en cm: ", True, True, -1)
 
 
 class Pressures:
@@ -228,6 +244,7 @@ class Pressures:
         F1 = np.interp(self.Fx, x_known, y_known)
 
         return F1
+
 
     def bottom_pressure(self) -> float:
         slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * self.FD * self.FV)
@@ -326,9 +343,48 @@ class Pressures:
         pt = val_data("Presión máxima positiva o negativa de diseño del túnel, en kN/m^2, facilitada por el fabricante: ", True, True, -1)
         return pt
 
+    def calculate_pressures(self):
+    #ZONES
+        # Shell:
+            #1 Bottom Shell
+            #2 Side and transom Shell
+        # Decks:
+            #3 Strength Deck
+            #4 Lower Decks/Other Decks
+            #5 Wet Decks
+            #6 Superstructure and deckhouses Decks 
+        # Bulkheads:
+            #7 Water Tight Bulkheads
+            #8 Deep Tank Bulkheads
+        # Others:
+            #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
+            #10 Water Jet Tunnels
+            #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
+            #12 Decks Provided for the Operation or Stowage of Vehicles
+        pressures = {}
+        zones_functions = {
+            'Casco de Fondo': self.bottom_pressure,
+            'Casco de Costado y Espejo de Popa': self.side_transom_pressure,
+            
+            'Cubiertas Humedas': self.wet_deck_pressure,
+            'Superestructuras y Casetas de Cubierta': self.superstructures_pressures,
+            'Mamparos de Tanques Profundos': self.tank_boundaries_pressure,
+            'Mamparos Estancos': self.watertight_boundaries_pressure,
+            'Túneles de Waterjets': self.water_jet__tunnels_pressure
+            # Agregar más mapeos según sea necesario
+        }
+
+        for zone in self.craft.zones:
+            if zone in zones_functions:
+                try:
+                    pressures[zone] = zones_functions[zone]()
+                except Exception as e:
+                    pressures[zone] = str(e)  # Guarda el mensaje de error en caso de falla
+
+        return pressures
 
 class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking and aluminum Corrugated Panels
-    #Falta implementar l y s
+
     
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
         self.craft = craft
@@ -465,34 +521,38 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         return t
 
     def thickness(self) -> float:
-    #ZONES
-    # Shell:
-        #1 Bottom Shell
-        #2 Side and transom Shell
-    # Decks:
-        #3 Strength Deck
-        #4 Lower Decks/Other Decks
-        #5 Wet Decks
-        #6 Superstructure and deckhouses Decks 
-    # Bulkheads:
-        #7 Water Tight Bulkheads
-        #8 Deep Tank Bulkheads
-    # Others:
-        #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
-        #10 Water Jet Tunnels
-        #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
-        #12 Decks Provided for the Operation or Stowage of Vehicles
+        #ZONES
+        # Shell:
+            #1 Vagra Maestra
+            #2 Bottom Shell
+            #3 Side and transom Shell
+        # Decks:
+            #4 Strength Deck
+            #5 Lower Decks/Other Decks
+            #6 Wet Decks
+            #7 Superstructure and deckhouses Decks 
+        # Bulkheads:
+            #8 Water Tight Bulkheads
+            #9 Deep Tank Bulkheads
+        # Others:
+            #10 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
+            #11 Water Jet Tunnels
+            #12 Transverse Thruster Tunnels/Tubes (Boat Thruster)
+            #13 Decks Provided for the Operation or Stowage of Vehicles
 
-        if self.craft.zones in [1, 2, 3, 4, 7, 8]:
-            return max(self.lateral_loading(), self.secondary_stiffening(), self.minimun_thickness())
-        elif self.craft.zones in [5, 6, 9]:
-            return max(self.lateral_loading(), self.secondary_stiffening())
-        elif self.craft.zones == 10:
-            return self.waterjet_tunnels()
-        elif self.craft.zones == 11:
-            return self.boat_thrusters_tunnels()
-        else: #self.craft.zones == 12:
-            return self.operation_decks()
+        for i in self.craft.zones:
+            if self.craft.zones[i] in [2, 3, 4, 5, 8, 9]:
+                espesor =  max(self.lateral_loading(), self.secondary_stiffening(), self.minimun_thickness())
+            elif self.craft.zones[i] in [6, 7, 10]:
+                espesor = max(self.lateral_loading(), self.secondary_stiffening())
+            elif self.craft.zones[i] == 11:
+                espesor = self.waterjet_tunnels()
+            elif self.craft.zones[i] == 12:
+                espesor = self.boat_thrusters_tunnels()
+            else: #self.craft.zones == 13:
+                espesor = self.operation_decks()
+                
+        return espesor
 
 
 
