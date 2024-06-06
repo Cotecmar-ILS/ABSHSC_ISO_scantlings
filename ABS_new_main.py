@@ -41,6 +41,7 @@ ZONAS
         11. Túneles de Waterjets
         12. Túneles de Bow Thrusters
         13. Cubiertas de Operación o Almacenamiento de Vehículos
+        
 --------------------------------------------------------------------------
 """
 
@@ -51,7 +52,7 @@ from validations import val_data
 
 class Craft:
 
-
+    
     MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
     ZONES = ('Vagra Maestra',
              'Casco de Fondo', 
