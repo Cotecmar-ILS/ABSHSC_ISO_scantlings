@@ -54,19 +54,19 @@ class Craft:
 
     
     MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
-    ZONES = ('Vagra Maestra',
-             'Casco de Fondo', 
-             'Casco de Costado y Espejo de Popa',
-             'Cubierta Principal',
-             'Cubiertas Inferiores/Otras Cubiertas',
-             'Cubiertas Humedas',
-             'Cubiertas de Superestructura y Casetas de Cubierta',
-             'Mamparos Estancos',
-             'Mamparos de Tanques Profundos',
-             'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-             'Túneles de Waterjets',
-             'Túneles de Bow Thrusters',
-             'Cubiertas de Operación o Almacenamiento de Vehículos')
+    ZONES = {1:'Vagra Maestra',
+             2:'Casco de Fondo', 
+             3:'Casco de Costado y Espejo de Popa',
+             4:'Cubierta Principal',
+             5:'Cubiertas Inferiores/Otras Cubiertas',
+             6:'Cubiertas Humedas',
+             7:'Cubiertas de Superestructura y Casetas de Cubierta',
+             8:'Mamparos Estancos',
+             9:'Mamparos de Tanques Profundos',
+             10:'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+             11:'Túneles de Waterjets',
+             12:'Túneles de Bow Thrusters',
+             13:'Cubiertas de Operación o Almacenamiento de Vehículos'}
     TIPO_EMBARCACION = ('Alta velocidad', 'Costera', 'Fluvial', 'Busqueda y rescate')
 
 
