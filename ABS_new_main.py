@@ -541,19 +541,22 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
             #12 Transverse Thruster Tunnels/Tubes (Boat Thruster)
             #13 Decks Provided for the Operation or Stowage of Vehicles
 
-        for i in self.craft.zones:
+        thicknesses = []
+        for i in range (len(self.craft.zones)):
             if self.craft.zones[i] in [2, 3, 4, 5, 8, 9]:
-                espesor =  max(self.lateral_loading(), self.secondary_stiffening(), self.minimun_thickness())
-            elif self.craft.zones[i] in [6, 7, 10]:
+                espesor = max(self.lateral_loading(), self.secondary_stiffening(), self.minimum_thickness())
+            elif zone in [6, 7, 10]:
                 espesor = max(self.lateral_loading(), self.secondary_stiffening())
-            elif self.craft.zones[i] == 11:
+            elif zone == 11:
                 espesor = self.waterjet_tunnels()
-            elif self.craft.zones[i] == 12:
+            elif zone == 12:
                 espesor = self.boat_thrusters_tunnels()
-            else: #self.craft.zones == 13:
+            else: # zone == 13
                 espesor = self.operation_decks()
-                
-        return espesor
+            
+            thicknesses.append(espesor)
+            print(f"El espesor de: {zone} es: {espesor}")
+        return thicknesses
 
 
 
