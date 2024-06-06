@@ -120,21 +120,23 @@ class Craft:
 
     def select_zones(self) -> list:
         print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar):")
-        self.display_menu(self.ZONES)
+        # Mostrar las zonas desde el diccionario
+        for number, name in self.ZONES.items():
+            print(f"{number}. {name}")
+
         selected_zones = []
         while True:
             try:
-                choice = val_data("Ingrese el número correspondiente y presione Enter o '0' para finalizar: ", False, True, -1, 0, len(self.ZONES))
+                choice = val_data("Ingrese el número correspondiente y presione Enter o '0' para finalizar: ", False, True, -1, 0, max(self.ZONES.keys()))
                 if choice == 0:
                     if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
                         raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
                     break  # Finaliza si hay al menos una zona seleccionada
-                elif 1 <= choice <= len(self.ZONES):
-                    selected_zone = self.ZONES[choice - 1]
-                    if selected_zone in selected_zones:
+                elif choice in self.ZONES:
+                    if choice in selected_zones:
                         raise ValueError("Zona ya seleccionada, elija otra.")
-                    selected_zones.append(selected_zone)
-                    print(f"Añadida: {selected_zone}")
+                    selected_zones.append(choice)
+                    print(f"Añadida: {self.ZONES[choice]}")
                 else:
                     print("Selección no válida, intente de nuevo.")
             except ValueError as e:
@@ -482,7 +484,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         else:
             return 0.012 * self.s
 
-    def minimun_thickness(self) -> float:
+    def minimum_thickness(self) -> float:
 
         if self.craft.zones == 1:    #Fondo
             if self.craft.material == "Acero":
@@ -521,42 +523,44 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
         return t
 
-    def thickness(self) -> float:
-        #ZONES
-        # Shell:
-            #1 Vagra Maestra
-            #2 Bottom Shell
-            #3 Side and transom Shell
-        # Decks:
-            #4 Strength Deck
-            #5 Lower Decks/Other Decks
-            #6 Wet Decks
-            #7 Superstructure and deckhouses Decks 
-        # Bulkheads:
-            #8 Water Tight Bulkheads
-            #9 Deep Tank Bulkheads
-        # Others:
-            #10 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
-            #11 Water Jet Tunnels
-            #12 Transverse Thruster Tunnels/Tubes (Boat Thruster)
-            #13 Decks Provided for the Operation or Stowage of Vehicles
-
-        for i in self.craft.zones:
-            if self.craft.zones[i] in [2, 3, 4, 5, 8, 9]:
-                espesor =  max(self.lateral_loading(), self.secondary_stiffening(), self.minimun_thickness())
-            elif self.craft.zones[i] in [6, 7, 10]:
+    def thickness(self):
+        espesores = {}
+        for key in self.craft.zones:
+            if key in [2, 3, 4, 5, 8, 9]:
+                espesor = max(self.lateral_loading(), self.secondary_stiffening(), self.minimum_thickness())
+            elif key in [6, 7, 10]:
                 espesor = max(self.lateral_loading(), self.secondary_stiffening())
-            elif self.craft.zones[i] == 11:
+            elif key == 11:
                 espesor = self.waterjet_tunnels()
-            elif self.craft.zones[i] == 12:
+            elif key == 12:
                 espesor = self.boat_thrusters_tunnels()
-            else: #self.craft.zones == 13:
+            else:  # key == 13 u otras claves
                 espesor = self.operation_decks()
-                
-        return espesor
+
+            # Almacenar el espesor calculado junto con el nombre de la zona
+            espesores[self.craft.ZONES[key]] = espesor
+
+        return espesores
 
 
 
+def realizar_calculos(claves, zonas):
+    for clave in claves:
+        if clave in [2, 3, 4, 5, 8, 9]:
+            # Operación específica para las claves [2, 3, 4, 5, 8, 9]
+            print(f"Operación A para la clave {clave}: {zonas[clave]}")
+        elif clave in [6, 7, 10]:
+            # Operación específica para las claves [6, 7, 10]
+            print(f"Operación B para la clave {clave}: {zonas[clave]}")
+        elif clave == 11:
+            # Operación específica para la clave 11
+            print(f"Operación C para la clave {clave}: {zonas[clave]}")
+        elif clave == 12:
+            # Operación específica para la clave 12
+            print(f"Operación D para la clave {clave}: {zonas[clave]}")
+        else:
+            # Operación por defecto
+            print(f"Operación por defecto para la clave {clave}: {zonas[clave]}")
 
 
 
