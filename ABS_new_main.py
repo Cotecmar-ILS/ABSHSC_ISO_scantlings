@@ -83,7 +83,7 @@ class Craft:
         self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
         self.material = self.select_material()
         self.context = self.select_context()
-        self.zones = self.select_zones()
+        self.selected_zones = self.select_zones()
         self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
@@ -141,20 +141,20 @@ class Craft:
                     print("Selección no válida, intente de nuevo.")
             except ValueError as e:
                 print(e)
-
+ 
         return selected_zones
 
     def l_panel_dimensions(self):
         l_values = []
-        for zone in self.zones:
-            l = val_data(f"Longitud sin apoyo del refuerzo o lado mayor del panel en {zone}, en cm: ", True, True, -1)
+        for zone in self.selected_zones:
+            l = val_data(f"Longitud sin apoyo del refuerzo o lado mayor del panel en {self.ZONES[zone]}, en cm: ", True, True, -1)
             l_values.append(l)
         return l_values
-    
+
     def s_panel_dimensions(self):
         s_values = []
-        for zone in self.zones:
-            s = val_data(f"Separación entre refuerzos o lado mas corto del panel en {zone}, en cm: ", True, True, -1)
+        for zone in self.selected_zones:
+            s = val_data(f"Separación entre refuerzos o lado más corto del panel en {self.ZONES[zone]}, en cm: ", True, True, -1)
             s_values.append(s)
         return s_values
     
@@ -524,43 +524,37 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         return t
 
     def thickness(self):
-        espesores = {}
-        for key in self.craft.zones:
-            if key in [2, 3, 4, 5, 8, 9]:
+        # Diccionario para almacenar los valores de espesor calculados
+        thickness_values = {}
+        
+        # Iterar sobre las zonas seleccionadas en la instancia de Craft
+        for zone in self.craft.selected_zones:
+            # Calcular el espesor basado en la zona específica
+            if zone in [2, 3, 4, 5, 8, 9]:
                 espesor = max(self.lateral_loading(), self.secondary_stiffening(), self.minimum_thickness())
-            elif key in [6, 7, 10]:
+            elif zone in [6, 7, 10]:
                 espesor = max(self.lateral_loading(), self.secondary_stiffening())
-            elif key == 11:
+            elif zone == 11:
                 espesor = self.waterjet_tunnels()
-            elif key == 12:
+            elif zone == 12:
                 espesor = self.boat_thrusters_tunnels()
-            else:  # key == 13 u otras claves
+            else:  # key == 13
                 espesor = self.operation_decks()
+            
+            # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
+            thickness_values[self.craft.ZONES[zone]] = espesor
+            
+            # Imprimir el espesor calculado
+            print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
 
-            # Almacenar el espesor calculado junto con el nombre de la zona
-            espesores[self.craft.ZONES[key]] = espesor
-
-        return espesores
-
+        # Retornar el diccionario con los valores de espesor calculados
+        return thickness_values
+ 
 
 
-def realizar_calculos(claves, zonas):
-    for clave in claves:
-        if clave in [2, 3, 4, 5, 8, 9]:
-            # Operación específica para las claves [2, 3, 4, 5, 8, 9]
-            print(f"Operación A para la clave {clave}: {zonas[clave]}")
-        elif clave in [6, 7, 10]:
-            # Operación específica para las claves [6, 7, 10]
-            print(f"Operación B para la clave {clave}: {zonas[clave]}")
-        elif clave == 11:
-            # Operación específica para la clave 11
-            print(f"Operación C para la clave {clave}: {zonas[clave]}")
-        elif clave == 12:
-            # Operación específica para la clave 12
-            print(f"Operación D para la clave {clave}: {zonas[clave]}")
-        else:
-            # Operación por defecto
-            print(f"Operación por defecto para la clave {clave}: {zonas[clave]}")
+
+
+
 
 
 
