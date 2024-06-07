@@ -87,7 +87,7 @@ class Craft:
         self.tipo_embarcacion = self.select_tipo_embarcacion()
 
 
-    def display_menu(self, items) -> None:  #Función para mostrar el menú en consola
+    def display_menu(self, items) -> None:
         """Muestra un menú basado en una lista de items."""
         for idx, item in enumerate(items, 1):
             print(f"{idx}. {item}")
@@ -98,11 +98,11 @@ class Craft:
         opcion = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(self.MATERIALS))
         return opcion
 
-    def select_context(self) -> int:    #Revisar esta función
-        print("\n1. Chapado \
-               \n2. Refuerzos")
-        opcion = val_data("\nIngrese el número correspondiente al analisis: ", False, True, -1, 1, len(self.ZONES))
-        return opcion
+    # def select_context(self) -> int:    #Revisar esta función
+    #     print("\n1. Chapado \
+    #            \n2. Refuerzos")
+    #     opcion = val_data("\nIngrese el número correspondiente al analisis: ", False, True, -1, 1, len(self.ZONES))
+    #     return opcion
 
     def determine_resistencia(self) -> str:
         if self.material == 'Acero':
@@ -213,22 +213,25 @@ class Pressures:
         
         return ncg, nxx, h13
 
-    def calculate_FD(self) -> float:
+    def calculate_FD(self) -> float:    #Arreglar
         AR = 6.95 * self.craft.W / self.craft.d
+        for s in self.craft.s_panel_dimensions():
+            AD_plating = min(self.craft.s * self.craft.l, 2.5 * pow(self.craft.s, 2))
+            ADR_plating = AD_plating / AR
+            
+            AD_stiffening = max(self.craft.s * self.craft.l, 0.33 * pow(self.craft.l, 2))
+            ADR_stiffening = AD_stiffening / AR
 
-        if self.craft.context == 1:
-            AD = min(self.craft.s * self.craft.l, 2.5 * pow(self.craft.s, 2))
-        else:
-            AD = max(self.craft.s * self.craft.l, 0.33 * pow(self.craft.l, 2))
-        ADR = AD / AR
-
-        x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
-        y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
-        FD = np.interp(ADR, x_known, y_known)
-
-        FD = min(max(FD, 0.4), 1.0)
-
-        return FD
+            x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
+            y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
+            
+            FD_plating = np.interp(ADR_plating, x_known, y_known)
+            FD_plating = min(max(FD_plating, 0.4), 1.0)
+            
+            FD_stiffening = np.interp(ADR_stiffening, x_known, y_known)
+            FD_stiffening = min(max(FD_stiffening, 0.4), 1.0)
+        
+        return FD_plating, FD_stiffening
 
     def calculate_FV(self) -> float:
         x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
