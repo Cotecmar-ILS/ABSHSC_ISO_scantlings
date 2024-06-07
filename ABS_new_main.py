@@ -54,19 +54,19 @@ class Craft:
 
     
     MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
-    ZONES = ('Vagra Maestra',
-             'Casco de Fondo', 
-             'Casco de Costado y Espejo de Popa',
-             'Cubierta Principal',
-             'Cubiertas Inferiores/Otras Cubiertas',
-             'Cubiertas Humedas',
-             'Cubiertas de Superestructura y Casetas de Cubierta',
-             'Mamparos Estancos',
-             'Mamparos de Tanques Profundos',
-             'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-             'Túneles de Waterjets',
-             'Túneles de Bow Thrusters',
-             'Cubiertas de Operación o Almacenamiento de Vehículos')
+    ZONES = {1:'Vagra Maestra',
+             2:'Casco de Fondo', 
+             3:'Casco de Costado y Espejo de Popa',
+             4:'Cubierta Principal',
+             5:'Cubiertas Inferiores/Otras Cubiertas',
+             6:'Cubiertas Humedas',
+             7:'Cubiertas de Superestructura y Casetas de Cubierta',
+             8:'Mamparos Estancos',
+             9:'Mamparos de Tanques Profundos',
+             10:'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+             11:'Túneles de Waterjets',
+             12:'Túneles de Bow Thrusters',
+             13:'Cubiertas de Operación o Almacenamiento de Vehículos'}
     TIPO_EMBARCACION = ('Alta velocidad', 'Costera', 'Fluvial', 'Busqueda y rescate')
 
 
@@ -83,7 +83,7 @@ class Craft:
         self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
         self.material = self.select_material()
         self.context = self.select_context()
-        self.zones = self.select_zones()
+        self.selected_zones = self.select_zones()
         self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
@@ -120,39 +120,41 @@ class Craft:
 
     def select_zones(self) -> list:
         print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar):")
-        self.display_menu(self.ZONES)
+        # Mostrar las zonas desde el diccionario
+        for number, name in self.ZONES.items():
+            print(f"{number}. {name}")
+
         selected_zones = []
         while True:
             try:
-                choice = val_data("Ingrese el número correspondiente y presione Enter o '0' para finalizar: ", False, True, -1, 0, len(self.ZONES))
+                choice = val_data("Ingrese el número correspondiente y presione Enter o '0' para finalizar: ", False, True, -1, 0, max(self.ZONES.keys()))
                 if choice == 0:
                     if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
                         raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
                     break  # Finaliza si hay al menos una zona seleccionada
-                elif 1 <= choice <= len(self.ZONES):
-                    selected_zone = self.ZONES[choice - 1]
-                    if selected_zone in selected_zones:
+                elif choice in self.ZONES:
+                    if choice in selected_zones:
                         raise ValueError("Zona ya seleccionada, elija otra.")
-                    selected_zones.append(selected_zone)
-                    print(f"Añadida: {selected_zone}")
+                    selected_zones.append(choice)
+                    print(f"Añadida: {self.ZONES[choice]}")
                 else:
                     print("Selección no válida, intente de nuevo.")
             except ValueError as e:
                 print(e)
-
+ 
         return selected_zones
 
     def l_panel_dimensions(self):
         l_values = []
-        for zone in self.zones:
-            l = val_data(f"Longitud sin apoyo del refuerzo o lado mayor del panel en {zone}, en cm: ", True, True, -1)
+        for zone in self.selected_zones:
+            l = val_data(f"Longitud sin apoyo del refuerzo o lado mayor del panel en la zona: {self.ZONES[zone]} (cm): ", True, True, -1)
             l_values.append(l)
         return l_values
-    
+
     def s_panel_dimensions(self):
         s_values = []
-        for zone in self.zones:
-            s = val_data(f"Separación entre refuerzos o lado mas corto del panel en {zone}, en cm: ", True, True, -1)
+        for zone in self.selected_zones:
+            s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.ZONES[zone]} (cm): ", True, True, -1)
             s_values.append(s)
         return s_values
     
@@ -281,7 +283,7 @@ class Pressures:
 
         return deck_pressure
 
-    def decks_pressures(self):
+    def decks_pressures(self): #Revisar función
         """ Las diferentes cubiertas posibles están enumeradas """
         cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
         cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
@@ -292,7 +294,7 @@ class Pressures:
         height = val_data("Altura del almacén (metros): ", True, True, -1)
         almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
-    def superstructures_pressures(self):
+    def superstructures_pressures(self): #Revisar función
         plating_pressures = {
             "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
             "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
@@ -308,11 +310,6 @@ class Pressures:
         }
 
         result = {}
-
-        if self.craft.context == 1:
-            pressures = plating_pressures
-        else:
-            pressures = stiffeners_pressures
 
         for location, (P1, P2) in pressures.items():
             if self.craft.L <= 12.2:
@@ -341,48 +338,41 @@ class Pressures:
         return watertight_pressure
 
     def water_jet__tunnels_pressure(self):
-        pt = val_data("Presión máxima positiva o negativa de diseño del túnel, en kN/m^2, facilitada por el fabricante: ", True, True, -1)
+        pt = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
         return pt
 
+
     def calculate_pressures(self):
-    #ZONES
-        # Shell:
-            #1 Bottom Shell
-            #2 Side and transom Shell
-        # Decks:
-            #3 Strength Deck
-            #4 Lower Decks/Other Decks
-            #5 Wet Decks
-            #6 Superstructure and deckhouses Decks 
-        # Bulkheads:
-            #7 Water Tight Bulkheads
-            #8 Deep Tank Bulkheads
-        # Others:
-            #9 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
-            #10 Water Jet Tunnels
-            #11 Transverse Thruster Tunnels/Tubes (Boat Thruster)
-            #12 Decks Provided for the Operation or Stowage of Vehicles
         pressures = {}
-        zones_functions = {
-            'Casco de Fondo': self.bottom_pressure,
-            'Casco de Costado y Espejo de Popa': self.side_transom_pressure,
+        
+        for zone in self.craft.selected_zones:
+            if zone == 2:   #Casco de Fondo
+                pressure = self.bottom_pressure()
+            elif zone == 3: #Casco de Costado y Espejo de Popa
+                pressure = self.side_transom_pressure()
+            elif zone == 4: #Cubierta Principal
+                pressure = 0.20 * self.craft.L + 7.6
+            elif zone == 5: #Cubiertas Inferiores/Otras Cubiertas
+                pressure = 0.10 * self.craft.L + 6.1
+            elif zone == 6: #Cubiertas Humedas
+                pressure = self.wet_deck_pressure()
+            elif zone == 7: #Cubiertas de Superestructura y Casetas de Cubierta
+                pressure = 0.10 * self.craft.L + 6.1
+            elif zone == 8: #Mamparos Estancos
+                pressure = self.watertight_boundaries_pressure()
+            elif zone == 9: #Mamparos de Tanques Profundos
+                pressure = self.tank_boundaries_pressure()
+            elif zone == 10: #Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos
+                pressure = self.superstructures_pressures()
+            elif zone == 11: #Túneles de Waterjets
+                pressure = self.water_jet__tunnels_pressure()
+            else: #zone == 12 and 13
+                pressure = 0
+                
+            pressures[self.craft.ZONES[zone]] = pressure
             
-            'Cubiertas Humedas': self.wet_deck_pressure,
-            'Superestructuras y Casetas de Cubierta': self.superstructures_pressures,
-            'Mamparos de Tanques Profundos': self.tank_boundaries_pressure,
-            'Mamparos Estancos': self.watertight_boundaries_pressure,
-            'Túneles de Waterjets': self.water_jet__tunnels_pressure
-            # Agregar más mapeos según sea necesario
-        }
-
-        for zone in self.craft.zones:
-            if zone in zones_functions:
-                try:
-                    pressures[zone] = zones_functions[zone]()
-                except Exception as e:
-                    pressures[zone] = str(e)  # Guarda el mensaje de error en caso de falla
-
         return pressures
+
 
 class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking and aluminum Corrugated Panels
 
@@ -482,7 +472,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         else:
             return 0.012 * self.s
 
-    def minimun_thickness(self) -> float:
+    def minimum_thickness(self) -> float:
 
         if self.craft.zones == 1:    #Fondo
             if self.craft.material == "Acero":
@@ -521,29 +511,14 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
         return t
 
-    def thickness(self) -> float:
-        #ZONES
-        # Shell:
-            #1 Vagra Maestra
-            #2 Bottom Shell
-            #3 Side and transom Shell
-        # Decks:
-            #4 Strength Deck
-            #5 Lower Decks/Other Decks
-            #6 Wet Decks
-            #7 Superstructure and deckhouses Decks 
-        # Bulkheads:
-            #8 Water Tight Bulkheads
-            #9 Deep Tank Bulkheads
-        # Others:
-            #10 Superstructure and Deckhouses - Front, Sides, Ends, and Tops
-            #11 Water Jet Tunnels
-            #12 Transverse Thruster Tunnels/Tubes (Boat Thruster)
-            #13 Decks Provided for the Operation or Stowage of Vehicles
-
-        thicknesses = []
-        for i in range (len(self.craft.zones)):
-            if self.craft.zones[i] in [2, 3, 4, 5, 8, 9]:
+    def thickness(self):
+        # Diccionario para almacenar los valores de espesor calculados
+        thickness_values = {}
+        
+        # Iterar sobre las zonas seleccionadas en la instancia de Craft
+        for zone in self.craft.selected_zones:
+            # Calcular el espesor basado en la zona específica
+            if zone in [2, 3, 4, 5, 8, 9]:
                 espesor = max(self.lateral_loading(), self.secondary_stiffening(), self.minimum_thickness())
             elif zone in [6, 7, 10]:
                 espesor = max(self.lateral_loading(), self.secondary_stiffening())
@@ -551,12 +526,19 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 espesor = self.waterjet_tunnels()
             elif zone == 12:
                 espesor = self.boat_thrusters_tunnels()
-            else: # zone == 13
+            else:  #zone == 13
                 espesor = self.operation_decks()
             
-            thicknesses.append(espesor)
-            print(f"El espesor de: {zone} es: {espesor}")
-        return thicknesses
+            # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
+            thickness_values[self.craft.ZONES[zone]] = espesor
+            
+            # Imprimir el espesor calculado
+            print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
+        # Retornar el diccionario con los valores de espesor calculados
+        return thickness_values
+ 
+
+
 
 
 
