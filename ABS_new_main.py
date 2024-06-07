@@ -1,9 +1,6 @@
 """
                 ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS
 --------------------------------------------------------------------------
-Se debe hacer una checklist con las zonas que el usuario desee 
-antes de realizar el analisis
---------------------------------------------------------------------------
 ZONES
     # Shell:
         #1 Vagra Maestra
@@ -249,10 +246,13 @@ class Pressures:
         return F1
 
 
-    def bottom_pressure(self) -> float:
+    def bottom_pressure(self) -> tuple:
         slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * self.FD * self.FV)
         hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
-        return max (slamming_pressure_less61, hidrostatic_pressure)
+        if slamming_pressure_less61 > hidrostatic_pressure:
+            return slamming_pressure_less61, True  # True indica que es slamming
+        else:
+            return hidrostatic_pressure, False  # False indica que es hidrostatic
 
     def side_transom_pressure(self):
         #Ángulo de astilla muerta en el punto de análisis
@@ -407,58 +407,38 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         else:
             return 115 / self.craft.sigma_y
 
-    def design_stress(self):
-        """
-        Calcula el esfuerzo de diseño 'sigma_a' basado en las zonas seleccionadas.
-        En las cubiertas y los mamparos no hay Slamming ni Hydrostatic pressure,
-        solo una para ambos.
-
-        Notes:
-
-        1 sigma_y = yield strength of steel or of welded aluminum in N/mm2, but not to be taken 
-        greater than 70% of the ultimate strength of steel or welded aluminum
-
-        2 The design stress for bottom shell plates under slamming pressure may be taken as 
-        sigma_y for plates outside the midship 0.4L.
-
-        3 The design stress for steel deckhouse plates may be taken as 0.90 * sigma_y
-        """
-
-        stress_mapping = {
-            1: {  # Bottom
-                'Slamming_Pressure': 0.90 * self.craft.sigma_y,
-                'Hydrostatic_Pressure': 0.55 * self.craft.sigma_y,
-            },
-            2: {  # Side
-                'Slamming_Pressure': 0.90 * self.craft.sigma_y,
-                'Hydrostatic_Pressure': 0.55 * self.craft.sigma_y,
-            },
-            3: {  # Decks
-                'all_decks': 0.60 * self.craft.sigma_y,
-                'wet_decks': 0.90 * self.craft.sigma_y,
-            },
-            4: {  # Bulkheads
-                'deep_tank': 0.60 * self.craft.sigma_y,
-                'watertight': 0.95 * self.craft.sigma_y,
-            },
-            5: {  # Superstructure
-                'super_deckhouse': 0.60 * self.craft.sigma_y,
-            },
-            6: {  # Water Jet Tunnels
-                'Slamming_Pressure': 0.60 * self.craft.sigma_y,
-                'Hydrostatic_Pressure': 0.55 * self.craft.sigma_y,
-            },
-        }
-
+    def design_stress(self) -> list:
+        
         # Diccionario para almacenar los resultados
         results = {}
-
+        
+        # Asegurarse que sigma y no sea mayor que 0.7 * sigma u
+        sigma = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
+        
         # Iterar sobre las zonas seleccionadas y calcular los esfuerzos de diseño
-        for zone in self.craft.zones:
-            if zone in stress_mapping:
-                results[zone] = stress_mapping[zone]
+        for zone in self.craft.selected_zones:
+            if zone in [2, 3]:
+                bottom_pressure, is_slamming = self.pressure.bottom_pressure()
+                if is_slamming:
+                    d_stress = 0.90 * sigma
+                else:
+                    d_stress = 0.55 * sigma
+            elif zone in [4, 5, 7, 9, 10]:
+                d_stress = 0.60 * sigma
+            elif zone == 6:
+                d_stress = 0.90 * sigma
+            elif zone == 8:
+                d_stress = 0.95 * sigma
+            elif zone == 11:
+                bottom_pressure, is_slamming = self.pressure.bottom_pressure()
+                if is_slamming:
+                    d_stress = 0.60 * sigma
+                else:
+                    d_stress = 0.55 * sigma
             else:
-                results[zone] = "Zona no definida"
+                d_stress = "No aplicable"
+            
+            results[self.craft.ZONES[zone]] = d_stress
 
         return results
 
@@ -545,53 +525,53 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
 
 
 
-# Aluminium Sandwich Panels
-sm_skins = (np.pow(s, 2) * pressure * k) / (6e5 *d_stress)
-I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
-core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
-#core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
+# # Aluminium Sandwich Panels
+# sm_skins = (np.pow(s, 2) * pressure * k) / (6e5 *d_stress)
+# I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
+# core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
+# #core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
 
 
 
-#   Fiber Reinforced Plastic
-sigma_a = 0.33 * sigma_u   # Design Stresses
+# #  Fiber Reinforced Plastic
+# sigma_a = 0.33 * sigma_u   # Design Stresses
 
-def calculate_ks_kl(l, s, Es, El):
-    # Calcular (l/s) * (Es / El)^0.25
-    aspect_ratio = (l / s) * np.power((Es / El), 0.25)
+# def calculate_ks_kl(l, s, Es, El):
+#     # Calcular (l/s) * (Es / El)^0.25
+#     aspect_ratio = (l / s) * np.power((Es / El), 0.25)
 
-    # Valores de la tabla
-    aspect_ratios = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-    ks_values = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.497]
-    kl_values = [0.308, 0.323, 0.333, 0.338, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342]
+#     # Valores de la tabla
+#     aspect_ratios = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+#     ks_values = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.497]
+#     kl_values = [0.308, 0.323, 0.333, 0.338, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342]
 
-    # Determinar ks y kl basado en aspect_ratio
-    if aspect_ratio > 2.0:
-        ks = 0.500
-        kl = 0.342
-    elif aspect_ratio < 1.0:
-        ks = 0.308
-        kl = 0.308
-    else:
-        # Interpolación usando numpy
-        ks = np.interp(aspect_ratio, aspect_ratios, ks_values)
-        kl = np.interp(aspect_ratio, aspect_ratios, kl_values)
+#     # Determinar ks y kl basado en aspect_ratio
+#     if aspect_ratio > 2.0:
+#         ks = 0.500
+#         kl = 0.342
+#     elif aspect_ratio < 1.0:
+#         ks = 0.308
+#         kl = 0.308
+#     else:
+#         # Interpolación usando numpy
+#         ks = np.interp(aspect_ratio, aspect_ratios, ks_values)
+#         kl = np.interp(aspect_ratio, aspect_ratios, kl_values)
 
-    return aspect_ratio, ks, kl
+#     return aspect_ratio, ks, kl
 
-#   With Essentially Same Properties in 0° and 90° Axes
-c = max((1-A/s), 0.70)
-t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+# #   With Essentially Same Properties in 0° and 90° Axes
+# c = max((1-A/s), 0.70)
+# t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
 
-t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
+# t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
 
-#Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
-t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+# #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+# t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
 
-#Strength deck and bottom shell
-t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
+# #Strength deck and bottom shell
+# t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
 
 
-#With Different Properties in 0° and 90° Axes
-t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
-t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+# #With Different Properties in 0° and 90° Axes
+# t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
+# t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
