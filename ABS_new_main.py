@@ -78,19 +78,25 @@ class Craft:
         self.V = val_data("Velocidad maxima (nudos): ")
         self.W = val_data("Desplazamiento de la embarcación (kg): ")
         self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
+        self.tipo_embarcacion = self.select_tipo_embarcacion()
         self.material = self.select_material()
-        self.context = self.select_context()
-        self.selected_zones = self.select_zones()
         self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
-        self.tipo_embarcacion = self.select_tipo_embarcacion()
+        #self.context = self.select_context()
+        self.selected_zones = self.select_zones()
+        
 
-
-    def display_menu(self, items) -> None:
+    def display_menu(self, items) -> None: #Funcion auxiliar para consola
         """Muestra un menú basado en una lista de items."""
         for idx, item in enumerate(items, 1):
             print(f"{idx}. {item}")
+
+    def select_tipo_embarcacion(self) -> int:
+        print("\nSeleccione el tipo de embarcación")
+        self.display_menu(self.TIPO_EMBARCACION)
+        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
+        return choice
 
     def select_material(self) -> int:
         print("\nLista de materiales disponibles")
@@ -142,11 +148,9 @@ class Craft:
         return selected_zones
 
     def l_panel_dimensions(self):
-        l_values = []
-        for zone in self.selected_zones:
-            l = val_data(f"Longitud sin apoyo del refuerzo o lado mayor del panel en la zona: {self.ZONES[zone]} (cm): ", True, True, -1)
-            l_values.append(l)
-        return l_values
+        zone = self.selected_zones[0]
+        l =val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.ZONES[zone]} (cm): ", True, True, -1)
+        return l
 
     def s_panel_dimensions(self):
         s_values = []
@@ -155,14 +159,10 @@ class Craft:
             s_values.append(s)
         return s_values
     
-    def select_tipo_embarcacion(self) -> int:
-        print("\nSeleccione el tipo de embarcación")
-        self.display_menu(self.TIPO_EMBARCACION)
-        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
-        return choice
+    
 
 
-class Pressures:
+class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
 
 
     def __init__(self, craft: Craft):
@@ -200,7 +200,7 @@ class Pressures:
         ncg_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
         _ncg = self.N2 * (((12 * h13) / self.craft.BW) + 1) * self.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
         ncg = min(ncg_limit, _ncg)
-        if self.V > (18 * np.sqrt(self.L)):
+        if self.craft.V > (18 * np.sqrt(self.L)):
             ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
         if self.L < 24 and ncg < 1:
             ncg = 1
@@ -213,25 +213,33 @@ class Pressures:
         
         return ncg, nxx, h13
 
-    def calculate_FD(self) -> float:    #Arreglar
+    def calculate_FD(self) -> list:
         AR = 6.95 * self.craft.W / self.craft.d
-        for s in self.craft.s_panel_dimensions():
-            AD_plating = min(self.craft.s * self.craft.l, 2.5 * pow(self.craft.s, 2))
+        FD_values = []
+
+        s_values = self.craft.s_panel_dimensions()
+        l_values = self.craft.l_panel_dimensions()
+
+        # Iterar sobre las listas de s y l en orden usando zip
+        for s, l in zip(s_values, l_values):
+            AD_plating = min(s * l, 2.5 * pow(s, 2))
             ADR_plating = AD_plating / AR
-            
-            AD_stiffening = max(self.craft.s * self.craft.l, 0.33 * pow(self.craft.l, 2))
+
+            AD_stiffening = max(s * l, 0.33 * pow(l, 2))
             ADR_stiffening = AD_stiffening / AR
 
             x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
             y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
-            
+
             FD_plating = np.interp(ADR_plating, x_known, y_known)
             FD_plating = min(max(FD_plating, 0.4), 1.0)
-            
+
             FD_stiffening = np.interp(ADR_stiffening, x_known, y_known)
             FD_stiffening = min(max(FD_stiffening, 0.4), 1.0)
-        
-        return FD_plating, FD_stiffening
+
+            FD_values.append((FD_plating, FD_stiffening))
+
+        return FD_values
 
     def calculate_FV(self) -> float:
         x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
@@ -241,7 +249,7 @@ class Pressures:
 
         return FV
 
-    def calculate_F1(self) -> float:
+    def calculate_F1(self) -> float: #Revisar
         x_known = [0, 0.2, 0.7, 0.8, 1.0]
         y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
         F1 = np.interp(self.Fx, x_known, y_known)
@@ -383,9 +391,10 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
         self.craft = craft
         self.pressure = pressure
+        self.q = self.calculate_q()
         
     
-    def calculate_k_k1(self) -> tuple:
+    def calculate_k_k1(self) -> tuple:  #Revisar
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
         k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
@@ -445,17 +454,17 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
 
         return results
 
-    def lateral_loading(self, pressure) -> float: #revisar
+    def lateral_loading(self, pressure) -> float: #Revisar
         lateral_loading = self.craft.s * 10 * np.sqrt((pressure * self.k)/(1000 * d_stress))
         return lateral_loading
 
-    def secondary_stiffening(self) -> float:
+    def secondary_stiffening(self) -> float:    #Revisar
         if self.craft.material == "Acero":
             return 0.01 * self.s
         else:
             return 0.012 * self.s
 
-    def minimum_thickness(self) -> float:
+    def minimum_thickness(self) -> float:   #Revisar
 
         if self.craft.zones == 1:    #Fondo
             if self.craft.material == "Acero":
@@ -478,18 +487,18 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
             else:
                 return max(0.52 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
 
-    def waterjet_tunnels(self) -> float:
+    def waterjet_tunnels(self) -> float:    #Revisar
         #Water Jet Tunnels
         
         t = s * np.sqrt(self.pressure.water_jet__tunnels_pressure * k / (1000 * sigma_a_))
         return t
 
-    def boat_thrusters_tunnels(self) -> float:
+    def boat_thrusters_tunnels(self) -> float:    #Revisar
         #Transverse Thruster Tunnels/Tubes (Boat Thruster)
         t = 0.008 * d * np.sqrt(Q) + 3.0
         return t
     
-    def operation_decks(self) -> float:
+    def operation_decks(self) -> float:    #Revisar
         #Decks Provided for the Operation or Stowage of Vehicles
         t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
         return t
