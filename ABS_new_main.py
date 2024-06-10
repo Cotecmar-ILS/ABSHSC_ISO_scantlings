@@ -145,21 +145,7 @@ class Craft:
             except ValueError as e:
                 print(e)
  
-        return selected_zones
-
-    def l_panel_dimensions(self):
-        zone = self.selected_zones[0]
-        l =val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.ZONES[zone]} (cm): ", True, True, -1)
-        return l
-
-    def s_panel_dimensions(self):
-        s_values = []
-        for zone in self.selected_zones:
-            s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.ZONES[zone]} (cm): ", True, True, -1)
-            s_values.append(s)
-        return s_values
-    
-    
+        return selected_zones   
 
 
 class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
@@ -391,40 +377,46 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
         self.craft = craft
         self.pressure = pressure
-        self.q = self.calculate_q()
         
+        
+    def thickness(self):
+        # Diccionario para almacenar los valores de espesor calculados
+        thickness_values = {}
+        
+        # Iterar sobre las zonas seleccionadas en la instancia de Craft
+        for zone in self.craft.selected_zones:
+            if zone == 12:
+                espesor = self.boat_thrusters_tunnels()
+            else:
+                # Obtener dimensiones l y s para la zona específica
+                s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (cm): ", True, True, -1)
+                l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (cm): ", True, True, -1, s)
+
+                # Calcular el espesor para la zona especificada
+                if zone in [2, 3, 4, 5, 8, 9]:
+                    espesor = max(self.lateral_loading(zone, l, s), self.secondary_stiffening(l, s), self.minimum_thickness(zone))
+                elif zone in [6, 7, 10]:
+                    espesor = max(self.lateral_loading(zone, l, s), self.secondary_stiffening(l, s))
+                elif zone == 11:
+                    espesor = self.lateral_loading(zone, l, s)
+                else:  # zone == 13
+                    espesor = self.operation_decks(l, s)
+            
+            # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
+            thickness_values[self.craft.ZONES[zone]] = espesor
+            
+            # Imprimir el espesor calculado
+            print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
+
+        # Retornar el diccionario con los valores de espesor calculados
+        return thickness_values
     
-    def calculate_k_k1(self) -> tuple:  #Revisar
-        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
-        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
-
-        ls = self.craft.l / self.craft.s
-
-        if ls > 2.0:
-            k = 0.500
-            k1 = 0.028
-        elif ls < 1.0:
-            k = 0.308
-            k1 = 0.014
-        else:
-            k = np.interp(ls, ls_known, k_known)
-            k1 = np.interp(ls, ls_known, k1_known)
-
-        return k, k1
-
-    def calculate_q(self) -> float:
-        if self.craft.material == 'Acero':
-            return 1.0 if self.craft.resistencia == "Alta" else 245 / self.craft.sigma_y
-        else:
-            return 115 / self.craft.sigma_y
-
-    def design_stress(self) -> list:
+    def design_stress(self) -> dict:    #Corregir
         
         # Diccionario para almacenar los resultados
         results = {}
         
-        # Asegurarse que sigma y no sea mayor que 0.7 * sigma u
+        # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
         sigma = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
         
         # Iterar sobre las zonas seleccionadas y calcular los esfuerzos de diseño
@@ -454,44 +446,60 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
 
         return results
 
-    def lateral_loading(self, pressure) -> float: #Revisar
-        lateral_loading = self.craft.s * 10 * np.sqrt((pressure * self.k)/(1000 * d_stress))
+    def lateral_loading(self, pressure, l, s) -> float: #Falta implemntar k1 y d_stress y waterjets
+        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
+        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
+
+        ls = l / s
+
+        if ls > 2.0:
+            k = 0.500
+            k1 = 0.028
+        elif ls < 1.0:
+            k = 0.308
+            k1 = 0.014
+        else:
+            k = np.interp(ls, ls_known, k_known)
+            k1 = np.interp(ls, ls_known, k1_known)
+            
+        p = self.pressure.water_jet__tunnels_pressure if zone == 11 else pressure
+            
+        lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * d_stress))
         return lateral_loading
 
-    def secondary_stiffening(self) -> float:    #Revisar
+    def secondary_stiffening(self, s) -> float:
         if self.craft.material == "Acero":
-            return 0.01 * self.s
+            return 0.01 * s
         else:
-            return 0.012 * self.s
+            return 0.012 * s
 
-    def minimum_thickness(self) -> float:   #Revisar
-
-        if self.craft.zones == 1:    #Fondo
-            if self.craft.material == "Acero":
-                return max(0.44 * np.sqrt(self.craft.L * self.q) + 2, 3.5)
-            else:
-                return max(0.70 * np.sqrt(self.craft.L * self.q) + 1, 4.0)
-        elif self.craft.zones == 2:  #Costados y Espejo
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * self.q) + 2, 3.0)
-            else:
-                return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-        elif self.craft.zones == 3:  # Strength Deck - Cubierta principal
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
-            else:
-                return max(0.62 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-        else: #self.craft.zones in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-            if self.craft.material == "Acero":
-                return max(0.35 * np.sqrt(self.craft.L * self.q) + 1, 3.0)
-            else:
-                return max(0.52 * np.sqrt(self.craft.L * self.q) + 1, 3.5)
-
-    def waterjet_tunnels(self) -> float:    #Revisar
-        #Water Jet Tunnels
+    def minimum_thickness(self, zone) -> float:
+        if self.craft.material == 'Acero':
+            q = 1.0 if self.craft.resistencia == "Alta" else 245 / self.craft.sigma_y
+        else:
+            q = 115 / self.craft.sigma_y
         
-        t = s * np.sqrt(self.pressure.water_jet__tunnels_pressure * k / (1000 * sigma_a_))
-        return t
+        if zone == 2:    #Fondo
+            if self.craft.material == "Acero":
+                return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
+            else:
+                return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
+        elif zone == 3:  #Costados y Espejo
+            if self.craft.material == "Acero":
+                return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
+            else:
+                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+        elif zone == 4:  # Strength Deck - Cubierta principal
+            if self.craft.material == "Acero":
+                return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
+            else:
+                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+        else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
+            if self.craft.material == "Acero":
+                return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
+            else:
+                return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
 
     def boat_thrusters_tunnels(self) -> float:    #Revisar
         #Transverse Thruster Tunnels/Tubes (Boat Thruster)
@@ -503,32 +511,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
         return t
 
-    def thickness(self):
-        # Diccionario para almacenar los valores de espesor calculados
-        thickness_values = {}
-        
-        # Iterar sobre las zonas seleccionadas en la instancia de Craft
-        for zone in self.craft.selected_zones:
-            # Calcular el espesor basado en la zona específica
-            if zone in [2, 3, 4, 5, 8, 9]:
-                espesor = max(self.lateral_loading(), self.secondary_stiffening(), self.minimum_thickness())
-            elif zone in [6, 7, 10]:
-                espesor = max(self.lateral_loading(), self.secondary_stiffening())
-            elif zone == 11:
-                espesor = self.waterjet_tunnels()
-            elif zone == 12:
-                espesor = self.boat_thrusters_tunnels()
-            else:  #zone == 13
-                espesor = self.operation_decks()
-            
-            # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
-            thickness_values[self.craft.ZONES[zone]] = espesor
-            
-            # Imprimir el espesor calculado
-            print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
-        # Retornar el diccionario con los valores de espesor calculados
-        return thickness_values
- 
+
 
 
 
