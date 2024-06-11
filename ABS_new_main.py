@@ -75,7 +75,7 @@ class Craft:
         self.BW = val_data("Manga de flotación (metros): ")
         self.D = val_data("Puntal (metros): ")
         self.d = val_data("Calado (metros): ", True, True, 0, 0.04 * self.L)
-        self.V = val_data("Velocidad maxima (nudos): ")
+        self.V = val_data("Velocidad maxima (nudos): ", True, True, -1, 0, 20 if self.L > 61 else None)
         self.W = val_data("Desplazamiento de la embarcación (kg): ")
         self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
         self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
@@ -84,10 +84,9 @@ class Craft:
         self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
-        #self.context = self.select_context()
         self.selected_zones = self.select_zones()
         
-
+        
     def display_menu(self, items) -> None: #Funcion auxiliar para consola
         """Muestra un menú basado en una lista de items."""
         for idx, item in enumerate(items, 1):
@@ -163,10 +162,13 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
 
 
     def calculate_pressures(self, zone, l, s):
-        print(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, o presione Enter para continuar:  ?\n") #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
-        x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.5, 0, self.craft.L)
-        lx = x / self.craft.L
-        
+        q = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, S/N ?\n", False, ['S', 'N'], 'N')
+        if q == 'S':
+            x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.5, 0, self.craft.L)
+            lx = x / self.craft.L
+        else:
+            lx = 0.5
+            
         ncgx = self.calculate_ncgx(lx)
         
         if zone == 2:   #Casco de Fondo
@@ -188,7 +190,8 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             
         elif zone == 6: #Cubiertas Humedas
             F1 = self.calculate_F1(lx)
-            pressure = self.wet_deck_pressure(FD, F1)
+            ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.D - self.craft.d)
+            pressure = self.wet_deck_pressure(FD, F1, ha)
             
         elif zone == 7: #Cubiertas de Superestructura y Casetas de Cubierta
             pressure = 0.10 * self.craft.L + 6.1
@@ -214,26 +217,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
         h13 = max(h13_values.get(self.craft.tipo_embarcacion), (self.craft.L / 12))
         return h13
-        
-    def calculate_ncg_nxx(self, lx) -> tuple: #Reestructurar funcion
-        #Calculo de ncg
-        kn = 0.256
-        ncg_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
-        _ncg = self.N2 * (((12 * self.h13) / self.craft.BW) + 1) * self.craft.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
-        ncg = min(ncg_limit, _ncg)
-        if self.craft.V > (18 * np.sqrt(self.craft.L)):
-            ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
-        if self.craft.L < 24 and ncg < 1:
-            ncg = 1
 
-        #Calculo de nxx
-        x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
-        Kv = np.interp((self.craft.L - lx), x_known, y_known)
-        nxx = ncg * Kv
-        
-        return ncg, nxx
-    
     def calculate_ncgx(self, lx) -> tuple: #Reestructurada
         kn = 0.256
         ncg_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
@@ -247,13 +231,13 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         #Calculo de nxx
         x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
         y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
-        Kv = np.interp((self.craft.L - lx), x_known, y_known)
+        Kv = np.interp(lx, x_known, y_known)
         ncgx = ncg * Kv
         
         return ncgx
 
-    def bottom_pressure(self, FD, FV) -> tuple:
-        slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * FD * FV)
+    def bottom_pressure(self, ncgx, FD, FV) -> tuple:
+        slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD * FV)
         hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
         if slamming_pressure_less61 > hidrostatic_pressure:
             return slamming_pressure_less61, True  # True indica que es slamming
@@ -285,21 +269,19 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
         FV = np.interp(lx, x_known, y_known)
         FV = min(max(FV, 0.25), 1.0)
-
         return FV
 
-    def calculate_F1(self, lx) -> float: #Revisar
+    def calculate_F1(self, lx) -> float:
         x_known = [0, 0.2, 0.7, 0.8, 1.0]
         y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
         F1 = np.interp(lx, x_known, y_known)
-
         return F1
 
-    def side_transom_pressure(self, y):
+    def side_transom_pressure(self, ncgx, FD, y):   #Revisar
         #Ángulo de astilla muerta en el punto de análisis
         Bsx = val_data("Angulo de astilla muerta de costado en el punto de analisis (grados): ", True, True, -1, 0, 55)
-        slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.nxx) * ((70 - Bsx) / (70 - self.craft.Bcg)) * self.FD
-        hidrostatic_pressure = self.N3 * (self.Hs - self.y)
+        slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * ((70 - Bsx) / (70 - self.craft.Bcg)) * FD
+        hidrostatic_pressure = self.N3 * (self.Hs - y)
 
         #Fore End
         if self.craft.L >= 30:
@@ -310,17 +292,15 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             fore_end = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * self.craft.V * np.cos(beta) + 0.6 * self.craft.L ** 0.5) ** 2)
 
         return max(slamming_pressure, hidrostatic_pressure) if self.craft.L < 30 else max(slamming_pressure, hidrostatic_pressure), fore_end
-
-    def wet_deck_pressure(self):
-        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.D - self.craft.d)
-
+    
+    def wet_deck_pressure(self, FD, F1, ha):
         if self.craft.L < 61:
             v1 = ((4 * self.h13) / (np.sqrt(self.craft.L))) + 1
-            deck_pressure = 30 * self.N1 * self.FD * self.F1 * self.craft.V * v1 * (1 - 0.85 * ha / self.h13)
+            deck_pressure = 30 * self.N1 * FD * F1 * self.craft.V * v1 * (1 - 0.85 * ha / self.h13)
         else:
             #V is not to be greater than 20 knots for craft greater than 61 meters
             v1 = 5 * np.sqrt(self.h13 / self.craft.L) + 1
-            deck_pressure = 55 * self.FD * self.F1 * np.pow(self.craft.V, 0.1) * v1 * (1 - 0.35 * (ha / self.h13))
+            deck_pressure = 55 * FD * F1 * np.pow(self.craft.V, 0.1) * v1 * (1 - 0.35 * (ha / self.h13))
 
         return deck_pressure
 
