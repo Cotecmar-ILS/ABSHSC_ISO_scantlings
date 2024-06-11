@@ -154,33 +154,31 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
 
     def __init__(self, craft: Craft):
         self.craft = craft
-        self.ncg, self.nxx, self.h13 = self.calculate_ncg_nxx_h13()
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
+        self.h13 = self.calculate_h13()
         self.H = max(0.0172 * self.craft.L + 3.653, self.h13)
         self.Hs = max(0.083 * self.craft.L * self.craft.d, self.craft.D + 1.22) if self.craft.L < 30 else (0.64 * self.H + self.craft.d)
 
 
     def calculate_pressures(self, zone, l, s):
-        # Verificar TAU
-        
-        print(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]} ?\n") #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
-        x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.1, 0, self.craft.L)
+        print(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, o presione Enter para continuar:  ?\n") #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
+        x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.5, 0, self.craft.L)
         lx = x / self.craft.L
-        #Altura sobre la linea base hasta el punto de analisis
-        y = val_data("Altura sobre la linea base hasta el punto de analisis (metros): ", True, True, 0, 0, self.craft.D)
         
-        ncg, nxx, h13 = self.calculate_ncg_nxx_h13(lx)
+        ncgx = self.calculate_ncgx(lx)
         
         if zone == 2:   #Casco de Fondo
             FD = self.calculate_FD(l, s)
             FV = self.calculate_FV(lx)
-            pressure = self.bottom_pressure(FD, FV)
+            pressure = self.bottom_pressure(ncgx, FD, FV)
             
         elif zone == 3: #Casco de Costado y Espejo de Popa
+            print(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, o presione Enter para continuar:  ?\n") #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
+            y = val_data("Altura sobre la linea base hasta el punto de analisis (metros): ", True, True, 0, 0, self.craft.D)
             FD = self.calculate_FD(l, s)
-            pressure = self.side_transom_pressure(nxx, FD, y)
+            pressure = self.side_transom_pressure(ncgx, FD, y)
             
         elif zone == 4: #Cubierta Principal
             pressure = 0.20 * self.craft.L + 7.6
@@ -212,15 +210,16 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             
         return pressure
 
-    def calculate_ncg_nxx_h13(self, lx) -> tuple:
-        #Calculo de h13
+    def calculate_h13(self) -> float:
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
         h13 = max(h13_values.get(self.craft.tipo_embarcacion), (self.craft.L / 12))
-
+        return h13
+        
+    def calculate_ncg_nxx(self, lx) -> tuple: #Reestructurar funcion
         #Calculo de ncg
         kn = 0.256
         ncg_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
-        _ncg = self.N2 * (((12 * h13) / self.craft.BW) + 1) * self.craft.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
+        _ncg = self.N2 * (((12 * self.h13) / self.craft.BW) + 1) * self.craft.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
         ncg = min(ncg_limit, _ncg)
         if self.craft.V > (18 * np.sqrt(self.craft.L)):
             ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
@@ -233,7 +232,25 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         Kv = np.interp((self.craft.L - lx), x_known, y_known)
         nxx = ncg * Kv
         
-        return ncg, nxx, h13
+        return ncg, nxx
+    
+    def calculate_ncgx(self, lx) -> tuple: #Reestructurada
+        kn = 0.256
+        ncg_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
+        _ncg = self.N2 * (((12 * self.h13) / self.craft.BW) + 1) * self.craft.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
+        ncg = min(ncg_limit, _ncg)
+        if self.craft.V > (18 * np.sqrt(self.craft.L)):
+            ncg = 7 if self.craft.tipo_embarcacion == 4 else 6
+        if self.craft.L < 24 and ncg < 1:
+            ncg = 1
+
+        #Calculo de nxx
+        x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
+        Kv = np.interp((self.craft.L - lx), x_known, y_known)
+        ncgx = ncg * Kv
+        
+        return ncgx
 
     def bottom_pressure(self, FD, FV) -> tuple:
         slamming_pressure_less61 = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + self.ncg) * FD * FV)
