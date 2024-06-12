@@ -161,16 +161,19 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         self.Hs = max(0.083 * self.craft.L * self.craft.d, self.craft.D + 1.22) if self.craft.L < 30 else (0.64 * self.H + self.craft.d)
 
 
-    def calculate_pressures(self, zone, l, s):
+    def calculate_lx(self, zone):
         ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, S/N ?\n", False, ['S', 'N'], 'N')
         if ask == 'S':
             x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, self.craft.L * 0.5, 0, self.craft.L)
             lx = x / self.craft.L
         else:
             lx = 0.5
-            
+        return lx
+
+    def calculate_pressures(self, zone, l, s):
 
         if zone == 2:   #Casco de Fondo
+            lx = self.calculate_lx(zone)
             ncgx = self.calculate_ncgx(lx)
             FD = self.calculate_FD(l, s)
             FV = self.calculate_FV(lx)
