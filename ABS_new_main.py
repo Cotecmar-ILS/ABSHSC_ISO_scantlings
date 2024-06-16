@@ -281,7 +281,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         elif zone == 11: #Túneles de Waterjets #REVISAR
             index = False #REVISAR
             pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
-
+ 
         else: #zone in [1, 12, 13]:
             pressure = "No aplica"
 
@@ -407,7 +407,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 elif zone == 11:
                     espesor = self.lateral_loading(zone, l, s, pressure, sigma_a)
                 else:  # zone == 13
-                    espesor = self.operation_decks(l, s)
+                    espesor = self.operation_decks(l, s, zone, sigma_a)
             
             # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
             thickness_values[self.craft.ZONES[zone]] = espesor
@@ -427,7 +427,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 d_stress = 0.90 * sigma
             else:
                 d_stress = 0.55 * sigma
-        elif zone in [4, 5, 7, 9, 10]:
+        elif zone in [4, 5, 7, 9, 10, 13]:
             d_stress = 0.60 * sigma
         elif zone == 6:
             d_stress = 0.90 * sigma
@@ -498,16 +498,90 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
 
     def boat_thrusters_tunnels(self) -> float:    #Revisar
         #Transverse Thruster Tunnels/Tubes (Boat Thruster)
+        if self.craft.L > 40:
+            d = val_data("Diametro interno del tunel (mm): ", True, True, -1, 968)
+        else: #self.craft.L <= 40:
+            d = val_data("Diametro interno del tunel (mm): ", True, True, -1, 600)
+        Q = self.hull_girder.calculate_Q() #REVISAR
         t = 0.008 * d * np.sqrt(Q) + 3.0
         return t
     
-    def operation_decks(self) -> float:    #Revisar
-        #Decks Provided for the Operation or Stowage of Vehicles
-        t = np.sqrt((beta * W *(1 + 0.5 * nxx)) / sigma_a)
+    def operation_decks(self, l, s, zone, sigma_a) -> float:
+        # Decks Provided for the Operation or Stowage of Vehicles
+        x, y, Bx = self.pressure.calculate_x_y_Bx(zone)
+        ncgx = self.pressure.calculate_ncgx(x)
+        W = val_data("Carga estática de la rueda (N): ")
+        a = val_data("Ingrese la dimensión de la huella de la rueda paralela al borde más corto, a (mm): ", True, True)
+        b = val_data("Ingrese la dimensión de la huella de la rueda paralela al borde más largo, b (mm): ", True, True)
+        
+        # Calcular beta
+        beta = self.calculate_beta(a, b, s, l)
+        
+        # Calcular el espesor t
+        t = np.sqrt((beta * W * (1 + 0.5 * ncgx)) / sigma_a)
+        
         return t
 
+    def calculate_beta(self, a, b, s, l):
+        # Definimos las tablas de valores de Beta
+        beta_values = {
+            1: np.array([
+                [0, 1.82, 1.38, 1.12, 0.93, 0.76],
+                [1.82, 1.28, 1.08, 0.90, 0.63, 0.63],
+                [1.39, 1.07, 0.84, 0.72, 0.52, 0.52],
+                [1.12, 0.90, 0.74, 0.60, 0.43, 0.42],
+                [0.92, 0.76, 0.62, 0.51, 0.42, 0.36],
+                [0.76, 0.63, 0.52, 0.42, 0.35, 0.30]
+            ]),
+            1.4: np.array([
+                [0, 2.00, 1.55, 1.20, 0.84, 0.75],
+                [1.78, 1.43, 1.23, 0.95, 0.74, 0.63],
+                [1.39, 1.13, 1.00, 0.80, 0.62, 0.55],
+                [1.12, 0.92, 0.82, 0.68, 0.53, 0.47],
+                [0.90, 0.76, 0.68, 0.57, 0.45, 0.38],
+                [0.75, 0.62, 0.57, 0.47, 0.38, 0.30]
+            ]),
+            2: np.array([
+                [0, 1.64, 1.20, 0.97, 0.78, 0.64],
+                [1.73, 1.31, 1.03, 0.80, 0.68, 0.57],
+                [1.32, 1.08, 0.88, 0.76, 0.64, 0.50],
+                [1.09, 0.90, 0.76, 0.70, 0.64, 0.44],
+                [0.87, 0.76, 0.68, 0.64, 0.60, 0.44],
+                [0.71, 0.61, 0.63, 0.55, 0.45, 0.38]
+            ])
+        }
 
+        # Índices predefinidos para las filas y columnas según la tabla
+        a_s_indices = np.array([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+        b_s_indices = {
+            1: np.array([0, 0.2, 0.4, 0.6, 0.8, 1.0]),
+            1.4: np.array([0, 0.2, 0.4, 0.8, 1.2, 1.4]),
+            2: np.array([0, 0.4, 0.8, 1.2, 1.6, 2.0])
+        }
 
+        # Calculamos las relaciones
+        l_s = l / s
+        a_s = a / s
+        b_s = b / s
+
+        # Selección de la tabla adecuada
+        if l_s >= 2:
+            tabla = beta_values[2]
+            b_s_idx_array = b_s_indices[2]
+        elif np.abs(l_s - 1.4) < np.abs(l_s - 1):
+            tabla = beta_values[1.4]
+            b_s_idx_array = b_s_indices[1.4]
+        else:
+            tabla = beta_values[1]
+            b_s_idx_array = b_s_indices[1]
+
+        # Encontrar el índice más cercano para a/s y b/s
+        a_s_idx = np.abs(a_s_indices - a_s).argmin()
+        b_s_idx = np.abs(b_s_idx_array - b_s).argmin()
+
+        # Devolver el valor de Beta correspondiente
+        beta = tabla[a_s_idx, b_s_idx]
+        return beta
 
 
 
