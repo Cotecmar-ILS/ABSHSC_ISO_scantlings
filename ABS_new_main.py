@@ -47,6 +47,7 @@ import numpy as np
 from validations import val_data
 
 
+
 class Craft:
 
     
@@ -161,51 +162,56 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         self.Hs = max(0.083 * self.craft.L * self.craft.d, self.craft.D + 1.22) if self.craft.L < 30 else (0.64 * self.H + self.craft.d)
 
 
-    def calculate_pressures(self, zone, l, s):
+    def calculate_pressures(self, zone, l, s) -> float:
         #Se calcula la presión dependiedno de la zona
-        if zone == 2:   #Casco de Fondo
-            lx = self.calculate_lx(zone)
-            ncgx = self.calculate_ncgx(lx)
+        index = None
+        
+        if zone == 2:  # Casco de Fondo
+            x, y, Bx = self.calculate_x_y_Bx(zone)
+            ncgx = self.calculate_ncgx(x)
             FD = self.calculate_FD(l, s)
-            FV = self.calculate_FV(lx)
+            FV = self.calculate_FV(x)
 
             if self.craft.L >= 61:
-                if lx is None:
-                    slamming_pressure = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD)
-                else: # lx is not None
-                    Bbx = val_data("Ángulo de astilla muerta de fondo en el punto de analisis (grados): ")
-                    slamming_pressure = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * ((70 - Bbx) / (70 - self.craft.Bcg)) * FD)
-            else: # self.craft.L < 61
-                slamming_pressure = (((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD * FV)
+                if x is None:
+                    slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD
+                else:  # x is not None
+                    slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * ((70 - self.craft.Bcg) / 70) * FD
+            else:  # self.craft.L < 61
+                slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD * FV
 
             hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
 
-            if slamming_pressure > hidrostatic_pressure:
-                index = True  # True indica que es slamming
-            else:
-                index = False  # False indica que es hidrostatic
-            pressure = max(slamming_pressure, hidrostatic_pressure), index
+            index = slamming_pressure > hidrostatic_pressure
+            pressure = max(slamming_pressure, hidrostatic_pressure) # Devuelve la presión mayor
 
-        elif zone == 3: #Casco de Costado y Espejo de Popa  REVISAR
-            print(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, o presione Enter para continuar:  ?\n") #Esta función solo se realiza si el usuario desea realizar el analisis en un punto especifico
-            y = val_data("Altura sobre la linea base hasta el punto de analisis (metros): ", True, True, 0, 0, self.craft.D)
-            ncgx = self.calculate_ncgx(lx)
+        elif zone == 3:  # Casco de Costado y Espejo de Popa
+            x, y, Bx = self.calculate_x_y_Bx(zone)
+            ncgx = self.calculate_ncgx(x)
             FD = self.calculate_FD(l, s)
+            
+            if x is None:
+                slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD
+                hidrostatic_pressure = self.N3 * self.Hs
+            else:
+                slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * ((70 - Bx) / (70 - self.craft.Bcg)) * FD
+                hidrostatic_pressure = self.N3 * (self.Hs - y)
 
-            #Ángulo de astilla muerta en el punto de análisis
-            Bsx = val_data("Angulo de astilla muerta de costado en el punto de analisis (grados): ", True, True, -1, 0, 55)
-            slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * ((70 - Bsx) / (70 - self.craft.Bcg)) * FD
-            hidrostatic_pressure = self.N3 * (self.Hs - y)
-
-            #Fore End
+            # Fore End
+            fore_end = None
             if self.craft.L >= 30:
                 Fa = 3.25 if self.craft.context == 1 else 1
                 Cf = 0.0125 if self.craft.L < 80 else 1.0
-                alfa = val_data("Ángulo de ensanchamiento (grados): ") #Ver imagen adjunta
-                beta = val_data("Ángulo de entrada (grados): ") #Ver imagen adjunta
+                alfa = val_data("Ángulo de ensanchamiento (grados): ")  # Ver imagen adjunta
+                beta = val_data("Ángulo de entrada (grados): ")  # Ver imagen adjunta
                 fore_end = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * self.craft.V * np.cos(beta) + 0.6 * self.craft.L ** 0.5) ** 2)
 
-            pressure = max(slamming_pressure, hidrostatic_pressure) if self.craft.L < 30 else max(slamming_pressure, hidrostatic_pressure), fore_end
+            index = slamming_pressure > hidrostatic_pressure
+             
+            if self.craft.L < 30:
+                pressure = max(slamming_pressure, hidrostatic_pressure)
+            else:
+                pressure = max(slamming_pressure, hidrostatic_pressure, fore_end)
 
         elif zone == 4: #Cubierta Principal
             pressure = 0.20 * self.craft.L + 7.6
@@ -214,8 +220,8 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             pressure = 0.10 * self.craft.L + 6.1
 
         elif zone == 6: #Cubiertas Humedas
-            lx = self.calculate_lx(zone)
-            F1 = self.calculate_F1(lx)
+            x, y, Bx = self.calculate_x_y_Bx(zone)
+            F1 = self.calculate_F1(x)
             FD = self.calculate_FD(l, s)
             ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.D - self.craft.d)
             if self.craft.L < 61:
@@ -229,36 +235,38 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             pressure = 0.10 * self.craft.L + 6.1
 
         elif zone == 8: #Mamparos Estancos
-            h = val_data("Distancia desde el borde inferior del panel de chapa o el centro del área soportada por el refuerzo hasta la cubierta de cierre en la línea central (metros): ")
+            h = val_data("Altura del mamparo (metros): ")
             pressure = self.N3 * h
     
-        elif zone == 9: #Mamparos de Tanques Profundos
-            lx = self.calculate_lx(zone)
-            ncgx = self.calculate_ncgx(lx)
-            h = None
-            pressure_1 = self.N3 * h
-            pg = max(10.05, val_data("Peso especifico del liquido: "))
-            h2 = val_data("Distancia desde el borde inferior del panel de chapa o el centro de la zona soportada por el refuerzo hasta la parte superior del depósito (metros): ")
-            pressure_2 = pg * (1 + 0.5 * ncgx) * h2
+        elif zone == 9: #Mamparos de Tanques Profundos #Insertar Imagen
+            x, y, Bx = self.calculate_x_y_Bx(zone)
+            ncgx = self.calculate_ncgx(x)
+            hb = val_data("Altura de la columna de agua (metros): ") #Insertar Imagen ISO 12215-5
+            pg = max(10.05, val_data("Peso especifico del liquido (kN/m^3): ", True, True, -1, 0, 10.05))
+            pressure_1 = self.N3 * hb
+            pressure_2 = pg * (1 + 0.5 * ncgx) * hb
             pressure = max(pressure_1, pressure_2)
 
         elif zone == 10: #Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos
-            plating_pressures = {
-            "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
-            "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
-            "Chapado de los techos que están en al proa": (6.9, 8.6),
-            "Chapado de los techos que estánen la popa": (3.4, 6.9)
-            }
+            if self.craft.context == 1:  # Plating
+                pressures = {
+                    "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
+                    "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
+                    "Chapado de los techos que están en la proa": (6.9, 8.6),
+                    "Chapado de los techos que están en la popa": (3.4, 6.9)
+                }
+            else:  # Stiffeners
+                pressures = {
+                    "Refuerzos delanteros de la superestructura y caseta": (24.1, 24.1),
+                    "Refuerzos traseros de la superestructura y caseta, y refuerzos laterales de la caseta": (10.3, 10.3),
+                    "Refuerzos de los techos que están en la proa": (6.9, 8.6),
+                    "Refuerzos de los techos que están en la popa": (3.4, 6.9)
+                }
 
-            stiffeners_pressures = {
-                "Refuerzos delanteros de la superestructura y caseta": (24.1, 24.1),
-                "Refuerzos traseros de la superestructura y caseta, y refuerzos laterales de la caseta": (10.3, 10.3),
-                "Refuerzos de los techos que están en la proa": (6.9, 8.6),
-                "Refuerzos de los techos que están en la popa": (3.4, 6.9)
-            }
-
+            # Inicialización del diccionario de resultados
             result = {}
 
+            # Cálculo de la presión según la longitud de la embarcación
             for location, (P1, P2) in pressures.items():
                 if self.craft.L <= 12.2:
                     result[location] = P1
@@ -266,32 +274,41 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
                     result[location] = P2
                 else:
                     result[location] = np.interp(self.craft.L, [12.2, 30.5], [P1, P2])
-
+                    
+            #Retorna un diccionario
             pressure = result
 
-        elif zone == 11: #Túneles de Waterjets
+        elif zone == 11: #Túneles de Waterjets #REVISAR
+            index = False #REVISAR
             pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
 
-        else: #zone == 12 and 13
-            pressure = 0
+        else: #zone in [1, 12, 13]:
+            pressure = "No aplica"
 
-        return pressure
+        return pressure, index
 
-    def calculate_lx(self, zone) -> float:
+    def calculate_x_y_Bx(self, zone) -> tuple:
         ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, S/N ?\n", False, ['S', 'N'], 'N')
+        
         if ask == 'S':
             x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, self.craft.L)
-            lx = x / self.craft.L
-        else:
-            lx = None   #0.5
-        return lx
+            x = x / self.craft.L
+            
+            if zone == 2:
+                return x, None, None
+            elif zone == 3:
+                y = val_data("Altura sobre la linea base hasta el punto de análisis (metros): ", True, True, 0, 0, self.craft.D)
+                Bx = val_data("Ángulo de astilla muerta de costado en el punto de análisis (grados): ", True, True, -1, 0, 55)
+                return x, y, Bx
 
+        return None, None, None  # Si el usuario no desea análisis específico o la zona no requiere análisis específico
+    
     def calculate_h13(self) -> float:
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
         h13 = max(h13_values.get(self.craft.tipo_embarcacion), (self.craft.L / 12))
         return h13
 
-    def calculate_ncgx(self, lx) -> float:
+    def calculate_ncgx(self, x) -> float:
         kn = 0.256
         ncgx_limit = 1.39 + kn * (self.craft.V / np.sqrt(self.craft.L))
         _ncgx = self.N2 * (((12 * self.h13) / self.craft.BW) + 1) * self.craft.tau * (50 - self.craft.Bcg) * ((self.craft.V ** 2 * self.craft.BW ** 2) / self.craft.W)
@@ -301,11 +318,11 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         if self.craft.L < 24 and ncgx < 1:
             ncgx = 1
 
-        # Ajuste de ncgx basado en lx
-        if lx is not None:
+        # Ajuste de ncgx basado en x
+        if x is not None:
             x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
             y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
-            Kv = np.interp(lx, x_known, y_known)
+            Kv = np.interp(x, x_known, y_known)
             ncgx = ncgx * Kv
 
         return ncgx
@@ -330,31 +347,31 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         
         return FD_plating, FD_stiffening
 
-    def calculate_FV(self, lx) -> float:
-        if lx is None:
+    def calculate_FV(self, x) -> float:
+        if x is None:
             return 1.0
         x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
         y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
-        FV = np.interp(lx, x_known, y_known)
+        FV = np.interp(x, x_known, y_known)
         return min(max(FV, 0.25), 1.0)
 
-    def calculate_F1(self, lx) -> float:
-        if lx is None:
+    def calculate_F1(self, x) -> float:
+        if x is None:
             return 1.0
         x_known = [0, 0.2, 0.7, 0.8, 1.0]
         y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
-        return np.interp(lx, x_known, y_known)
+        return np.interp(x, x_known, y_known)
 
-    def decks_pressures(self): #Revisar función
-        """ Las diferentes cubiertas posibles están enumeradas """
-        cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
-        cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
-        cubiertas_alojamientos = 5                                                                  #3     
-        carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
-        cubiertas_carga = carga * (1 + 0.5 * self.nxx)                                              #4
-        cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
-        height = val_data("Altura del almacén (metros): ", True, True, -1)
-        almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
+    # def decks_pressures(self): #Para un posterior desarrollo
+    #     """ Las diferentes cubiertas posibles están enumeradas """
+    #     cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
+    #     cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
+    #     cubiertas_alojamientos = 5                                                                  #3     
+    #     carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
+    #     cubiertas_carga = carga * (1 + 0.5 * self.nxx)                                              #4
+    #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
+    #     height = val_data("Altura del almacén (metros): ", True, True, -1)
+    #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
 
 class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking and aluminum Corrugated Panels
@@ -379,8 +396,8 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (cm): ", True, True, -1, s)
                 
                 #Esfuerzo de diseño de la zona
-                sigma_a = self.design_stress(zone)
-                pressure = self.pressure.calculate_pressures(zone, l, s)
+                pressure, index = self.pressure.calculate_pressures(zone, l, s)
+                sigma_a = self.design_stress(zone, index)
                  
                 # Calcular el espesor para la zona especificada
                 if zone in [2, 3, 4, 5, 8, 9]:
@@ -401,14 +418,12 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         # Retornar el diccionario con los valores de espesor calculados
         return thickness_values
     
-    def design_stress(self, zone) -> float:    #Corregir
+    def design_stress(self, zone, index) -> float:
         # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
         sigma = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
-        
-        # Iterar sobre las zonas seleccionadas y calcular los esfuerzos de diseño
+
         if zone in [2, 3]:
-            bottom_pressure, is_slamming = self.pressure.bottom_pressure()
-            if is_slamming:
+            if index == True:
                 d_stress = 0.90 * sigma
             else:
                 d_stress = 0.55 * sigma
@@ -419,8 +434,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         elif zone == 8:
             d_stress = 0.95 * sigma
         elif zone == 11:
-            bottom_pressure, is_slamming = self.pressure.bottom_pressure()
-            if is_slamming:
+            if index == True:
                 d_stress = 0.60 * sigma
             else:
                 d_stress = 0.55 * sigma
@@ -429,7 +443,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         
         return d_stress
 
-    def lateral_loading(self, pressure, l, s, sigma_a) -> float: #Falta implemntar pressures, waterjets y k1
+    def lateral_loading(self, pressure, l, s, sigma_a) -> float:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
         k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
@@ -445,8 +459,6 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         else:
             k = np.interp(ls, ls_known, k_known)
             k1 = np.interp(ls, ls_known, k1_known)
-            
-        p = self.pressure.water_jet_tunnels_pressure if zone == 11 else pressure
             
         lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
         return lateral_loading
