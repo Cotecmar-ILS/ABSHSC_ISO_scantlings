@@ -71,11 +71,11 @@ class Craft:
     def __init__(self):
         print("\nESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
         self.L = val_data("Eslora del casco (metros): ")
-        self.LW = val_data("Eslora de flotación (metros): ")
+        self.LW = val_data("Eslora de flotación (metros): ", True, True, -1, 0, self.L)
         self.B = val_data("Manga Total (metros): ")
-        self.BW = val_data("Manga de flotación (metros): ")
+        self.BW = val_data("Manga de flotación (metros): ", True, True, -1, 0, self.B)
         self.D = val_data("Puntal (metros): ")
-        self.d = val_data("Calado (metros): ", True, True, 0, 0.04 * self.L)
+        self.d = val_data("Calado (metros): ", True, True, 0,0.04 * self.L, self.D)
         self.V = val_data("Velocidad maxima (nudos): ", True, True, -1, 0, 20 if self.L > 61 else None)
         self.W = val_data("Desplazamiento de la embarcación (kg): ")
         self.Bcg = val_data("Ángulo de astilla muerta fondo en LCG (°grados): ")
@@ -123,7 +123,7 @@ class Craft:
             return 'Ordinaria'
 
     def select_zones(self) -> list:
-        print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar):")
+        print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar) \n")
         # Mostrar las zonas desde el diccionario
         for number, name in self.ZONES.items():
             print(f"{number}. {name}")
@@ -131,7 +131,7 @@ class Craft:
         selected_zones = []
         while True:
             try:
-                choice = val_data("Ingrese el número correspondiente y presione Enter o '0' para finalizar: ", False, True, -1, 0, max(self.ZONES.keys()))
+                choice = val_data("Ingrese el número correspondiente y presione Enter: ", False, False, -1, 0, max(self.ZONES.keys()))
                 if choice == 0:
                     if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
                         raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
@@ -288,9 +288,9 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         return pressure, index
 
     def calculate_x_y_Bx(self, zone) -> tuple:
-        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, S/N ?\n", False, ['S', 'N'], 'N')
+        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {self.craft.ZONES[zone]}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
         
-        if ask == 'S':
+        if ask == 1:
             x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, self.craft.L)
             x = x / self.craft.L
             
@@ -327,7 +327,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
 
         return ncgx
 
-    def calculate_FD(self, l, s) -> list:
+    def calculate_FD(self, l, s) -> list: #Desempaquetar la tupla
         AR = 6.95 * self.craft.W / self.craft.d
 
         AD_plating = min(s * l, 2.5 * pow(s, 2))
@@ -392,8 +392,8 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 espesor = self.boat_thrusters_tunnels()
             else:
                 # Obtener dimensiones l y s para la zona específica
-                s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (cm): ", True, True, -1)
-                l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (cm): ", True, True, -1, s)
+                s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
+                l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
                 
                 #Esfuerzo de diseño de la zona
                 pressure, index = self.pressure.calculate_pressures(zone, l, s)
@@ -639,3 +639,14 @@ class Aluminium_Sandwich_Panels:
     # #With Different Properties in 0° and 90° Axes
     # t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
     # t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+
+
+def main():
+    #Crear una instancia de la clase
+    craft = Craft()
+    pressures = Pressures(craft)
+    plating = Acero_Aluminio_Plating(craft, pressures)
+    plating.thickness()
+
+if __name__ == "__main__":
+    main()
