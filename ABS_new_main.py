@@ -242,6 +242,14 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             pressure = max(pressure_1, pressure_2)
 
         elif zone == 10: #Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos
+            """
+            A superstructure is an enclosed structure above the freeboard deck having side plating as an extension of
+            the shell plating, or not fitted inboard of the hull side more than 4% of the breadth B.
+
+            Una superestructura es una estructura cerrada situada por encima de la cubierta de francobordo que tiene 
+            una chapa lateral como prolongación de la chapa del forro exterior, o que no está instalada en el interior 
+            del costado del casco más del 4% de la manga B.
+            """
             if context == 'Plating':
                 pressures = {
                     "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
@@ -634,6 +642,39 @@ class Aluminium_Sandwich_Panels:
     # #With Different Properties in 0° and 90° Axes
     # t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
     # t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+    
+    
+    
+    
+    #INTERNALS
+    # def calculate_internals_SM(self) -> tuple:
+    #     SM_values = []
+    #     for i in range(len(self.d_stressi)):
+    #         SM = (83.3*self.bottom_p*(self.s/100)*pow((self.l/100),2))/(self.d_stressi[i])
+    #         SM_values.append(SM)
+    #     return tuple(SM_values)
+    
+    # def calculate_K4(self) -> float:
+    #     if self.material == 'Acero':
+    #         if self.zone == "Bottom" or self.zone == "Side":
+    #             return 0.0015
+    #         else:
+    #             return 0.0011
+    #     elif self.material == "Aluminio":
+    #         if self.zone == "Bottom" or self.zone == "Side":
+    #             return 0.0021
+    #         else:
+    #             return 0.0018
+
+    # def calculate_E(self) -> float:
+    #     if self.material == 'Acero':
+    #         return 2.06e5
+    #     elif self.material == 'Aluminio':
+    #         return 6.9e4
+
+    # def moment_inertia(self) -> float:
+    #     I = (260*self.bottom_p*(self.s/100)*pow((self.l/100),3))/ (self.K4*self.E)
+    #     return I
 
 
 def main():
