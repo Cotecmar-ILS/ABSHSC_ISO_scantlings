@@ -44,12 +44,6 @@ def val_data(
                 print("Error: Debe ingresar un valor.\n")
                 continue
 
-            # Manejo de entrada específica para 'S' o 'N'
-            if allowed_values is not None and all(isinstance(v, str) for v in allowed_values):
-                if valor.upper() not in allowed_values:
-                    raise ValueError("El valor ingresado no está permitido.\n")
-                return valor.upper()
-
             # Conversión a float o int
             valor = float(valor) if is_float else int(valor)
 

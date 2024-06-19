@@ -105,12 +105,6 @@ class Craft:
         opcion = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(self.MATERIALS))
         return opcion
 
-    # def select_context(self) -> int:    #Revisar esta función
-    #     print("\n1. Chapado \
-    #            \n2. Refuerzos")
-    #     opcion = val_data("\nIngrese el número correspondiente al analisis: ", False, True, -1, 1, len(self.ZONES))
-    #     return opcion
-
     def determine_resistencia(self) -> str:
         if self.material == 'Acero':
             if 200 < self.sigma_y < 300:
@@ -162,14 +156,14 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         self.Hs = max(0.083 * self.craft.L * self.craft.d, self.craft.D + 1.22) if self.craft.L < 30 else (0.64 * self.H + self.craft.d)
 
 
-    def calculate_pressures(self, zone, l, s) -> float:
+    def calculate_pressures(self, context, zone, l, s) -> float:
         #Se calcula la presión dependiedno de la zona
         index = None
         
         if zone == 2:  # Casco de Fondo
             x, y, Bx = self.calculate_x_y_Bx(zone)
             ncgx = self.calculate_ncgx(x)
-            FD = self.calculate_FD(l, s)
+            FD = self.calculate_FD(context, l, s)
             FV = self.calculate_FV(x)
 
             if self.craft.L >= 61:
@@ -188,7 +182,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         elif zone == 3:  # Casco de Costado y Espejo de Popa
             x, y, Bx = self.calculate_x_y_Bx(zone)
             ncgx = self.calculate_ncgx(x)
-            FD = self.calculate_FD(l, s)
+            FD = self.calculate_FD(context, l, s)
             
             if x is None:
                 slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD
@@ -200,7 +194,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             # Fore End
             fore_end = None
             if self.craft.L >= 30:
-                Fa = 3.25 if self.craft.context == 1 else 1
+                Fa = 3.25 if context == 'Plating' else 1
                 Cf = 0.0125 if self.craft.L < 80 else 1.0
                 alfa = val_data("Ángulo de ensanchamiento (grados): ")  # Ver imagen adjunta
                 beta = val_data("Ángulo de entrada (grados): ")  # Ver imagen adjunta
@@ -222,7 +216,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         elif zone == 6: #Cubiertas Humedas
             x, y, Bx = self.calculate_x_y_Bx(zone)
             F1 = self.calculate_F1(x)
-            FD = self.calculate_FD(l, s)
+            FD = self.calculate_FD(context, l, s)
             ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.D - self.craft.d)
             if self.craft.L < 61:
                 v1 = ((4 * self.h13) / (np.sqrt(self.craft.L))) + 1
@@ -248,7 +242,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
             pressure = max(pressure_1, pressure_2)
 
         elif zone == 10: #Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos
-            if self.craft.context == 1:  # Plating
+            if context == 'Plating':
                 pressures = {
                     "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
                     "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
@@ -327,25 +321,23 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
 
         return ncgx
 
-    def calculate_FD(self, l, s) -> list: #Desempaquetar la tupla
+    def calculate_FD(self, context, l, s) -> float:
         AR = 6.95 * self.craft.W / self.craft.d
-
-        AD_plating = min(s * l, 2.5 * pow(s, 2))
-        ADR_plating = AD_plating / AR
-
-        AD_stiffening = max(s * l, 0.33 * pow(l, 2))
-        ADR_stiffening = AD_stiffening / AR
 
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
         y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
-
-        FD_plating = np.interp(ADR_plating, x_known, y_known)
-        FD_plating = min(max(FD_plating, 0.4), 1.0)
-
-        FD_stiffening = np.interp(ADR_stiffening, x_known, y_known)
-        FD_stiffening = min(max(FD_stiffening, 0.4), 1.0)
         
-        return FD_plating, FD_stiffening
+        if context == "Plating":
+            AD = min(s * l, 2.5 * pow(s, 2))
+            ADR = AD / AR
+        else:
+            AD = max(s * l, 0.33 * pow(l, 2))
+            ADR = AD / AR
+
+        FD = np.interp(ADR, x_known, y_known)
+        FD = min(max(FD, 0.4), 1.0)
+        
+        return FD
 
     def calculate_FV(self, x) -> float:
         if x is None:
@@ -362,7 +354,9 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
         y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
         return np.interp(x, x_known, y_known)
 
-    # def decks_pressures(self): #Para un posterior desarrollo
+    #PARA UN POSTERIOR DESARROLLO:
+    
+    # def decks_pressures(self): 
     #     """ Las diferentes cubiertas posibles están enumeradas """
     #     cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
     #     cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
@@ -380,6 +374,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
         self.craft = craft
         self.pressure = pressure
+        self.context = "Plating"
         
         
     def thickness(self):
@@ -396,14 +391,14 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
                 
                 #Esfuerzo de diseño de la zona
-                pressure, index = self.pressure.calculate_pressures(zone, l, s)
+                pressure, index = self.pressure.calculate_pressures(self.context, zone, l, s)
                 sigma_a = self.design_stress(zone, index)
-                 
+                
                 # Calcular el espesor para la zona especificada
                 if zone in [2, 3, 4, 5, 8, 9]:
-                    espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(l, s), self.minimum_thickness(zone))
+                    espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(s), self.minimum_thickness(zone))
                 elif zone in [6, 7, 10]:
-                    espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(l, s))
+                    espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(s))
                 elif zone == 11:
                     espesor = self.lateral_loading(zone, l, s, pressure, sigma_a)
                 else:  # zone == 13
@@ -443,7 +438,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         
         return d_stress
 
-    def lateral_loading(self, pressure, l, s, sigma_a) -> float:
+    def lateral_loading(self, zone, pressure, l, s, sigma_a) -> float:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
         k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
