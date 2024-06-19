@@ -178,7 +178,7 @@ class Pressures:
             hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
 
             index = slamming_pressure > hidrostatic_pressure
-            pressure = max(slamming_pressure, hidrostatic_pressure) # Devuelve la presión mayor
+            pressure = max(slamming_pressure, hidrostatic_pressure)
 
         elif zone == 3:  # Casco de Costado y Espejo de Popa
             x, y, Bx = self.calculate_x_y_Bx(zone)
@@ -197,8 +197,9 @@ class Pressures:
             if self.craft.L >= 30:
                 Fa = 3.25 if context == 'Plating' else 1
                 Cf = 0.0125 if self.craft.L < 80 else 1.0
-                alfa = val_data("Ángulo de ensanchamiento (grados): ")  # Ver imagen adjunta
-                beta = val_data("Ángulo de entrada (grados): ")  # Ver imagen adjunta
+                # MOSTRAR IMAGEN 1
+                alfa = val_data("Ángulo de ensanchamiento (grados): ")
+                beta = val_data("Ángulo de entrada (grados): ")
                 fore_end = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * self.craft.V * np.cos(beta) + 0.6 * self.craft.L ** 0.5) ** 2)
 
             index = slamming_pressure > hidrostatic_pressure
@@ -218,6 +219,7 @@ class Pressures:
             x, y, Bx = self.calculate_x_y_Bx(zone)
             F1 = self.calculate_F1(x)
             FD = self.calculate_FD(context, l, s)
+            # Mostrar imagen 2
             ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.D - self.craft.d)
             if self.craft.L < 61:
                 v1 = ((4 * self.h13) / (np.sqrt(self.craft.L))) + 1
@@ -230,13 +232,15 @@ class Pressures:
             pressure = 0.10 * self.craft.L + 6.1
 
         elif zone == 8: #Mamparos Estancos
+            #Mostrar Imagen 3 - ISO 12215-5
             h = val_data("Altura del mamparo (metros): ")
             pressure = self.N3 * h
     
         elif zone == 9: #Mamparos de Tanques Profundos #Insertar Imagen
             x, y, Bx = self.calculate_x_y_Bx(zone)
             ncgx = self.calculate_ncgx(x)
-            hb = val_data("Altura de la columna de agua (metros): ") #Insertar Imagen ISO 12215-5
+            #Mostrar Imagen 3 - ISO 12215-5
+            hb = val_data("Altura de la columna de agua (metros): ") 
             pg = max(10.05, val_data("Peso especifico del liquido (kN/m^3): ", True, True, -1, 0, 10.05))
             pressure_1 = self.N3 * hb
             pressure_2 = pg * (1 + 0.5 * ncgx) * hb
@@ -396,6 +400,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 espesor = self.boat_thrusters_tunnels()
             else:
                 # Obtener dimensiones l y s para la zona específica
+                # MOSTRAR IMAGEN 4
                 s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
                 l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
                 
@@ -540,6 +545,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         # Decks Provided for the Operation or Stowage of Vehicles
         x, y, Bx = self.pressure.calculate_x_y_Bx(zone)
         ncgx = self.pressure.calculate_ncgx(x)
+        # Mostrar imagen 5
         W = val_data("Carga estática de la rueda (N): ")
         a = val_data("Ingrese la dimensión de la huella de la rueda paralela al borde más corto, a (mm): ", True, True)
         b = val_data("Ingrese la dimensión de la huella de la rueda paralela al borde más largo, b (mm): ", True, True)
