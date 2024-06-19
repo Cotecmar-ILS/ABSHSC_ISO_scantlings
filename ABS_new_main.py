@@ -88,7 +88,8 @@ class Craft:
         self.selected_zones = self.select_zones()
         
         
-    def display_menu(self, items) -> None: #Funcion auxiliar para consola
+    def display_menu(self, items) -> None:
+        #Funcion auxiliar para consola
         """Muestra un menú basado en una lista de items."""
         for idx, item in enumerate(items, 1):
             print(f"{idx}. {item}")
@@ -143,7 +144,7 @@ class Craft:
         return selected_zones   
 
 
-class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
+class Pressures:
 
 
     def __init__(self, craft: Craft):
@@ -248,7 +249,7 @@ class Pressures:    #Tengo que identificar para que zonas l y s son requeridas
 
             Una superestructura es una estructura cerrada situada por encima de la cubierta de francobordo que tiene 
             una chapa lateral como prolongación de la chapa del forro exterior, o que no está instalada en el interior 
-            del costado del casco más del 4% de la manga B.
+            del costado del casco más del 4% de la manga.
             """
             if context == 'Plating':
                 pressures = {
@@ -405,19 +406,22 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                 # Calcular el espesor para la zona especificada
                 if zone in [2, 3, 4, 5, 8, 9]:
                     espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(s), self.minimum_thickness(zone))
-                elif zone in [6, 7, 10]:
+                elif zone in [6, 7]:
                     espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(s))
+                elif zone == 10:
+                    espesor = self.superstructure(pressure, l, s, sigma_a)
                 elif zone == 11:
                     espesor = self.lateral_loading(zone, l, s, pressure, sigma_a)
-                else:  # zone == 13
+                elif zone == 13:  
                     espesor = self.operation_decks(l, s, zone, sigma_a)
             
             # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
             thickness_values[self.craft.ZONES[zone]] = espesor
             
             # Imprimir el espesor calculado
-            print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
-
+            if zone != 10:
+                print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
+                
         # Retornar el diccionario con los valores de espesor calculados
         return thickness_values
     
@@ -499,13 +503,36 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
             else:
                 return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
 
-    def boat_thrusters_tunnels(self) -> float:    #Revisar
+    def superstructure(self, pressures, l, s, sigma_a) -> dict:
+        """
+        Calcula el espesor necesario para cada parte de la zona 10 basada en las presiones proporcionadas.
+
+        Parámetros:
+            pressures (dict): Diccionario con las presiones para cada ubicación específica.
+            l (float): Longitud sin apoyo de los refuerzos o lado mayor del panel en mm.
+            s (float): Separación entre refuerzos o lado más corto del panel en mm.
+            sigma_a (float): Tensión de diseño.
+
+        Retorna:
+            dict: Diccionario con los espesores calculados para cada ubicación.
+        """
+        thickness_values = {}
+        secondary_stiffening = self.secondary_stiffening(s)
+
+        for location, pressure_value in pressures.items():
+            thickness = max(self.lateral_loading(10, pressure_value, l, s, sigma_a), secondary_stiffening)
+            thickness_values[location] = thickness
+            print(f"Ubicación: {location}, Espesor: {thickness}")
+
+        return thickness_values
+
+    def boat_thrusters_tunnels(self) -> float:
         #Transverse Thruster Tunnels/Tubes (Boat Thruster)
         if self.craft.L > 40:
             d = val_data("Diametro interno del tunel (mm): ", True, True, -1, 968)
         else: #self.craft.L <= 40:
             d = val_data("Diametro interno del tunel (mm): ", True, True, -1, 600)
-        Q = self.hull_girder.calculate_Q() #REVISAR
+        Q = self.calculate_Q()
         t = 0.008 * d * np.sqrt(Q) + 3.0
         return t
     
@@ -524,6 +551,47 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
         t = np.sqrt((beta * W * (1 + 0.5 * ncgx)) / sigma_a)
         
         return t
+
+    def calculate_Q(self) -> float:
+        if self.craft.material == "Acero":
+            yield_point = {
+                "Acero de resistencia ordinaria": (206.842, 234.421),
+                "Acero de grado H32": (234.421, 313.711),
+                "Acero de grado H36": (313.711, 351.632)
+            }
+            tensile_strength = {
+                "Acero de resistencia ordinaria": (399.895, 517.106),
+                "Acero de grado H32": (441.264, 586.054),
+                "Acero de grado H36": (489.527, 620.528)
+            }
+            grado_acero = "Otros Aceros"  # Valor por defecto
+            for grado in yield_point:
+                min_yield, max_yield = yield_point[grado]
+                min_tensile, max_tensile = tensile_strength[grado]
+                if (min_yield <= self.craft.sigma_y <= max_yield) and (min_tensile <= self.craft.sigma_u <= max_tensile):
+                    grado_acero = grado
+                    break
+            # Asignación de coeficiente Q dependiendo del grado de acero:
+            if grado_acero == "Acero de resistencia ordinaria":
+                return 1.0
+            elif grado_acero == "Acero de grado H32":
+                return 0.78
+            elif grado_acero == "Acero de grado H36":
+                return 0.72
+            else:  # "Otros Aceros"
+                return 490 / (min(self.craft.sigma_y, 0.7 * self.craft.sigma_u) + 0.66 * self.craft.sigma_u)
+
+        elif self.craft.material == "Aluminio":
+            sigma_y = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
+            q5 = 115 / sigma_y
+            Qo = 635 / (sigma_y + self.craft.sigma_u)
+            return max(0.9 + q5, Qo)
+
+        elif self.craft.material in ('Fibra laminada', 'Fibra en sandwich'):
+            return 400 / (0.75 * self.craft.sigma_u)
+        else:
+            raise ValueError(
+                f"El material {self.craft.material}, no se encuentra en la base de datos")
 
     def calculate_beta(self, a, b, s, l):
         # Definimos las tablas de valores de Beta
