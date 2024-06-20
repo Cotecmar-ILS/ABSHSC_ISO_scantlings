@@ -51,7 +51,7 @@ from validations import val_data
 class Craft:
 
     
-    MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
+    MATERIALS = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich')
     ZONES = {1:'Vagra Maestra',
              2:'Casco de Fondo', 
              3:'Casco de Costado y Espejo de Popa',
@@ -399,7 +399,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
             if zone == 12:
                 espesor = self.boat_thrusters_tunnels()
             else:
-                # Obtener dimensiones l y s para la zona específica
+                #Obtener dimensiones l y s para la zona específica
                 #if self.craft.material == Acero_Aluminio_Plating:
                     # MOSTRAR IMAGEN 4
                 #elif self.craft.material == Extruded Planking:
@@ -602,7 +602,7 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
             raise ValueError(
                 f"El material {self.craft.material}, no se encuentra en la base de datos")
 
-    def calculate_beta(self, a, b, s, l):
+    def calculate_beta(self, a, b, s, l) -> float:
         # Definimos las tablas de valores de Beta
         beta_values = {
             1: np.array([
@@ -668,57 +668,82 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
 
 
 class Aluminium_Sandwich_Panels:
-    def __init__(self):
-        pass
-    # sm_skins = (np.pow(s, 2) * pressure * k) / (6e5 *d_stress)
-    # I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
-    # core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
-    # #core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
+    
+    
+    def __init__(self, craft: Craft, pressure: Pressures) -> None:
+        self.craft = craft
+        self.pressure = pressure
+        self.context = "Plating"
+    
+    def section_modulus_skins(self, l, s, sigma_a):
+        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
+        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
+
+        ls = l / s
+
+        if ls > 2.0:
+            k = 0.500
+            k1 = 0.028
+        elif ls < 1.0:
+            k = 0.308
+            k1 = 0.014
+        else:
+            k = np.interp(ls, ls_known, k_known)
+            k1 = np.interp(ls, ls_known, k1_known)
+            
+        sm_skins = (np.pow(s, 2) * self.pressure * k) / (6e5 * sigma_a)
+        
+    def inertia_skins(self, v, p, s, tau, E):
+        I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
+        
+    core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
+    #core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
 
 
 
-    # #  Fiber Reinforced Plastic
-    # sigma_a = 0.33 * sigma_u   # Design Stresses
+    #  Fiber Reinforced Plastic
+    sigma_a = 0.33 * sigma_u   # Design Stresses
 
-    # def calculate_ks_kl(l, s, Es, El):
-    #     # Calcular (l/s) * (Es / El)^0.25
-    #     aspect_ratio = (l / s) * np.power((Es / El), 0.25)
+    def calculate_ks_kl(l, s, Es, El):
+        # Calcular (l/s) * (Es / El)^0.25
+        aspect_ratio = (l / s) * np.power((Es / El), 0.25)
 
-    #     # Valores de la tabla
-    #     aspect_ratios = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-    #     ks_values = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.497]
-    #     kl_values = [0.308, 0.323, 0.333, 0.338, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342]
+        # Valores de la tabla
+        aspect_ratios = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        ks_values = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.497]
+        kl_values = [0.308, 0.323, 0.333, 0.338, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342]
 
-    #     # Determinar ks y kl basado en aspect_ratio
-    #     if aspect_ratio > 2.0:
-    #         ks = 0.500
-    #         kl = 0.342
-    #     elif aspect_ratio < 1.0:
-    #         ks = 0.308
-    #         kl = 0.308
-    #     else:
-    #         # Interpolación usando numpy
-    #         ks = np.interp(aspect_ratio, aspect_ratios, ks_values)
-    #         kl = np.interp(aspect_ratio, aspect_ratios, kl_values)
+        # Determinar ks y kl basado en aspect_ratio
+        if aspect_ratio > 2.0:
+            ks = 0.500
+            kl = 0.342
+        elif aspect_ratio < 1.0:
+            ks = 0.308
+            kl = 0.308
+        else:
+            # Interpolación usando numpy
+            ks = np.interp(aspect_ratio, aspect_ratios, ks_values)
+            kl = np.interp(aspect_ratio, aspect_ratios, kl_values)
 
-    #     return aspect_ratio, ks, kl
+        return aspect_ratio, ks, kl
 
-    # #   With Essentially Same Properties in 0° and 90° Axes
-    # c = max((1-A/s), 0.70)
-    # t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+    #   With Essentially Same Properties in 0° and 90° Axes
+    c = max((1-A/s), 0.70)
+    t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
 
-    # t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
+    t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
 
-    # #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
-    # t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+    #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+    t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
 
-    # #Strength deck and bottom shell
-    # t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
+    #Strength deck and bottom shell
+    t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
 
 
-    # #With Different Properties in 0° and 90° Axes
-    # t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
-    # t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+    #With Different Properties in 0° and 90° Axes
+    t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
+    t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
     
     
     
