@@ -368,7 +368,7 @@ class Pressures:
         return np.interp(x, x_known, y_known)
 
     #PARA UN POSTERIOR DESARROLLO:
-    
+
     # def decks_pressures(self): 
     #     """ Las diferentes cubiertas posibles están enumeradas """
     #     cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
@@ -383,24 +383,27 @@ class Pressures:
 
 class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking and aluminum Corrugated Panels
 
-    
+
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
         self.craft = craft
         self.pressure = pressure
         self.context = "Plating"
-        
-        
+
+
     def thickness(self):
         # Diccionario para almacenar los valores de espesor calculados
         thickness_values = {}
-        
+
         # Iterar sobre las zonas seleccionadas en la instancia de Craft
         for zone in self.craft.selected_zones:
             if zone == 12:
                 espesor = self.boat_thrusters_tunnels()
             else:
                 # Obtener dimensiones l y s para la zona específica
-                # MOSTRAR IMAGEN 4
+                #if self.craft.material == Acero_Aluminio_Plating:
+                    # MOSTRAR IMAGEN 4
+                #elif self.craft.material == Extruded Planking:
+                    # MOSTRAR IMAGEN 5
                 s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
                 l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
                 
@@ -419,17 +422,17 @@ class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded
                     espesor = self.lateral_loading(zone, l, s, pressure, sigma_a)
                 elif zone == 13:  
                     espesor = self.operation_decks(l, s, zone, sigma_a)
-            
+
             # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
             thickness_values[self.craft.ZONES[zone]] = espesor
-            
+
             # Imprimir el espesor calculado
             if zone != 10:
                 print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
-                
+
         # Retornar el diccionario con los valores de espesor calculados
         return thickness_values
-    
+
     def design_stress(self, zone, index) -> float:
         # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
         sigma = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
