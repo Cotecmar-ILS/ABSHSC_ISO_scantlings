@@ -381,7 +381,7 @@ class Pressures:
     #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
 
-class Acero_Aluminio_Plating:  # Plating de: Acero Aluminio && Aluminum Extruded Planking and aluminum Corrugated Panels
+class Acero_Aluminio_Plating:
 
 
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
