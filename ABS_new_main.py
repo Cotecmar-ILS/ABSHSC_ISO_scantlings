@@ -381,7 +381,7 @@ class Pressures:
     #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
 
-class Acero_Aluminio_Plating:
+class Plating:
 
 
     def __init__(self, craft: Craft, pressure: Pressures) -> None:
@@ -663,8 +663,43 @@ class Acero_Aluminio_Plating:
         beta = tabla[a_s_idx, b_s_idx]
         return beta
 
+#Sandwich and corrugated aluminum panels
+
+    def section_modulus_skins(self, pressure, s, k, sigma_a):
+        sm_skins = (np.pow(s, 2) * pressure * k) / (6e5 * sigma_a)
+        return sm_skins
+    
+    def inertia_skins(self, pressure, s, k1, E):
+        I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
+        return I_skins
+    
+    def core_shear(self, pressure, s, v, tau):
+        #core_shear:=(do + dc) / 2     #do = thickness of skins, dc = thickness of core
+        core_shear = (v * pressure * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation
+        return core_shear
+    
+    def design_stress_fiber(self):
+        #  Fiber Reinforced Plastic
+        sigma_a = 0.33 * sigma_u   # Design Stresses
+        return sigma_a
 
 
+    #   With Essentially Same Properties in 0° and 90° Axes
+    c = max((1-A/s), 0.70)
+    t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+
+    t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
+
+    #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+    t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+
+    #Strength deck and bottom shell
+    t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
+
+
+    #With Different Properties in 0° and 90° Axes
+    t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
+    t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
 
 
 class Aluminium_Sandwich_Panels:
@@ -675,35 +710,23 @@ class Aluminium_Sandwich_Panels:
         self.pressure = pressure
         self.context = "Plating"
     
+    
     def section_modulus_skins(self, l, s, sigma_a):
-        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
-        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
-
-        ls = l / s
-
-        if ls > 2.0:
-            k = 0.500
-            k1 = 0.028
-        elif ls < 1.0:
-            k = 0.308
-            k1 = 0.014
-        else:
-            k = np.interp(ls, ls_known, k_known)
-            k1 = np.interp(ls, ls_known, k1_known)
-            
         sm_skins = (np.pow(s, 2) * self.pressure * k) / (6e5 * sigma_a)
         
     def inertia_skins(self, v, p, s, tau, E):
         I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
         
-    core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
-    #core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
+    def core_shear(self, v, p, s, tau):
+        core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
+        #core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
 
-
-
-    #  Fiber Reinforced Plastic
-    sigma_a = 0.33 * sigma_u   # Design Stresses
+        return core_shear
+    
+    def design_stress(self):
+        #  Fiber Reinforced Plastic
+        sigma_a = 0.33 * sigma_u   # Design Stresses
+        return sigma_a
 
     def calculate_ks_kl(l, s, Es, El):
         # Calcular (l/s) * (Es / El)^0.25
@@ -728,22 +751,7 @@ class Aluminium_Sandwich_Panels:
 
         return aspect_ratio, ks, kl
 
-    #   With Essentially Same Properties in 0° and 90° Axes
-    c = max((1-A/s), 0.70)
-    t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
-
-    t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
-
-    #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
-    t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
-
-    #Strength deck and bottom shell
-    t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
-
-
-    #With Different Properties in 0° and 90° Axes
-    t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
-    t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+    
     
     
     
