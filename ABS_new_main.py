@@ -1,6 +1,7 @@
 """
                 ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS
 --------------------------------------------------------------------------
+MATERIALS = ('Steel', 'Aluminum', 'Aluminum Extruded Planking', 'Aluminum Sandwich Panels', 'Aluminum Corrugated', 'Single Skin Laminate Fiber Plastic', 'Sandwich Laminate Fiber Plastic') 
 ZONES
     # Shell:
         #1 Vagra Maestra
@@ -20,6 +21,7 @@ ZONES
         #12 Transverse Thruster Tunnels/Tubes (Boat Thruster)
         #13 Decks Provided for the Operation or Stowage of Vehicles
 --------------------------------------------------------------------------
+MATERIALS = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich') 
 ZONAS
     Casco:
         1. Vagra Maestra
@@ -390,45 +392,63 @@ class Plating:
         self.context = "Plating"
 
 
-    def thickness(self):
+    def thickness(self) -> dict:
         # Diccionario para almacenar los valores de espesor calculados
         thickness_values = {}
 
         # Iterar sobre las zonas seleccionadas en la instancia de Craft
         for zone in self.craft.selected_zones:
-            if zone == 12:
-                espesor = self.boat_thrusters_tunnels()
-            else:
-                #Obtener dimensiones l y s para la zona específica
-                #if self.craft.material == Acero_Aluminio_Plating:
-                    # MOSTRAR IMAGEN 4
-                #elif self.craft.material == Extruded Planking:
-                    # MOSTRAR IMAGEN 5
+            if self.craft.material in ['Acero', 'Aluminio', 'Aluminio extruido']:
+                if zone == 12:
+                    espesor = self.boat_thrusters_tunnels()
+                else:
+                    #Obtener dimensiones l y s para la zona específica
+                    #if self.craft.material == Acero_Aluminio_Plating:
+                        # MOSTRAR IMAGEN 4
+                    #elif self.craft.material == Extruded Planking:
+                        # MOSTRAR IMAGEN 5
+                    s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
+                    l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
+                    
+                    #Esfuerzo de diseño de la zona
+                    pressure, index = self.pressure.calculate_pressures(self.context, zone, l, s)
+                    sigma_a = self.design_stress(zone, index)
+                    k = self.constant_k(l, s)
+                    
+                    # Calcular el espesor para la zona especificada
+                    if zone in [2, 3, 4, 5, 8, 9]:
+                        espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a, k), self.secondary_stiffening(s), self.minimum_thickness(zone))
+                    elif zone in [6, 7]:
+                        espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a, k), self.secondary_stiffening(s))
+                    elif zone == 10:
+                        espesor = self.superstructure(pressure, l, s, sigma_a)
+                    elif zone == 11:
+                        espesor = self.lateral_loading(zone, l, s, pressure, sigma_a, k)
+                    elif zone == 13:  
+                        espesor = self.operation_decks(l, s, zone, sigma_a)
+
+                # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
+                thickness_values[self.craft.ZONES[zone]] = espesor
+
+                # Imprimir el espesor calculado
+                if zone != 10:
+                    print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
+            
+            elif self.craft.material == 'Aluminio en Sandwich':
+                # Obtener las dimensiones de la zona
+                l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
                 s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
-                l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
+                k = self.constant_k(l, s)
+                k1 = self.constant_k1(l, s)
+                al_sm_skins = self.aluminum_sandwich_section_modulus_skins(pressure, s, sigma_a, k)
+                al_inertia_skins = self.aluminum_sandwich_inertia_skins(pressure, s, sigma_a, k1)
+                al_core = self.aluminum_sandwich_core_shear(pressure, s, sigma_a, k)
                 
-                #Esfuerzo de diseño de la zona
-                pressure, index = self.pressure.calculate_pressures(self.context, zone, l, s)
-                sigma_a = self.design_stress(zone, index)
-                
-                # Calcular el espesor para la zona especificada
-                if zone in [2, 3, 4, 5, 8, 9]:
-                    espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(s), self.minimum_thickness(zone))
-                elif zone in [6, 7]:
-                    espesor = max(self.lateral_loading(zone, l, s, pressure, sigma_a), self.secondary_stiffening(s))
-                elif zone == 10:
-                    espesor = self.superstructure(pressure, l, s, sigma_a)
-                elif zone == 11:
-                    espesor = self.lateral_loading(zone, l, s, pressure, sigma_a)
-                elif zone == 13:  
-                    espesor = self.operation_decks(l, s, zone, sigma_a)
+                print(f"Zona: {self.craft.ZONES[zone]}, Modulo de seccion del laminado: {al_sm_skins} [cm^3], Inercia del laminado: {al_inertia_skins} [cm^4], Resistencia al cortante del nucleo: {al_core} [MPa]")
 
-            # Almacenar el espesor calculado junto con el nombre de la zona en el diccionario thickness_values
-            thickness_values[self.craft.ZONES[zone]] = espesor
-
-            # Imprimir el espesor calculado
-            if zone != 10:
+            elif self.craft.material == 'Fibra laminada':
                 print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
+
 
         # Retornar el diccionario con los valores de espesor calculados
         return thickness_values
@@ -458,58 +478,29 @@ class Plating:
         
         return d_stress
 
-    def lateral_loading(self, zone, pressure, l, s, sigma_a) -> float:
+    def constant_k(self, l, s) -> float:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
-        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
-
         ls = l / s
-
         if ls > 2.0:
             k = 0.500
-            k1 = 0.028
         elif ls < 1.0:
             k = 0.308
-            k1 = 0.014
         else:
             k = np.interp(ls, ls_known, k_known)
+        return k
+    
+    def constant_k1(self, l, s) -> float:
+        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
+        ls = l / s
+        if ls > 2.0:
+            k1 = 0.028
+        elif ls < 1.0:
+            k1 = 0.014
+        else:
             k1 = np.interp(ls, ls_known, k1_known)
-            
-        lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
-        return lateral_loading
-
-    def secondary_stiffening(self, s) -> float:
-        if self.craft.material == "Acero":
-            return 0.01 * s
-        else:
-            return 0.012 * s
-
-    def minimum_thickness(self, zone) -> float:
-        if self.craft.material == 'Acero':
-            q = 1.0 if self.craft.resistencia == "Alta" else 245 / self.craft.sigma_y
-        else:
-            q = 115 / self.craft.sigma_y
-        
-        if zone == 2:    #Fondo
-            if self.craft.material == "Acero":
-                return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
-            else:
-                return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
-        elif zone == 3:  #Costados y Espejo
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
-            else:
-                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
-        elif zone == 4:  # Strength Deck - Cubierta principal
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
-            else:
-                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
-        else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-            if self.craft.material == "Acero":
-                return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
-            else:
-                return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
+        return k1
 
     def superstructure(self, pressures, l, s, sigma_a) -> dict:
         """
@@ -664,38 +655,88 @@ class Plating:
         return beta
 
 
-#Sandwich and corrugated aluminum panels
+#Acero, Aluminio, Aluminio extruido y Aluminio en sandwich
 
-    def section_modulus_skins(self, pressure, s, k, sigma_a):
+    def lateral_loading(self, zone, pressure, l, s, sigma_a, k) -> float:            
+        lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
+        return lateral_loading
+
+    def secondary_stiffening(self, s) -> float:
+        if self.craft.material == "Acero":
+            return 0.01 * s
+        else:
+            return 0.012 * s
+
+    def minimum_thickness(self, zone) -> float:
+        if self.craft.material == 'Acero':
+            q = 1.0 if self.craft.resistencia == "Alta" else 245 / self.craft.sigma_y
+        else:
+            q = 115 / self.craft.sigma_y
+        
+        if zone == 2:    #Fondo
+            if self.craft.material == "Acero":
+                return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
+            else:
+                return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
+        elif zone == 3:  #Costados y Espejo
+            if self.craft.material == "Acero":
+                return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
+            else:
+                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+        elif zone == 4:  # Strength Deck - Cubierta principal
+            if self.craft.material == "Acero":
+                return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
+            else:
+                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+        else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
+            if self.craft.material == "Acero":
+                return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
+            else:
+                return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
+
+
+#Aluminio en Sandwich
+
+    def aluminum_sandwich_section_modulus_skins(self, pressure, s, k, sigma_a) -> float:
         sm_skins = (np.pow(s, 2) * pressure * k) / (6e5 * sigma_a)
         return sm_skins
     
-    def inertia_skins(self, pressure, s, k1, E):
+    def aluminum_sandwich_inertia_skins(self, pressure, s, k1, E) -> float:
         I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
         return I_skins
     
-    def core_shear(self, pressure, s, v, tau):
+    def aluminum_sandwich_core_shear(self, pressure, s, v, tau) -> float:
         #core_shear:=(do + dc) / 2     #do = thickness of skins, dc = thickness of core
         core_shear = (v * pressure * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation
         return core_shear
     
-    def design_stress_fiber(self):
+
+#Fibra laminada
+
+    def design_stress_fiber(self) -> float:
         #  Fiber Reinforced Plastic
         sigma_a = 0.33 * sigma_u   # Design Stresses
         return sigma_a
 
+    
+    def laminated_same_properties(self, s, A) -> float:
+            #   With Essentially Same Properties in 0° and 90° Axes
+            c = max((1-A/s), 0.70)
+        
+            espesor_a = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+            espesor_b = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
+            
+            espesor = max(espesor_a, espesor_b)
+            
+            if self.craft.L <= 12.2:
+                if zone in [2, 3, 4]:
+                    #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+                    espesor_c = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
 
-    #   With Essentially Same Properties in 0° and 90° Axes
-    c = max((1-A/s), 0.70)
-    t = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+            #Strength deck and bottom shell
+            if zone in [2, 4]:
+                espesor_d = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
 
-    t = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
-
-    #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
-    t = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
-
-    #Strength deck and bottom shell
-    t = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
 
 
     #With Different Properties in 0° and 90° Axes
@@ -703,56 +744,11 @@ class Plating:
     t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
 
 
-class Aluminium_Sandwich_Panels:
     
     
-    def __init__(self, craft: Craft, pressure: Pressures) -> None:
-        self.craft = craft
-        self.pressure = pressure
-        self.context = "Plating"
     
     
-    def section_modulus_skins(self, l, s, sigma_a):
-        sm_skins = (np.pow(s, 2) * self.pressure * k) / (6e5 * sigma_a)
-        
-    def inertia_skins(self, v, p, s, tau, E):
-        I_skins = (np.pow(s, 3) * pressure * k1) / (120e5 * 0.24 * E)
-        
-    def core_shear(self, v, p, s, tau):
-        core_shear = (v * p * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation:
-        #core_shear:=(do + dc) / 2     #do = thickness of overall sandwich, dc = thickness of core
 
-        return core_shear
-    
-    def design_stress(self):
-        #  Fiber Reinforced Plastic
-        sigma_a = 0.33 * sigma_u   # Design Stresses
-        return sigma_a
-
-    def calculate_ks_kl(l, s, Es, El):
-        # Calcular (l/s) * (Es / El)^0.25
-        aspect_ratio = (l / s) * np.power((Es / El), 0.25)
-
-        # Valores de la tabla
-        aspect_ratios = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-        ks_values = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.497]
-        kl_values = [0.308, 0.323, 0.333, 0.338, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342, 0.342]
-
-        # Determinar ks y kl basado en aspect_ratio
-        if aspect_ratio > 2.0:
-            ks = 0.500
-            kl = 0.342
-        elif aspect_ratio < 1.0:
-            ks = 0.308
-            kl = 0.308
-        else:
-            # Interpolación usando numpy
-            ks = np.interp(aspect_ratio, aspect_ratios, ks_values)
-            kl = np.interp(aspect_ratio, aspect_ratios, kl_values)
-
-        return aspect_ratio, ks, kl
-
-    
     
     
     
