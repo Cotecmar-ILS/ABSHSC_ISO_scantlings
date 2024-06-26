@@ -663,6 +663,7 @@ class Plating:
         beta = tabla[a_s_idx, b_s_idx]
         return beta
 
+
 #Sandwich and corrugated aluminum panels
 
     def section_modulus_skins(self, pressure, s, k, sigma_a):
