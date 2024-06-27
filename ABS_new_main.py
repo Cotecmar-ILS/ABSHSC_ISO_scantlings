@@ -403,12 +403,14 @@ class Plating:
                     espesor = self.boat_thrusters_tunnels()
                 else:
                     #Obtener dimensiones l y s para la zona específica
-                    #if self.craft.material == Acero_Aluminio_Plating:
+                    #if self.craft.material == Acero or Aluminio:
                         # MOSTRAR IMAGEN 4
                     #elif self.craft.material == Extruded Planking:
                         # MOSTRAR IMAGEN 5
                     s = val_data(f"Separación entre refuerzos o lado más corto del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1)
                     l = val_data(f"Longitud sin apoyo de los refuerzos o lado mayor del panel en la zona: {self.craft.ZONES[zone]} (mm): ", True, True, -1, s)
+                    sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+                    sigma_y = val_data("Limite elastico por tracción (MPa): ")
                     
                     #Esfuerzo de diseño de la zona
                     pressure, index = self.pressure.calculate_pressures(self.context, zone, l, s)
@@ -447,8 +449,10 @@ class Plating:
                 print(f"Zona: {self.craft.ZONES[zone]}, Modulo de seccion del laminado: {al_sm_skins} [cm^3], Inercia del laminado: {al_inertia_skins} [cm^4], Resistencia al cortante del nucleo: {al_core} [MPa]")
 
             elif self.craft.material == 'Fibra laminada':
+                tipo_laminado = val_data("Utiliza diferentes tipos de fibra? (1) Si (2) No: ", False, True, -1, 1, 2)
+                
                 if zone in [2, 3, 4, 5, 8, 9]:
-                    espesor = laminated
+                    espesor = lamin
                 print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor} mm")
 
 
