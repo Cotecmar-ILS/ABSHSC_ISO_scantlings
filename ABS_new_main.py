@@ -312,7 +312,7 @@ class Pressures:
 
         return None, None, None  # Si el usuario no desea análisis específico o la zona no requiere análisis específico
     
-    def calculate_h13(self) -> float:
+    def calculate_h13(self) -> float: #Revisar
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
         h13 = max(h13_values.get(self.craft.tipo_embarcacion), (self.craft.L / 12))
         return h13
@@ -447,7 +447,9 @@ class Plating:
                 print(f"Zona: {self.craft.ZONES[zone]}, Modulo de seccion del laminado: {al_sm_skins} [cm^3], Inercia del laminado: {al_inertia_skins} [cm^4], Resistencia al cortante del nucleo: {al_core} [MPa]")
 
             elif self.craft.material == 'Fibra laminada':
-                print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor}")
+                if zone in [2, 3, 4, 5, 8, 9]:
+                    
+                print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor} mm")
 
 
         # Retornar el diccionario con los valores de espesor calculados
@@ -717,31 +719,54 @@ class Plating:
         #  Fiber Reinforced Plastic
         sigma_a = 0.33 * sigma_u   # Design Stresses
         return sigma_a
-
     
-    def laminated_same_properties(self, s, A) -> float:
-            #   With Essentially Same Properties in 0° and 90° Axes
-            c = max((1-A/s), 0.70)
+    def laminated_same_properties(self, zone, pressure, s, d_stress, k) -> float:
+        A = val_data("Medida perpendicularmente desde el espaciado entre refuerzos, s, hasta el punto más alto del arco de la placa curvada entre los bordes del panel: ")
+        #   With Essentially Same Properties in 0° and 90° Axes
+        c = max((1 - A/s), 0.70)
+        espesor_a = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
+        return espesor_a
+    
+    def laminated_second_equation(self, zone, pressure, s, d_stress) -> float:    
+        if zone == 2:
+            if self.craft.tipo_embarcacion == 4:
+                k2 = 0.010
+            else:
+                k2 = 0.015
+        elif zone == 3:
+            if self.craft.tipo_embarcacion == 4:
+                k2 = 0.015
+            else:
+                k2 = 0.020
+        elif zone == 10:
+            k2 = 0.025
+        else:
+            k2 = 0.010
         
-            espesor_a = s * c * np.sqrt((pressure * k) / (1000 * d_stress)) #1
-            espesor_b = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
-            
-            espesor = max(espesor_a, espesor_b)
-            
-            if self.craft.L <= 12.2:
-                if zone in [2, 3, 4]:
-                    #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
-                    espesor_c = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+        espesor_b = s * np.pow(c, 3) * np.sqrt((pressure * k1) / (1000 * k2 * E_F)) #2
+        return espesor_b
+    
+    def laminated_third_equation(self, zone, pressure, s, d_stress, k3, sigma_uc, E_c, SM_R, SM_A, El, Es) -> float:    
+        if self.craft.L <= 12.2:
+            if zone in [2, 3, 4]:
+                #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+                espesor_c = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+        return espesor_c
 
-            #Strength deck and bottom shell
-            if zone in [2, 4]:
-                espesor_d = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
-
-
+    def laminated_fourth_equation(self, zone, pressure, s, d_stress, sigma_uc, E_c, SM_R, SM_A, El, Es, kb) -> float:
+        #Strength deck and bottom shell
+        if zone in [2, 4]:
+            espesor_d = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
+        return espesor_d
 
     #With Different Properties in 0° and 90° Axes
-    t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
-    t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+    def laminated_fifth_equation(self, zone, pressure, s, d_stress, kl, ks, El, Es) -> float:
+        t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
+        return t
+    
+    def laminated_sixth_equation(self, zone, pressure, s, d_stress, kl, ks, El, Es) -> float:
+        t = s * c * np.sqrt((pressure * kl) / (1000 * d_stress)) * np.pow((El / Es), 0.25)  #2
+        return t
 
 
     
