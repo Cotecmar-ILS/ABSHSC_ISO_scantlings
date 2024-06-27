@@ -84,8 +84,8 @@ class Craft:
         self.tau = val_data("Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
         self.tipo_embarcacion = self.select_tipo_embarcacion()
         self.material = self.select_material()
-        self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-        self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
+        # self.sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+        # self.sigma_y = val_data("Limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
         self.selected_zones = self.select_zones()
         
@@ -448,7 +448,7 @@ class Plating:
 
             elif self.craft.material == 'Fibra laminada':
                 if zone in [2, 3, 4, 5, 8, 9]:
-                    
+                    espesor = laminated
                 print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor} mm")
 
 
@@ -720,7 +720,7 @@ class Plating:
         sigma_a = 0.33 * sigma_u   # Design Stresses
         return sigma_a
     
-    def laminated_same_properties(self, zone, pressure, s, d_stress, k) -> float:
+    def laminated_same_properties(self, pressure, s, d_stress, k) -> float:
         A = val_data("Medida perpendicularmente desde el espaciado entre refuerzos, s, hasta el punto más alto del arco de la placa curvada entre los bordes del panel: ")
         #   With Essentially Same Properties in 0° and 90° Axes
         c = max((1 - A/s), 0.70)
@@ -747,16 +747,13 @@ class Plating:
         return espesor_b
     
     def laminated_third_equation(self, zone, pressure, s, d_stress, k3, sigma_uc, E_c, SM_R, SM_A, El, Es) -> float:    
-        if self.craft.L <= 12.2:
-            if zone in [2, 3, 4]:
-                #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
-                espesor_c = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
+        #Strength deck and shell #L is generally not to be taken less than 12.2 m (40 ft).
+        espesor_c = k3 * (c1 + 0.26 * self.craft.L) * np.sqrt(q1) #3
         return espesor_c
 
     def laminated_fourth_equation(self, zone, pressure, s, d_stress, sigma_uc, E_c, SM_R, SM_A, El, Es, kb) -> float:
         #Strength deck and bottom shell
-        if zone in [2, 4]:
-            espesor_d = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
+        espesor_d = (s/kb) * np.sqrt((0.6 * sigma_uc) / E_c) * np.sqrt(SM_R / SM_A) #4
         return espesor_d
 
     #With Different Properties in 0° and 90° Axes
