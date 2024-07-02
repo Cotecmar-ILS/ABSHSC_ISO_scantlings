@@ -449,19 +449,25 @@ class Plating:
                 print(f"Zona: {self.craft.ZONES[zone]}, Modulo de seccion del laminado: {al_sm_skins} [cm^3], Inercia del laminado: {al_inertia_skins} [cm^4], Resistencia al cortante del nucleo: {al_core} [MPa]")
 
             elif self.craft.material == 'Fibra laminada':
-                tipo_laminado = val_data("Utiliza diferentes tipos de fibra? (1) Si (2) No: ", False, True, -1, 1, 2)
-                
-                if zone in [2, 3, 4, 5, 8, 9]:
-                    espesor = lamin
+                tipo_laminado = val_data("Utiliza diferentes tipos de fibra? (1): No (2): Si: ", False, True, -1, 1, 2)
+                if tipo_laminado == 1:
+                    if zone in [2, 4]:
+                        espesor = max(self.laminated_same_properties(pressure, s, d_stress, k), self.laminated_second_equation, self.laminated_third_equation(zone, pressure, s, d_stress), self.laminated_fourth_equation(zone, pressure, s, d_stress))
+                    elif zone == 3:
+                        espesor = max(self.laminated_same_properties(pressure, s, d_stress, k), self.laminated_second_equation, self.laminated_third_equation(zone, pressure, s, d_stress))
+                    else:
+                        espesor = max(self.laminated_same_properties(pressure, s, d_stress, k), self.laminated_second_equation(zone, pressure, s, d_stress))
+                else: # tipo_laminado == 2
+                    espesor = max(self.laminated_fifth_equation(zone, pressure, s, d_stress, kl, ks, El), self.laminated_sixth_equation(zone, pressure, s, d_stress, kl, ks, El, Es))
                 print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor} mm")
 
 
         # Retornar el diccionario con los valores de espesor calculados
         return thickness_values
 
-    def design_stress(self, zone, index) -> float:
+    def design_stress(self, zone, sigma_y, sigma_u, index) -> float:
         # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
-        sigma = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
+        sigma = min(sigma_y, 0.7 * sigma_u)
 
         if zone in [2, 3]:
             if index == True:
@@ -558,7 +564,7 @@ class Plating:
         
         return t
 
-    def calculate_Q(self) -> float:
+    def calculate_Q(self, sigma_y, sigma_u) -> float:
         if self.craft.material == "Acero":
             yield_point = {
                 "Acero de resistencia ordinaria": (206.842, 234.421),
@@ -574,7 +580,7 @@ class Plating:
             for grado in yield_point:
                 min_yield, max_yield = yield_point[grado]
                 min_tensile, max_tensile = tensile_strength[grado]
-                if (min_yield <= self.craft.sigma_y <= max_yield) and (min_tensile <= self.craft.sigma_u <= max_tensile):
+                if (min_yield <= sigma_y <= max_yield) and (min_tensile <= sigma_u <= max_tensile):
                     grado_acero = grado
                     break
             # Asignación de coeficiente Q dependiendo del grado de acero:
@@ -585,16 +591,16 @@ class Plating:
             elif grado_acero == "Acero de grado H36":
                 return 0.72
             else:  # "Otros Aceros"
-                return 490 / (min(self.craft.sigma_y, 0.7 * self.craft.sigma_u) + 0.66 * self.craft.sigma_u)
+                return 490 / (min(sigma_y, 0.7 * sigma_u) + 0.66 * sigma_u)
 
         elif self.craft.material == "Aluminio":
-            sigma_y = min(self.craft.sigma_y, 0.7 * self.craft.sigma_u)
-            q5 = 115 / sigma_y
-            Qo = 635 / (sigma_y + self.craft.sigma_u)
+            sigma = min(sigma_y, 0.7 * sigma_u)
+            q5 = 115 / sigma
+            Qo = 635 / (sigma + sigma_u)
             return max(0.9 + q5, Qo)
 
         elif self.craft.material in ('Fibra laminada', 'Fibra en sandwich'):
-            return 400 / (0.75 * self.craft.sigma_u)
+            return 400 / (0.75 * sigma_u)
         else:
             raise ValueError(
                 f"El material {self.craft.material}, no se encuentra en la base de datos")
@@ -661,7 +667,7 @@ class Plating:
         return beta
 
 
-#Acero, Aluminio, Aluminio extruido y Aluminio en sandwich
+#Acero, Aluminio y Aluminio extruido
 
     def lateral_loading(self, zone, pressure, l, s, sigma_a, k) -> float:            
         lateral_loading = s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
@@ -673,11 +679,11 @@ class Plating:
         else:
             return 0.012 * s
 
-    def minimum_thickness(self, zone) -> float:
+    def minimum_thickness(self, zone, sigma_y) -> float:
         if self.craft.material == 'Acero':
-            q = 1.0 if self.craft.resistencia == "Alta" else 245 / self.craft.sigma_y
+            q = 1.0 if self.craft.resistencia == "Alta" else 245 / sigma_y
         else:
-            q = 115 / self.craft.sigma_y
+            q = 115 / sigma_y
         
         if zone == 2:    #Fondo
             if self.craft.material == "Acero":
@@ -719,7 +725,7 @@ class Plating:
 
 #Fibra laminada
 
-    def design_stress_fiber(self) -> float:
+    def design_stress_fiber(self, sigma_u) -> float:
         #  Fiber Reinforced Plastic
         sigma_a = 0.33 * sigma_u   # Design Stresses
         return sigma_a
@@ -761,6 +767,7 @@ class Plating:
         return espesor_d
 
     #With Different Properties in 0° and 90° Axes
+    
     def laminated_fifth_equation(self, zone, pressure, s, d_stress, kl, ks, El, Es) -> float:
         t = s * c * np.sqrt((pressure * ks) / (1000 * d_stress))    #1
         return t
@@ -770,8 +777,14 @@ class Plating:
         return t
 
 
-    
-    
+#Fibra en sandwich
+
+    def sandwich_same_properties_outerskin(self, pressure, s, d_stress, k) -> float:
+        A = val_data("Medida perpendicularmente desde el espaciado entre refuerzos, s, hasta el punto más alto del arco de la placa curvada entre los bordes del panel: ")
+        #   With Essentially Same Properties in 0° and 90° Axes
+        c = max((1 - A/s), 0.70)
+        SM_o = (((s * c) ** 2) * pressure * k) / (6e10 * d_stress) 
+        return SM_o
     
     
 
