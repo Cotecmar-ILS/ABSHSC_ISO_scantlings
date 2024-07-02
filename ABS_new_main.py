@@ -458,9 +458,12 @@ class Plating:
                     else:
                         espesor = max(self.laminated_same_properties(pressure, s, d_stress, k), self.laminated_second_equation(zone, pressure, s, d_stress))
                 else: # tipo_laminado == 2
-                    espesor = max(self.laminated_fifth_equation(zone, pressure, s, d_stress, kl, ks, El), self.laminated_sixth_equation(zone, pressure, s, d_stress, kl, ks, El, Es))
+                    espesor = max(self.laminated_fifth_equation(zone, pressure, s, d_stress, kl, ks, El), self.laminated_sixth_equation(zone, pressure, s, d_stress, kl, ks, El, Es))    
                 print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor} mm")
-
+            
+            elif self.craft.material == 'Fibra en Sandwich':
+                espesor = max(self.sandwich_same_properties_innerskin(pressure, s, d_stress, k), self.sandwich_same_properties_outerskin(pressure, s, d_stress, k))
+                print(f"Zona: {self.craft.ZONES[zone]}, Espesor: {espesor} mm")
 
         # Retornar el diccionario con los valores de espesor calculados
         return thickness_values
