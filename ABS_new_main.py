@@ -90,6 +90,7 @@ class Craft:
         self.selected_zones = self.select_zones()
         
         
+        
     def display_menu(self, items) -> None:
         #Funcion auxiliar para consola
         """Muestra un menú basado en una lista de items."""

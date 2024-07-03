@@ -70,6 +70,11 @@ class Craft:
     TIPO_EMBARCACION = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
 
     def __init__(self):
+        self.designer_name = input("Diseñador: ")
+        self.boat_name = input("Embarcación: ")
+        self.company_name = input("Empresa: ")
+        self.management_name = input("Gerencia: ")
+        self.division_name = input("División: ")
         self.values = {}
         self.selected_zones = []
 
