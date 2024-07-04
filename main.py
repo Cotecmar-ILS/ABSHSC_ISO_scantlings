@@ -412,77 +412,152 @@ class Pressures:
     #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
 
-class Acero_Aluminio_ALextruido:
+class Acero_Aluminio_ALextruido_Corrugated:
 
 
     def __init__(self):
         pass
 
     
-    def lateral_loading(self):
+    def lateral_loading(self, s, pressure, k, sigma_a) -> float:
         return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
     
-    def secondary_stiffening(self) -> float:
-        if self.craft.material == "Acero":
+    def secondary_stiffening(self, materia, s) -> float:
+        if material == "Acero":
             return 0.01 * s
         else:
             return 0.012 * s
         
-    def minimum_thickness(self, zone, sigma_y) -> float:
-        if self.craft.material == 'Acero':
-            q = 1.0 if self.craft.resistencia == "Alta" else 245 / sigma_y
+    def minimum_thickness(self, materia, zone, resistenci, sigma_y) -> float:
+        if material == 'Acero':
+            q = 1.0 if resistencia == "Alta" else 245 / sigma_y
         else:
             q = 115 / sigma_y
         
         if zone == 2:    #Fondo
-            if self.craft.material == "Acero":
+            if material == "Acero":
                 return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
             else:
                 return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
         elif zone == 3:  #Costados y Espejo
-            if self.craft.material == "Acero":
+            if material == "Acero":
                 return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
             else:
                 return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
         elif zone == 4:  # Strength Deck - Cubierta principal
-            if self.craft.material == "Acero":
+            if material == "Acero":
                 return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
             else:
                 return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
         else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-            if self.craft.material == "Acero":
+            if material == "Acero":
                 return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
             else:
                 return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
-            
-
-class Fondo: #zone = 2
 
 
-    def __init__(self, craft: Craft, pressures: Pressures):
-        self.L = craft.get_L()
-        self.B = craft.get_B()
-        self.D = craft.get_D()
-        self.W = craft.get_W()
-        self.pressures = pressures
+class Aluminio_Sandwich:
     
     
-    def pressure(self) -> float:
-        x, y, Bx = self.pressures.calculate_x_y_Bx(zone)
-        ncgx = self.pressures.calculate_ncgx(x)
-        FD = self.pressures.calculate_FD(context, l, s)
-        FV = self.pressures.calculate_FV(x)
+    def __init__(self):
+        pass
+    
+    
+    def section_modulus_skins(self, s, pressure, k, sigma_a) -> float:
+        SM = (s**2 * pressure * k) / (6e5 * sigma_a)
+        return SM
+    
+    def moment_inertia_skins(self, s, pressure, k1, E) -> float:
+        I = (s**3 * pressure * k1) / (120e5 * 0.24 * E)
+        return I
+    
+    def core_shear_strength(self, v, pressure, s, tau) -> float:
+        #core_shear:=(do + dc) / 2     #do = thickness of skins, dc = thickness of core
+        core_shear = (v * pressure * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation
+        return core_shear
 
-        if self.craft.L >= 61:
-            if x is None:
-                slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD
-            else:  # x is not None
-                slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * ((70 - self.craft.Bcg) / 70) * FD
-        else:  # self.craft.L < 61
-            slamming_pressure = ((self.N1 * self.craft.W) / (self.craft.LW * self.craft.BW)) * (1 + ncgx) * FD * FV
 
-        hidrostatic_pressure = self.N3 * (0.64 * self.H + self.craft.d)
-
-        index = slamming_pressure > hidrostatic_pressure
-        pressure = max(slamming_pressure, hidrostatic_pressure)
+class Fibra_Laminada:
+    
+    
+    def __init__(self):
+        pass
+    
+    
+    #With Essentially Same Properties in 0° and 90° Axes
+    def all_plating_a(self, pressure, s, c, k, sigma_a) -> float:
+        t = s * c * np.cbrt((pressure * k) / (1000 * sigma_a))
+        return t
+    
+    def all_plating_b(self, pressure, s, c, k1, k2, Ef) -> float:
+        t = s * c *  np.cbrt((pressure * k1) / (1000 * k2 * Ef))
+        return t
+    
+    def strength_deck_shell(self, c1, q1, k3, L) -> float:
+        t = k3 * (c1 + 0.26 * L) * np.sqrt(q1)
+        return t
+    
+    def strength_deck_bottom_shell(self, s, kb, uc, Ec, SM_R, SM_A) -> float:
+        t = (s/kb) * np.sqrt((0.6 * uc) / Ec) * np.sqrt(SM_R / SM_A)
+        return t
+    
+    #With Different Properties in 0° and 90° Axes
+    def equation_a(self, pressure, s, c, ks, sigma_as) -> float:
+        t = s * c * np.sqrt((pressure * ks) / (1000 * sigma_as))
+        return t
+    
+    def equation_b(self, pressure, s, c, kl, sigma_al, El, Es) -> float:
+        t = s * c * np.sqrt((pressure * kl) / (1000 * sigma_al)) * np.power(El / Es, 1/4)
+        return t
+    
+    
+class Fibra_Sandwich:
+    
+    
+    def __init__(self):
+        pass
+    
+    
+    #Laminate with Essentially Same Bending Strength and Stiffness in 0° and 90° Axes
+    def section_modulus_outer_skin(self, pressure, s, c, k, sigma_ao) -> float:
+        SM_o = ((s * c)**2 * pressure * k) / (6e5 * sigma_ao)
+        return SM_o
+    
+    def section_modulus_inner_skin(self, pressure, s, c, k, sigma_ai) -> float:
+        SM_i = ((s * c)**2 * pressure * k) / (6e5 * sigma_ai)
+        return SM_i
+    
+    def moment_intertia(self, pressure, s, c, k1, k2, Etc) -> float:
+        I = ((s * c)**3 * pressure * k1) / (120e5 * k2 * Etc)
+        return I
+    
+    #Laminates with Different Bending Strength and Stiffness in 0° and 90° Axes
+    def section_modulus_outer_skin_parrallel_s(self, pressure, s, c, ks, sigma_aso) -> float:
+        SM_o = ((s * c)**2 * pressure * ks) / (6e5 * sigma_aso)
+        return SM_o
+    
+    def section_modulus_outer_skin_parallel_l(self, pressure, s, c, kl, sigma_alo, El, Es) -> float:
+        SM_o = ((s * c)**2 * pressure * kl) / (6e5 * sigma_alo) * np.sqrt(El / Es)
+        return SM_o
+    
+    def section_modulus_inner_skin_parrallel_s(self, pressure, s, c, ks, sigma_asi) -> float:
+        SM_i = ((s * c)**2 * pressure * ks) / (6e5 * sigma_asi)
+        return SM_i
+    
+    def section_modulus_inner_skin_parallel_l(self, pressure, s, c, kl, sigma_ali, El, Es) -> float:
+        SM_i = ((s * c)**2 * pressure * kl) / (6e5 * sigma_ali) * np.sqrt(El / Es)
+        return SM_i
+    
+    def moment_intertia_parrallel_s(self, pressure, s, c, k1, k2, Es) -> float:
+        I = ((s * c)**2 * pressure * k1) / (120e5 * k2 * Es)
+        return I
+    
+    def moment_intertia_parallel_l(self, pressure, s, c, k1, k2, El) -> float: #REVISAR LA HICE YO
+        I = ((s * c)**2 * pressure * k1) / (120e5 * k2 * El)
+        return I
+    
+    def core_shear_strength(self, v, pressure, s, tau) -> float:
+        #core_shear:=(do + dc) / 2     #do = thickness of skins, dc = thickness of core
+        core_shear = (v * pressure * s) / 1000 * tau     #The thickness of core and sandwich is to be not less than given by the following equation
+        return core_shear
     
