@@ -75,8 +75,10 @@ class Craft:
         self.company_name = input("Empresa: ")
         self.management_name = input("Gerencia: ")
         self.division_name = input("División: ")
-        self.values = {}
+        self.material = self.select_material()
         self.selected_zones = []
+        self.values = {}
+        
 
     #Metodo para pedir datos y validar si ya existe
     def get_value(self, key, prompt, *args):
@@ -411,46 +413,47 @@ class Pressures:
     #     height = val_data("Altura del almacén (metros): ", True, True, -1)
     #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
+#Clases por materiales
+class Acero_Aluminio_Alextruido_AlCorrugated:
 
-class Acero_Aluminio_ALextruido_Corrugated:
 
-
-    def __init__(self):
-        pass
+    def __init__(self, craft: Craft):
+        self.craft = craft
+        zone_results = {}
 
     
     def lateral_loading(self, s, pressure, k, sigma_a) -> float:
         return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
     
-    def secondary_stiffening(self, materia, s) -> float:
-        if material == "Acero":
+    def secondary_stiffening(self, s) -> float:
+        if self.craft.material == "Acero":
             return 0.01 * s
         else:
             return 0.012 * s
         
-    def minimum_thickness(self, materia, zone, resistenci, sigma_y) -> float:
-        if material == 'Acero':
+    def minimum_thickness(self, zona, resistenci, sigma_y) -> float:
+        if self.craft.material == 'Acero':
             q = 1.0 if resistencia == "Alta" else 245 / sigma_y
         else:
             q = 115 / sigma_y
         
         if zone == 2:    #Fondo
-            if material == "Acero":
+            if self.craft.material == "Acero":
                 return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
             else:
                 return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
         elif zone == 3:  #Costados y Espejo
-            if material == "Acero":
+            if self.craft.material == "Acero":
                 return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
             else:
                 return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
         elif zone == 4:  # Strength Deck - Cubierta principal
-            if material == "Acero":
+            if self.craft.material == "Acero":
                 return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
             else:
                 return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
         else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-            if material == "Acero":
+            if self.craft.material == "Acero":
                 return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
             else:
                 return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
@@ -557,7 +560,7 @@ class Fibra_Sandwich:
         return I
     
     def core_shear_strength(self, v, pressure, s, tau) -> float:
-        #core_shear:=(do + dc) / 2     #do = thickness of skins, dc = thickness of core
+        #core_shear: (do + dc) / 2 = (v * pressure * s) / 1000 * tau    #do = thickness of skins, dc = thickness of core
         core_shear = (v * pressure * s) / 1000 * tau     #The thickness of core and sandwich is to be not less than given by the following equation
         return core_shear
     
