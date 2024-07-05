@@ -44,31 +44,13 @@ ZONAS
 --------------------------------------------------------------------------
 """
 
-
 import numpy as np
 from validations import val_data
 
 
-
 class Craft:
-    MATERIALS = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich')
-    ZONES = {
-        1: 'Vagra Maestra',
-        2: 'Casco de Fondo',
-        3: 'Casco de Costado y Espejo de Popa',
-        4: 'Cubierta Principal',
-        5: 'Cubiertas Inferiores/Otras Cubiertas',
-        6: 'Cubiertas Humedas',
-        7: 'Cubiertas de Superestructura y Casetas de Cubierta',
-        8: 'Mamparos Estancos',
-        9: 'Mamparos de Tanques Profundos',
-        10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-        11: 'Túneles de Waterjets',
-        12: 'Túneles de Bow Thrusters',
-        13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
-    }
-    TIPO_EMBARCACION = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
-
+    
+    
     def __init__(self):
         self.designer_name = input("Diseñador: ")
         self.boat_name = input("Embarcación: ")
@@ -76,7 +58,7 @@ class Craft:
         self.management_name = input("Gerencia: ")
         self.division_name = input("División: ")
         self.material = self.select_material()
-        self.selected_zones = []
+        self.selected_zones = self.select_zones()
         self.values = {}
         
 
@@ -94,14 +76,16 @@ class Craft:
 
     def select_tipo_embarcacion(self) -> int:
         print("\nSeleccione el tipo de embarcación")
-        self.display_menu(self.TIPO_EMBARCACION)
-        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.TIPO_EMBARCACION))
+        tipo_embarcacion = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
+        self.display_menu(tipo_embarcacion)
+        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(tipo_embarcacion))
         return choice
     
     def select_material(self) -> int:
         print("\nLista de materiales disponibles")
-        self.display_menu(self.MATERIALS)
-        opcion = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(self.MATERIALS))
+        materiales = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich')
+        self.display_menu(materiales)
+        opcion = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
         return opcion
     
     def determine_resistencia(self) -> str: #Revisar
@@ -115,25 +99,41 @@ class Craft:
         else:
             return 'Ordinaria'
         
-    def select_zones(self) -> list:
+    def select_zones(self) -> list: #HACER FILTRADO AQUI DE ZONAS DISP PARA CADA MATERIAL
         print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar) \n")
+        zonas = {
+        1: 'Vagra Maestra',
+        2: 'Casco de Fondo',
+        3: 'Casco de Costado y Espejo de Popa',
+        4: 'Cubierta Principal',
+        5: 'Cubiertas Inferiores/Otras Cubiertas',
+        6: 'Cubiertas Humedas',
+        7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+        8: 'Mamparos Estancos',
+        9: 'Mamparos de Tanques Profundos',
+        10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+        11: 'Túneles de Waterjets',
+        12: 'Túneles de Bow Thrusters',
+        13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+        }
+        
         # Mostrar las zonas desde el diccionario
-        for number, name in self.ZONES.items():
+        for number, name in zonas.items():
             print(f"{number}. {name}")
 
         selected_zones = []
         while True:
             try:
-                choice = val_data("Ingrese el número correspondiente y presione Enter: ", False, False, -1, 0, max(self.ZONES.keys()))
+                choice = val_data("Ingrese el número correspondiente y presione Enter: ", False, False, -1, 0, max(zonas.keys()))
                 if choice == 0:
                     if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
                         raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
                     break  # Finaliza si hay al menos una zona seleccionada
-                elif choice in self.ZONES:
+                elif choice in zonas:
                     if choice in selected_zones:
                         raise ValueError("Zona ya seleccionada, elija otra.")
                     selected_zones.append(choice)
-                    print(f"Añadida: {self.ZONES[choice]}")
+                    print(f"Añadida: {zonas[choice]}")
                 else:
                     print("Selección no válida, intente de nuevo.")
             except ValueError as e:
@@ -422,6 +422,55 @@ class Acero_Aluminio_Alextruido_AlCorrugated:
         zone_results = {}
 
     
+    def design_stress_plating(self, zone, sigma_y, sigma_u, index) -> float:
+        # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
+        sigma = min(sigma_y, 0.7 * sigma_u)
+
+        if zone in [2, 3]:
+            if index == True:
+                d_stress = 0.90 * sigma
+            else:
+                d_stress = 0.55 * sigma
+        elif zone in [4, 5, 7, 9, 10, 13]:
+            d_stress = 0.60 * sigma
+        elif zone == 6:
+            d_stress = 0.90 * sigma
+        elif zone == 8:
+            d_stress = 0.95 * sigma
+        elif zone == 11:
+            if index == True:
+                d_stress = 0.60 * sigma
+            else:
+                d_stress = 0.55 * sigma
+        else:
+            d_stress = "No aplicable"
+        
+        return d_stress
+    
+    def constant_k(self, l, s) -> float:
+        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
+        ls = l / s
+        if ls > 2.0:
+            k = 0.500
+        elif ls < 1.0:
+            k = 0.308
+        else:
+            k = np.interp(ls, ls_known, k_known)
+        return k
+    
+    def constant_k1(self, l, s) -> float:
+        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
+        ls = l / s
+        if ls > 2.0:
+            k1 = 0.028
+        elif ls < 1.0:
+            k1 = 0.014
+        else:
+            k1 = np.interp(ls, ls_known, k1_known)
+        return k1
+    
     def lateral_loading(self, s, pressure, k, sigma_a) -> float:
         return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
     
@@ -457,6 +506,8 @@ class Acero_Aluminio_Alextruido_AlCorrugated:
                 return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
             else:
                 return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
+
+    #def plating_fondo():
 
 
 class Aluminio_Sandwich:
@@ -563,4 +614,26 @@ class Fibra_Sandwich:
         #core_shear: (do + dc) / 2 = (v * pressure * s) / 1000 * tau    #do = thickness of skins, dc = thickness of core
         core_shear = (v * pressure * s) / 1000 * tau     #The thickness of core and sandwich is to be not less than given by the following equation
         return core_shear
+
+
+def main():
+    craft = Craft()
+    for zone in craft.selected_zones:
+        if craft.material in ["Acero", "Aluminio", "Aluminio extruido", "Aluminio corrugado"]:
+            embarcacion = Acero_Aluminio_Alextruido_AlCorrugated(craft)
+            embarcacion.plating()
+        elif craft.material == "Aluminio en sandwich":
+            calculo = Aluminio_Sandwich(craft)
+            print(calculo)
+        elif craft.material == "Fibra laminada":
+            calculo = Fibra_Laminada(craft)
+            print(calculo)
+        else:
+            calculo = Fibra_Sandwich(craft)
+            print(calculo)
+    
+    
+
+if __name__ == '__main__':
+    main()
     
