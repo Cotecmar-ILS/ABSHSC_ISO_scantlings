@@ -42,6 +42,22 @@ ZONAS
         13. Cubiertas de Operación o Almacenamiento de Vehículos
         
 --------------------------------------------------------------------------
+zonas = {
+        1: 'Vagra Maestra',
+        2: 'Casco de Fondo',
+        3: 'Casco de Costado y Espejo de Popa',
+        4: 'Cubierta Principal',
+        5: 'Cubiertas Inferiores/Otras Cubiertas',
+        6: 'Cubiertas Humedas',
+        7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+        8: 'Mamparos Estancos',
+        9: 'Mamparos de Tanques Profundos',
+        10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+        11: 'Túneles de Waterjets',
+        12: 'Túneles de Bow Thrusters',
+        13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+        }
+
 """
 
 import numpy as np
@@ -58,7 +74,7 @@ class Craft:
         self.management_name = input("Gerencia: ")
         self.division_name = input("División: ")
         self.material = self.select_material()
-        self.selected_zones = self.select_zones()
+        self.selected_zones = self.get_zones()
         self.values = {}
         
 
@@ -99,37 +115,43 @@ class Craft:
         else:
             return 'Ordinaria'
         
-    def select_zones(self) -> list: #HACER FILTRADO AQUI DE ZONAS DISP PARA CADA MATERIAL
-        print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar) \n")
+    def get_zones(self) -> list:
         zonas = {
-        1: 'Vagra Maestra',
-        2: 'Casco de Fondo',
-        3: 'Casco de Costado y Espejo de Popa',
-        4: 'Cubierta Principal',
-        5: 'Cubiertas Inferiores/Otras Cubiertas',
-        6: 'Cubiertas Humedas',
-        7: 'Cubiertas de Superestructura y Casetas de Cubierta',
-        8: 'Mamparos Estancos',
-        9: 'Mamparos de Tanques Profundos',
-        10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-        11: 'Túneles de Waterjets',
-        12: 'Túneles de Bow Thrusters',
-        13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+            1: 'Vagra Maestra',
+            2: 'Casco de Fondo',
+            3: 'Casco de Costado y Espejo de Popa',
+            4: 'Cubierta de resistencia',
+            5: 'Cubiertas Inferiores/Otras Cubiertas',
+            6: 'Cubiertas Humedas',
+            7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+            8: 'Mamparos Estancos',
+            9: 'Mamparos de Tanques Profundos',
+            10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+            11: 'Túneles de Waterjets',
+            12: 'Túneles de Bow Thrusters',
+            13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
         }
         
-        # Mostrar las zonas desde el diccionario
-        for number, name in zonas.items():
-            print(f"{number}. {name}")
+        if self.material in ['Acero', 'Aluminio']:
+            available_zones = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        else:
+            available_zones = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+        
+        print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
+        
+        # Mostrar las zonas disponibles desde una lista
+        for number in available_zones:
+            print(f"{number}. {zonas[number]}")
 
         selected_zones = []
         while True:
             try:
-                choice = val_data("Ingrese el número correspondiente y presione Enter: ", False, False, -1, 0, max(zonas.keys()))
+                choice = int(input("Ingrese el número correspondiente y presione Enter: "))
                 if choice == 0:
                     if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
                         raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
                     break  # Finaliza si hay al menos una zona seleccionada
-                elif choice in zonas:
+                elif choice in available_zones:
                     if choice in selected_zones:
                         raise ValueError("Zona ya seleccionada, elija otra.")
                     selected_zones.append(choice)
@@ -414,7 +436,7 @@ class Pressures:
     #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
 
 #Clases por materiales
-class Acero_Aluminio_Alextruido_AlCorrugated:
+class Acero_Aluminio:
 
 
     def __init__(self, craft: Craft):
@@ -508,6 +530,13 @@ class Acero_Aluminio_Alextruido_AlCorrugated:
                 return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
 
     #def plating_fondo():
+
+
+class Alextruido_AlCorrugated:
+    
+    
+    def __init__(self):
+        pass
 
 
 class Aluminio_Sandwich:
