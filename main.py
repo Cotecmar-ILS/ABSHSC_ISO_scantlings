@@ -450,7 +450,6 @@ class Acero_Aluminio:
         zone_results = {}
 
     
-    
     def determine_resistencia(self) -> str: #Revisar
         if self.craft.material == 'Acero':
             if 200 < self.sigma_y < 300:
@@ -581,8 +580,8 @@ class Aluminio_Sandwich:
 class Fibra_Laminada:
     
     
-    def __init__(self):
-        pass
+    def __init__(self, craft: Craft):
+        self.craft = craft
     
     
     #With Essentially Same Properties in 0° and 90° Axes
@@ -615,9 +614,9 @@ class Fibra_Laminada:
 class Fibra_Sandwich:
     
     
-    def __init__(self):
-        pass
-    
+    def __init__(self, craft: Craft):
+        self.craft = craft
+        
     
     #Laminate with Essentially Same Bending Strength and Stiffness in 0° and 90° Axes
     def section_modulus_outer_skin(self, pressure, s, c, k, sigma_ao) -> float:
@@ -664,9 +663,10 @@ class Fibra_Sandwich:
 
 
 def main():
+    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
     craft = Craft()
     for zone in craft.selected_zones:
-        if craft.material in ["Acero", "Aluminio"]:
+        if craft.material in [1, 2]: #mirar
             embarcacion = Acero_Aluminio(craft)
             embarcacion.plating()
         elif craft.material in ["Aluminio extruido", "Aluminio corrugado"]:
