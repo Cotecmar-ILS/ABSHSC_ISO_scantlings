@@ -207,21 +207,28 @@ class Pressures:
         
 
     def casco_fondo(self, context, zone, l, s):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        Bcg = self.craft.get_Bcg()
+        
         x, y, Bx = self.calculate_x_y_Bx(zone)
         ncgx = self.calculate_ncgx(x)
         FD = self.calculate_FD(context, l, s)
         FV = self.calculate_FV(x)
         H = self.calculate_H()
-
-        if self.craft.L >= 61:
+        
+        if L >= 61:
             if x is None:
-                slamming_pressure = ((self.N1 * self.craft.get_W()) / (self.craft.get_LW() * self.craft.get_BW())) * (1 + ncgx) * FD
+                slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
             else:  # x is not None
-                slamming_pressure = ((self.N1 * self.craft.get_W()) / (self.craft.get_LW() * self.craft.get_BW())) * (1 + ncgx) * ((70 - self.craft.get_Bcg()) / 70) * FD
+                slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bcg) / 70) * FD
         else:  # self.craft.L < 61
-            slamming_pressure = ((self.N1 * self.craft.get_W()) / (self.craft.get_LW() * self.craft.get_BW())) * (1 + ncgx) * FD * FV
+            slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD * FV
 
-        hidrostatic_pressure = self.N3 * (0.64 * H + self.craft.get_d())
+        hidrostatic_pressure = self.N3 * (0.64 * H + d)
 
         index = slamming_pressure > hidrostatic_pressure
         pressure = max(slamming_pressure, hidrostatic_pressure)
