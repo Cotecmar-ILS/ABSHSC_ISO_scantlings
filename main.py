@@ -44,23 +44,6 @@ ZONAS
         14. Cubiertas de Operación o Almacenamiento de Vehículos
         
 --------------------------------------------------------------------------
-zonas = {
-        1: 'Vagra Maestra',
-        2: 'Casco de Fondo',
-        3: 'Casco de Costado y Espejo de Popa',
-        4: 'Espejo de Popa',
-        5: 'Cubierta Principal',
-        6: 'Cubiertas Inferiores/Otras Cubiertas',
-        7: 'Cubiertas Humedas',
-        8: 'Cubiertas de Superestructura y Casetas de Cubierta',
-        9: 'Mamparos Estancos',
-        10: 'Mamparos de Tanques Profundos',
-        11: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-        12: 'Túneles de Waterjets',
-        13: 'Túneles de Bow Thrusters',
-        14: 'Cubiertas de Operación o Almacenamiento de Vehículos'
-        }
-
 """
 
 import numpy as np
@@ -125,9 +108,9 @@ class Craft:
         }
         
         if self.material in ['Acero', 'Aluminio']:
-            available_zones = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         else:
-            available_zones = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         
         print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
         
@@ -154,6 +137,7 @@ class Craft:
                 print(e)
  
         return selected_zones
+
 
     def get_L(self) -> float:
         return self.get_value('L', "Eslora del casco (metros): ")
@@ -198,7 +182,7 @@ class Craft:
         return h13
     
     
-class Pressures:
+class Zone:
 
 
     def __init__(self, craft: Craft):
@@ -206,15 +190,19 @@ class Pressures:
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
-        
+    
 
     def casco_fondo(self, context, zone, l, s):
         L = self.craft.get_L()
         LW = self.craft.get_LW()
         BW = self.craft.get_BW()
+        D = self.craft.get_D()
         d = self.craft.get_d()
         W = self.craft.get_W()
+        V = self.craft.get_V()
         Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
         
         x, y, Bx = self.calculate_x_y_Bx(zone)
         ncgx = self.calculate_ncgx(x)
@@ -235,19 +223,34 @@ class Pressures:
         index = slamming_pressure > hidrostatic_pressure
         pressure = max(slamming_pressure, hidrostatic_pressure)
         
+        if material == "Acero":
+            plating = Acero_Aluminio()
+        
         return pressure, index
 
     def casco_costado(self, context, zone, l, s):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
+        
         x, y, Bx = self.calculate_x_y_Bx(zone)
         ncgx = self.calculate_ncgx(x)
         FD = self.calculate_FD(context, l, s)
         Hs = self.calculate_Hs()
         
         if x is None:
-            slamming_pressure = ((self.N1 * self.craft.get_W()) / (self.craft.get_LW() * self.craft.get_BW())) * (1 + ncgx) * FD
+            slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
             hidrostatic_pressure = self.N3 * Hs
         else:
-            slamming_pressure = ((self.N1 * self.craft.get_W()) / (self.craft.get_LW() * self.craft.get_BW())) * (1 + ncgx) * ((70 - Bx) / (70 - self.craft.get_Bcg())) * FD
+            slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bx) / (70 - Bcg)) * FD
             hidrostatic_pressure = self.N3 * (Hs - y)
             
         index = slamming_pressure > hidrostatic_pressure    
@@ -256,21 +259,43 @@ class Pressures:
         return pressure, index
 
     def espejo_popa(self, context):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
+        
         pressure_costado, index = self.casco_costado()
         
         Fa = 3.25 if context == 'Plating' else 1
-        Cf = 0.0125 if self.craft.get_L() < 80 else 1.0
+        Cf = 0.0125 if L < 80 else 1.0
         # MOSTRAR IMAGEN 1
         alfa = val_data("Ángulo de ensanchamiento (grados): ")
         beta = val_data("Ángulo de entrada (grados): ")
-        pressure_forend = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * self.craft.get_V() * np.cos(beta) + 0.6 * self.craft.get_L() ** 0.5) ** 2)
+        pressure_forend = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * V * np.cos(beta) + 0.6 * L ** 0.5) ** 2)
         
         pressure = max(pressure_costado, pressure_forend)
 
         return pressure, index
         
     def cubierta_resitencia(self):
-        pressure = 0.20 * self.craft.get_L() + 7.6
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        pressure = 0.20 * L + 7.6
         return pressure
     
     def cubiertas_inferiores_otras(self):
@@ -286,35 +311,89 @@ class Pressures:
         #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
         #     height = val_data("Altura del almacén (metros): ", True, True, -1)
         #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
-        pressure = 0.10 * self.craft.get_L() + 6.1
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        pressure = 0.10 * L + 6.1
         return pressure
 
     def cubiertas_humedas(self, context, zone, l, s):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
         x, y, Bx = self.calculate_x_y_Bx(zone)
         F1 = self.calculate_F1(x)
         FD = self.calculate_FD(context, l, s)
+        
         # Mostrar imagen 2
-        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, self.craft.get_D() - self.craft.get_d())
-        if self.craft.get_L() < 61:
-            v1 = ((4 * self.craft.get_h13()) / (np.sqrt(self.craft.get_L()))) + 1
-            pressure = 30 * self.N1 * FD * F1 * self.craft.get_V() * v1 * (1 - 0.85 * ha / self.craft.get_h13())
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D - d)
+        if L < 61:
+            v1 = ((4 * h13) / (np.sqrt(L))) + 1
+            pressure = 30 * self.N1 * FD * F1 * V * v1 * (1 - 0.85 * ha / h13)
         else:
-            v1 = 5 * np.sqrt(self.craft.get_h13() / self.craft.get_L()) + 1
-            pressure = 55 * FD * F1 * np.pow(self.craft.get_V(), 0.1) * v1 * (1 - 0.35 * (ha / self.craft.get_h13()))
+            v1 = 5 * np.sqrt(h13 / L) + 1
+            pressure = 55 * FD * F1 * np.pow(V, 0.1) * v1 * (1 - 0.35 * (ha / h13))
             
         return pressure
 
     def cubiertas_superestructura_casetas(self):
-        pressure = 0.10 * self.craft.get_L() + 6.1
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        pressure = 0.10 * L + 6.1
         return pressure
 
     def mamparos_estancos(self):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
         #Mostrar Imagen 3 - ISO 12215-5
         h = val_data("Altura del mamparo (metros): ")
         pressure = self.N3 * h
         return pressure
 
     def mamparos_tanques_profundos(self, zone): #Insertar imagen
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
         x, y, Bx = self.calculate_x_y_Bx(zone)
         ncgx = self.calculate_ncgx(x)
         #Mostrar Imagen 3 - ISO 12215-5
@@ -334,6 +413,17 @@ class Pressures:
         una chapa lateral como prolongación de la chapa del forro exterior, o que no está instalada en el interior 
         del costado del casco más del 4% de la manga.
         """
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
         if context == 'Plating':
             pressures = {
                 "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
@@ -354,12 +444,12 @@ class Pressures:
 
         # Cálculo de la presión según la longitud de la embarcación
         for location, (P1, P2) in pressures.items():
-            if self.craft.get_L() <= 12.2:
+            if L <= 12.2:
                 result[location] = P1
-            elif self.craft.get_L() > 30.5:
+            elif L > 30.5:
                 result[location] = P2
             else:
-                result[location] = np.interp(self.craft.get_L(), [12.2, 30.5], [P1, P2])
+                result[location] = np.interp(L, [12.2, 30.5], [P1, P2])
                 
         #Retorna un diccionario
         pressure = result
@@ -367,6 +457,17 @@ class Pressures:
         return pressure
 
     def tuneles_waterjets(self):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        V = self.craft.get_V()
+        Bcg = self.craft.get_Bcg()
+        tau = self.craft.get_tau()
+        h13 = self.get_h13()
+        
         pressure_fondo, index = self.casco_fondo()
         pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
         return pressure, index
@@ -452,8 +553,9 @@ class Pressures:
 class Acero_Aluminio:
 
 
-    def __init__(self, craft: Craft):
+    def __init__(self, craft: Craft, zone):
         self.craft = craft
+        self.zone = zone
         self.sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_u = val_data("Limite elastico por tracción (MPa): ")
         zone_results = {}
@@ -676,7 +778,7 @@ def main():
     craft = Craft()
     for zone in craft.selected_zones:
         if craft.material in [1, 2]: #mirar
-            embarcacion = Acero_Aluminio(craft)
+            embarcacion = Acero_Aluminio(craft, zone)
             embarcacion.plating()
         elif craft.material in ["Aluminio extruido", "Aluminio corrugado"]:
             embarcacion = Alextruido_AlCorrugated(craft)
