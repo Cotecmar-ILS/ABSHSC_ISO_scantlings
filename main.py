@@ -82,7 +82,7 @@ class Craft:
         
 
     #Metodo para pedir datos y validar si ya existe
-    def get_value(self, key, prompt, *args):
+    def get_value(self, key, prompt, *args) -> int | float:
         if key not in self.values:
             self.values[key] = val_data(prompt, *args)
         return self.values[key]
@@ -155,44 +155,46 @@ class Craft:
  
         return selected_zones
 
-    def get_L(self):
+    def get_L(self) -> int | float:
         return self.get_value('L', "Eslora del casco (metros): ")
 
-    def get_LW(self):
+    def get_LW(self) -> int | float:
         L = self.get_L()  # Asegura que L es obtenido y validado primero
         return self.get_value('LW', "Eslora de flotación (metros): ", True, True, -1, 0, L)
 
-    def get_B(self):
+    def get_B(self) -> int | float:
         return self.get_value('B', "Manga Total (metros): ")
 
-    def get_BW(self):
+    def get_BW(self) -> int | float:
         B = self.get_B()  # Asegura que B es obtenido y validado primero
         return self.get_value('BW', "Manga de flotación (metros): ", True, True, -1, 0, B)
 
-    def get_D(self):
+    def get_D(self) -> int | float:
         return self.get_value('D', "Puntal (metros): ")
 
-    def get_d(self):
+    def get_d(self) -> int | float:
         L = self.get_L()
         D = self.get_D()
         return self.get_value('d', "Calado (metros): ", True, True, 0, 0.04 * L, D)
 
-    def get_V(self):
+    def get_V(self) -> int | float:
         L = self.get_L()
         return self.get_value('V', "Velocidad maxima (nudos): ", True, True, -1, 0, 20 if L > 61 else None)
 
-    def get_W(self):
+    def get_W(self) -> int | float:
         return self.get_value('W', "Desplazamiento de la embarcación (kg): ")
 
-    def get_Bcg(self):
+    def get_Bcg(self) -> int | float:
         return self.get_value('Bcg', "Ángulo de astilla muerta fondo en LCG (°grados): ")
 
-    def get_tau(self):
+    def get_tau(self) -> int | float:
         return self.get_value('tau', "Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
     
-    def get_h13(self):
+    def get_h13(self) -> int | float:
+        L = self.get_L()
+        tipo_embarcacion = self.get_tipo_embarcacion()
         h13_values = {1: 4, 2: 2.5, 3: 0.5}
-        h13 = max(h13_values.get(self.get_tipo_embarcacion()), (self.get_L() / 12))
+        h13 = max(h13_values.get(tipo_embarcacion), (L / 12))
         return h13
     
     
