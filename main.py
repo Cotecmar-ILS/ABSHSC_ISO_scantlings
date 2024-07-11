@@ -557,125 +557,139 @@ def calculate_Hs() -> float:
     return max(0.083 * craft.get_L() * craft.get_d(), craft.get_D() + 1.22) if craft.get_L() < 30 else (0.64 * calculate_H() + craft.get_d())
 
 
+#class Materials:
 
-
-# def plating(craft, zone, pressure, material):
-#     if material == "Acero":
-#         sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-#         sigma_u = val_data("Limite elastico por tracción (MPa): ")
-
-#         plating = max(lateral_loading(pressure), secondary_stiffening(s), minimum_thickness(zone))
+#subclass Acero_Aluminio:
+    sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+    sigma_u = val_data("Limite elastico por tracción (MPa): ")
+    
+def acero_aluminio_plating(craft, zone, pressure):
+    
+    
+    if zone == 2:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 3:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 4:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 5:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 6:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 7:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 8:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        return thickness
+    elif zone == 9:
+        thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
     
     
     
-    
-#Clases por materiales
-class Acero_Aluminio:
-
-
-    def __init__(self, craft: Craft, zone):
-        self.craft = craft
-        self.zone = zone
-        self.sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-        self.sigma_u = val_data("Limite elastico por tracción (MPa): ")
-        zone_results = {}
-
-    
-    def determine_resistencia(self) -> str: #Revisar
-        if self.craft.material == 'Acero':
-            if 200 < self.sigma_y < 300:
-                return 'Ordinaria'
-            elif 300 <= self.sigma_y:
-                return 'Alta'
-            else:
-                return 'Baja'
-        else:
+def determine_resistencia(sigma_y) -> str: #Revisar
+    if craft.material == 'Acero':
+        if 200 < sigma_y < 300:
             return 'Ordinaria'
+        elif 300 <= sigma_y:
+            return 'Alta'
+        else:
+            return 'Baja'
+    else:
+        return 'Ordinaria'
     
-    def design_stress_plating(self, zone, sigma_y, sigma_u, index) -> float:
-        # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
-        sigma = min(sigma_y, 0.7 * sigma_u)
+def design_stress_plating(zone, sigma_y, sigma_u, index) -> float:
+    # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
+    sigma = min(sigma_y, 0.7 * sigma_u)
 
-        if zone in [2, 3]:
-            if index == True:
-                d_stress = 0.90 * sigma
-            else:
-                d_stress = 0.55 * sigma
-        elif zone in [4, 5, 7, 9, 10, 13]:
-            d_stress = 0.60 * sigma
-        elif zone == 6:
+    if zone in [2, 3]:
+        if index == True:
             d_stress = 0.90 * sigma
-        elif zone == 8:
-            d_stress = 0.95 * sigma
-        elif zone == 11:
-            if index == True:
-                d_stress = 0.60 * sigma
-            else:
-                d_stress = 0.55 * sigma
         else:
-            d_stress = "No aplicable"
-        
-        return d_stress
-    
-    def constant_k(self, l, s) -> float:
-        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-        k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
-        ls = l / s
-        if ls > 2.0:
-            k = 0.500
-        elif ls < 1.0:
-            k = 0.308
+            d_stress = 0.55 * sigma
+    elif zone in [4, 5, 7, 9, 10, 13]:
+        d_stress = 0.60 * sigma
+    elif zone == 6:
+        d_stress = 0.90 * sigma
+    elif zone == 8:
+        d_stress = 0.95 * sigma
+    elif zone == 11:
+        if index == True:
+            d_stress = 0.60 * sigma
         else:
-            k = np.interp(ls, ls_known, k_known)
-        return k
+            d_stress = 0.55 * sigma
+    else:
+        d_stress = "No aplicable"
     
-    def constant_k1(self, l, s) -> float:
-        ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-        k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
-        ls = l / s
-        if ls > 2.0:
-            k1 = 0.028
-        elif ls < 1.0:
-            k1 = 0.014
-        else:
-            k1 = np.interp(ls, ls_known, k1_known)
-        return k1
+    return d_stress
+
+def constant_k(l, s) -> float:
+    ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+    k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
+    ls = l / s
+    if ls > 2.0:
+        k = 0.500
+    elif ls < 1.0:
+        k = 0.308
+    else:
+        k = np.interp(ls, ls_known, k_known)
+    return k
+
+def constant_k1(l, s) -> float:
+    ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+    k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
+    ls = l / s
+    if ls > 2.0:
+        k1 = 0.028
+    elif ls < 1.0:
+        k1 = 0.014
+    else:
+        k1 = np.interp(ls, ls_known, k1_known)
+    return k1
+
+def lateral_loading(zone, pressure, l, s, sigma_y, sigma_u) -> float:
+    k = constant_k(l, s)
+    sigma_a = design_stress_plating(zone, sigma_y, sigma_u, index)
+    return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
+
+def secondary_stiffening(s) -> float:
+    if self.craft.material == "Acero":
+        return 0.01 * s
+    else:
+        return 0.012 * s
     
-    def lateral_loading(self, s, pressure, k, sigma_a) -> float:
-        return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
+def minimum_thickness(zona, resistenci, sigma_y) -> float:
     
-    def secondary_stiffening(self, s) -> float:
+    if self.craft.material == 'Acero':
+        q = 1.0 if resistencia == "Alta" else 245 / sigma_y
+    else:
+        q = 115 / sigma_y
+    
+    if zone == 2:    #Fondo
         if self.craft.material == "Acero":
-            return 0.01 * s
+            return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
         else:
-            return 0.012 * s
-        
-    def minimum_thickness(self, zona, resistenci, sigma_y) -> float:
-        if self.craft.material == 'Acero':
-            q = 1.0 if resistencia == "Alta" else 245 / sigma_y
+            return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
+    elif zone == 3:  #Costados y Espejo
+        if self.craft.material == "Acero":
+            return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
         else:
-            q = 115 / sigma_y
-        
-        if zone == 2:    #Fondo
-            if self.craft.material == "Acero":
-                return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
-            else:
-                return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
-        elif zone == 3:  #Costados y Espejo
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
-            else:
-                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
-        elif zone == 4:  # Strength Deck - Cubierta principal
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
-            else:
-                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
-        else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-            if self.craft.material == "Acero":
-                return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
-            else:
-                return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
+            return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+    elif zone == 4:  # Strength Deck - Cubierta principal
+        if self.craft.material == "Acero":
+            return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
+        else:
+            return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+    else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
+        if self.craft.material == "Acero":
+            return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
+        else:
+            return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
 
     #def plating_fondo():
 
@@ -834,9 +848,9 @@ def main3():
         pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
             
         if material in ["Acero", "Aluminio"]:
-            thickness = plating_acero_aluminio(craft, zone, material, pressure)
+            thickness = plating_acero_aluminio(craft, zone, pressure)
         elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
-            thickness = plating_alextruido_alcorrugado(craft, zone, material, pressure)
+            thickness = plating_alextruido_alcorrugado(craft, zone, pressure)
         elif material == "Aluminio en Sandwich":
             section_modulus, moment_inertia, core_shear_strength = plating_alsandwich(craft, zone, pressure)
         elif material == "Fibra Laminada":
@@ -874,4 +888,27 @@ def main4():
             section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate()
             print(f"Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
                 la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]")
-            
+
+def main5():
+    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
+    craft = Craft()
+    material = craft.material
+    
+    if material in ["Acero", "Aluminio"]:
+        plating = Acero_Aluminio(craft, zone, material, pressure)
+    elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
+        plating = Alextruido_AlCorrugated(craft, zone, material, pressure)
+    elif material == "Aluminio en Sandwich":
+        plating = Aluminio_Sandwich(craft, zone, pressure)
+    elif material == "Fibra Laminada":
+        plating = Fibra_Laminada(craft, zone, pressure)
+    elif material == "Fibra en sandwich":
+        plating = Fibra_Sandwich(craft, zone, pressure)
+    
+    
+    for zone in craft.selected_zones:
+        pressures_list = []
+        pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
+        pressures_list.append(pressure)
+    
+    
