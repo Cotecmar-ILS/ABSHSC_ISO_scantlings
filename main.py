@@ -973,10 +973,28 @@ class Fibra_Sandwich:
         return core_shear
 
 
+def factory(craft):
+    # Diccionario que mapea los identificadores de material a clases correspondientes
+    plating_classes = {
+        1: Acero_Aluminio,
+        2: Acero_Aluminio,
+        3: Alextruido_AlCorrugated,
+        4: Alextruido_AlCorrugated,
+        5: Aluminio_Sandwich,
+        6: Fibra_Laminada,
+        7: Fibra_Sandwich
+    }
+
+    # Obtener la clase del diccionario utilizando el identificador de material
+    cls = plating_classes.get(craft.material)
+    
+    return cls(craft)
+
+
 def main():
     print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
     craft = Craft()
-    material = craft.material
+    plating_cls = factory(craft)
     for zone in craft.selected_zones:
         if zone in [13, 14]:
             p = None
