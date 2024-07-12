@@ -737,29 +737,27 @@ class Acero_Aluminio:
     
     def acero_aluminio_plating(self, zone, pressure):
         
-        if zone == 2:
+        if zone in [2, 3, 4, 5, 8, 9]:
             thickness = max(self.lateral_loading(zone, pressure), self.secondary_stiffening(), self.minimum_thickness(zone))
             return thickness
-        elif zone == 3:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        elif zone in [6, 7]:
+            thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
-        elif zone == 4:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        elif zone == 10:
+            thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
-        elif zone == 5:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        elif zone == 11:
+            thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
-        elif zone == 6:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        elif zone == 12:
+            thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
-        elif zone == 7:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        elif zone == 13:
+            thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
-        elif zone == 8:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
+        elif zone == 14:
+            thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
-        elif zone == 9:
-            thickness = max(lateral_loading(), secondary_stiffening(), minimum_thickness())
     
     
     def determine_resistencia(self) -> str: #Revisar
@@ -928,7 +926,7 @@ class Fibra_Sandwich:
     
     def __init__(self, craft: Craft):
         self.craft = craft
-        
+
     
     #Laminate with Essentially Same Bending Strength and Stiffness in 0° and 90° Axes
     def section_modulus_outer_skin(self, pressure, s, c, k, sigma_ao) -> float:
