@@ -735,7 +735,8 @@ class Acero_Aluminio:
         zone_results = {}
 
     
-    def acero_aluminio_plating(self, zone, pressure):  
+    def acero_aluminio_plating(self, zone, pressure):
+        
         if zone == 2:
             thickness = max(self.lateral_loading(zone, pressure), self.secondary_stiffening(), self.minimum_thickness(zone))
             return thickness
@@ -973,7 +974,7 @@ class Fibra_Sandwich:
         return core_shear
 
 
-def factory(craft):
+def cls_factory(craft):
     # Diccionario que mapea los identificadores de material a clases correspondientes
     plating_classes = {
         1: Acero_Aluminio,
@@ -994,20 +995,33 @@ def factory(craft):
 def main():
     print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
     craft = Craft()
-    plating_cls = factory(craft)
-    for zone in craft.selected_zones:
-        if zone in [13, 14]:
-            p = None
-            plating = Material(craft, zone, p, material)
-            plating = plating.plating
-            print (f"\nEl plating de {zone} es: {plating} [mm], la presion es: {p} [MPa]")
-        else:
-            pressure = Pressure(craft, zone)
-            p = pressure.pressure
-            plating = Material(craft, zone, p, material)
-            plating = plating.plating
-            print (f"\nEl plating de {zone} es: {plating} [mm], la presion es: {p} [MPa]")
-
+    pressures = ZonePressures(craft)
+    
+    try:
+        plating = cls_factory(craft)
+        
+        for zone in craft.selected_zones:
+            pressure = pressures.calculate_pressure(zone)
+            if craft.material in [1, 2]:
+                thickness = plating.calculate_acero_aluminio(zone, pressure)
+                print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
+            elif craft.material in [3, 4]:
+                thickness = plating.calculate_alextruido_alcorrugado(zone, pressure)
+                print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
+            elif craft.material == 5:
+                section_modulus, moment_inertia, core_shear_strength = plating.calculate_alsandwich(zone, pressure)
+                print(f"Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],\\
+                        el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]")
+            elif craft.material == 6:
+                thickness = plating.calculate_fibra_laminada(zone, pressure)
+                print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
+            elif craft.material == 7:
+                section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate_fibra_sandwich(zone, pressure)
+                print(f"Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
+                    la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]")
+    except ValueError as e:
+        print(e)
+        
 if __name__ == '__main__':
     main()
     
