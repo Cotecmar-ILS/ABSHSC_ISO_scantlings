@@ -59,9 +59,9 @@ class Craft:
         self.company_name = input("Empresa: ")
         self.management_name = input("Gerencia: ")
         self.division_name = input("División: ")
+        self.values = {}
         self.material = self.get_material()
         self.selected_zones = self.get_zones()
-        self.values = {}
         
 
     #Metodo para pedir datos y validar si ya existe
@@ -77,67 +77,63 @@ class Craft:
             print(f"{idx}. {item}")
 
     def get_tipo_embarcacion(self) -> int:
-        print("\nSeleccione el tipo de embarcación")
-        tipo_embarcacion = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
-        self.display_menu(tipo_embarcacion)
-        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(tipo_embarcacion))
-        return choice
+        if 'tipo_embarcacion' not in self.values:
+            print("\nSeleccione el tipo de embarcación")
+            tipo_embarcacion = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
+            self.display_menu(tipo_embarcacion)
+            choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(tipo_embarcacion))
+            self.values['tipo_embarcacion'] = choice
+        return self.values['tipo_embarcacion']
     
     def get_material(self) -> int:
-        print("\nLista de materiales disponibles")
-        materiales = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich')
-        self.display_menu(materiales)
-        opcion = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
-        return opcion
+        if 'material' not in self.values:
+            print("\nLista de materiales disponibles")
+            materiales = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich')
+            self.display_menu(materiales)
+            choice = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
+            self.values['material'] = choice
+        return self.values['material']
     
     def get_zones(self) -> list:
-        zonas = {
-            1: 'Vagra Maestra',
-            2: 'Casco de Fondo',
-            3: 'Casco de Costado y Espejo de Popa',
-            4: 'Cubierta de resistencia',
-            5: 'Cubiertas Inferiores/Otras Cubiertas',
-            6: 'Cubiertas Humedas',
-            7: 'Cubiertas de Superestructura y Casetas de Cubierta',
-            8: 'Mamparos Estancos',
-            9: 'Mamparos de Tanques Profundos',
-            10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-            11: 'Túneles de Waterjets',
-            12: 'Túneles de Bow Thrusters',
-            13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
-        }
-        
-        if self.material in ['Acero', 'Aluminio']:
-            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        else:
-            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        
-        print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
-        
-        # Mostrar las zonas disponibles desde una lista
-        for number in available_zones:
-            print(f"{number}. {zonas[number]}")
+        if 'selected_zones' not in self.values:
+            zonas = {
+                1: 'Vagra Maestra',
+                2: 'Casco de Fondo',
+                3: 'Casco de Costado y Espejo de Popa',
+                4: 'Cubierta de resistencia',
+                5: 'Cubiertas Inferiores/Otras Cubiertas',
+                6: 'Cubiertas Humedas',
+                7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+                8: 'Mamparos Estancos',
+                9: 'Mamparos de Tanques Profundos',
+                10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+                11: 'Túneles de Waterjets',
+                12: 'Túneles de Bow Thrusters',
+                13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+            }
 
-        selected_zones = []
-        while True:
-            try:
-                choice = int(input("Ingrese el número correspondiente y presione Enter: "))
-                if choice == 0:
-                    if not selected_zones:  # Intenta finalizar sin seleccionar ninguna zona
-                        raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
-                    break  # Finaliza si hay al menos una zona seleccionada
-                elif choice in available_zones:
-                    if choice in selected_zones:
-                        raise ValueError("Zona ya seleccionada, elija otra.")
-                    selected_zones.append(choice)
-                    print(f"Añadida: {zonas[choice]}")
-                else:
-                    print("Selección no válida, intente de nuevo.")
-            except ValueError as e:
-                print(e)
- 
-        return selected_zones
-
+            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] if self.material not in ['Acero', 'Aluminio'] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+            print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
+            selected_zones = []
+            while True:
+                try:
+                    choice = int(input("Ingrese el número correspondiente y presione Enter: "))
+                    if choice == 0:
+                        if not selected_zones:
+                            raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
+                        break
+                    elif choice in available_zones:
+                        if choice in selected_zones:
+                            raise ValueError("Zona ya seleccionada, elija otra.")
+                        selected_zones.append(choice)
+                        print(f"Añadida: {zonas[choice]}")
+                    else:
+                        print("Selección no válida, intente de nuevo.")
+                except ValueError as e:
+                    print(e)
+            self.values['selected_zones'] = selected_zones
+        return self.values['selected_zones']
+    
     def get_L(self) -> float:
         return self.get_value('L', "Eslora del casco (metros): ")
 
@@ -205,78 +201,95 @@ class Craft:
         return val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
     
 
-class ZonePressure:
-    
-    def __init__(self, craft) -> None:
+class ZonePressures:
+
+    def __init__(self, craft):
         self.craft = craft
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
-        
-    
-    def calculate_pressure(self, craft, zone):
-         
 
-        #def casco_fondo(self, context, zone, l, s):
+    def calculate_pressure(self, zone, context):
+        if zone in [2, 3, 4, 5, 6, 7, 8, 9, 10]:
+            s = val_data(f"Longitud mas corta de los paneles de (mm): ")
+            l = val_data(f"Longitud mas larga de los paneles de (mm): ", True, True, 0, s)
         if zone == 2:
-            L = craft.get_L()
-            LW = craft.get_LW()
-            BW = craft.get_BW()
-            D = craft.get_D()
-            d = craft.get_d()
-            W = craft.get_W()
-            V = craft.get_V()
-            Bcg = craft.get_Bcg()
-            tau = craft.get_tau()
-            h13 = craft.get_h13()
-            
-            l = val_data("Longitud mas extensa de los paneles del fondo (mm): ")
-            s = val_data("Longitud mas corta de los paneles del fondo (mm): ", True, True, 0, 0.0001, l)
-            x, y, Bx = calculate_x_y_Bx(craft, zone)
-            ncgx = calculate_ncgx(x)
-            FD = calculate_FD(context, l, s)
-            FV = calculate_FV(x)
-            H = calculate_H()
-            
-            if L >= 61:
-                if x is None:
-                    slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
-                else:  # x is not None
-                    slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bcg) / 70) * FD
-            else:  # craft.L < 61
-                slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD * FV
-
-            hidrostatic_pressure = self.N3 * (0.64 * H + d)
-            index = slamming_pressure > hidrostatic_pressure
-            pressure = max(slamming_pressure, hidrostatic_pressure)
-            
-            def plating(craft, zone, pressure, material):
-                if material == "Acero":
-                    Acero_Aluminio(craft, zone)
-                elif material == "Aluminio":
-                    Aluminio(craft, zone)
-                else:
-                    print("Material no valido")
-            
+            pressure, index = self.casco_fondo(zone, context, l, s)
             return pressure, index
+        elif zone == 3:
+            pressure, index = self.casco_costado(context, zone, l, s)
+            return pressure, index
+        elif zone == 4:
+            pressure, index = self.espejo_popa(context)
+            return pressure
+        elif zone == 5:
+            pressure, index = self.cubierta_resitencia()
+            return pressure
+        elif zone == 6:
+            pressure, index = self.cubiertas_inferiores_otras()
+            return pressure
+        elif zone == 7:
+            pressure, index = self.cubiertas_humedas(zone, context, l, s)
+            return pressure
+        elif zone == 8:
+            pressure, index = self.cubiertas_superestructura_casetas(context, zone, l, s)
+            return pressure
+        elif zone == 9:
+            pressure, index = self.mamparos_estancos(context, zone, l, s)
+            return pressure
+        elif zone == 10:
+            pressure, index = self.mamparos_tanques_profundos(zone)
+            return pressure
+        elif zone == 11:
+            pressure, index = self.superestructura_casetas(context)
+            return pressure
+        elif zone == 12:
+            pressure, index = self.tuneles_waterjets()
+            return pressure
+        else:
+            pressure = None
+            return pressure
 
-    def casco_costado(self,context, zone, l, s):
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
+    def casco_fondo(self, zone, context, l, s):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        d = self.craft.get_d()
+        W = self.craft.get_W()
+        Bcg = self.craft.get_Bcg()
         
+        x, y, Bx = self.calculate_x_y_Bx(zone)
+        ncgx = self.calculate_ncgx(x)
+        FD = self.calculate_FD(context, l, s)
+        FV = self.calculate_FV(x)
+        H = self.calculate_H()
         
-        x, y, Bx = calculate_x_y_Bx(zone)
-        ncgx = calculate_ncgx(x)
-        FD = calculate_FD(context, l, s)
-        Hs = calculate_Hs()
+        if L >= 61:
+            if x is None:
+                slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
+            else:  # x is not None
+                slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bx) / (70 - Bcg)) * FD
+        else:  # self.craft.L < 61
+            slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD * FV
+
+        hidrostatic_pressure = self.N3 * (0.64 * H + d)
+
+        index = slamming_pressure > hidrostatic_pressure
+        pressure = max(slamming_pressure, hidrostatic_pressure)
+        
+        return pressure, index
+
+    def casco_costado(self, zone, context, l, s):
+        L = self.craft.get_L()
+        LW = self.craft.get_LW()
+        BW = self.craft.get_BW()
+        W = self.craft.get_W()
+        Bcg = self.craft.get_Bcg()
+        
+        x, y, Bx = self.calculate_x_y_Bx(zone)
+        ncgx = self.calculate_ncgx(x)
+        FD = self.calculate_FD(context, l, s)
+        Hs = self.calculate_Hs()
         
         if x is None:
             slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
@@ -291,19 +304,10 @@ class ZonePressure:
         return pressure, index
 
     def espejo_popa(self, context):
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
+        L = self.craft.get_L()
+        V = self.craft.get_V()
         
-        
-        pressure_costado, index = casco_costado()
+        pressure_costado, index = self.casco_costado()
         
         Fa = 3.25 if context == 'Plating' else 1
         Cf = 0.0125 if L < 80 else 1.0
@@ -317,60 +321,37 @@ class ZonePressure:
         return pressure, index
         
     def cubierta_resitencia(self):
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
+        L = self.craft.get_L()
         pressure = 0.20 * L + 7.6
         return pressure
-
+    
     def cubiertas_inferiores_otras(self):
         #PARA UN POSTERIOR DESARROLLO:
 
-        # def decks_pressures(): 
+        # def decks_pressures(self): 
         #     """ Las diferentes cubiertas posibles están enumeradas """
-        #     cubiertas_proa = 0.20 * craft.L +7.6                                                   #1
-        #     cubiertas_popa = 0.10 * craft.L + 6.1                                                  #2
+        #     cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
+        #     cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
         #     cubiertas_alojamientos = 5                                                                  #3     
         #     carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
-        #     cubiertas_carga = carga * (1 + 0.5 * nxx)                                              #4
+        #     cubiertas_carga = carga * (1 + 0.5 * self.nxx)                                              #4
         #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
         #     height = val_data("Altura del almacén (metros): ", True, True, -1)
-        #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * nxx)                  #5
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = craft.get_h13()
+        #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
+        L = self.craft.get_L()
         pressure = 0.10 * L + 6.1
         return pressure
 
-    def cubiertas_humedas(self, context, zone, l, s):
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
+    def cubiertas_humedas(self, zone, context, l, s):
+        L = self.craft.get_L()
+        D = self.craft.get_D()
+        d = self.craft.get_d()
+        V = self.craft.get_V()
+        h13 = self.get_h13()
         
-        x, y, Bx = calculate_x_y_Bx(zone)
-        F1 = calculate_F1(x)
-        FD = calculate_FD(context, l, s)
+        x, y, Bx = self.calculate_x_y_Bx(zone)
+        F1 = self.calculate_F1(x)
+        FD = self.calculate_FD(context, l, s)
         
         # Mostrar imagen 2
         ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D - d)
@@ -384,50 +365,20 @@ class ZonePressure:
         return pressure
 
     def cubiertas_superestructura_casetas(self):
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
+        L = self.craft.get_L()
         pressure = 0.10 * L + 6.1
         return pressure
 
     def mamparos_estancos(self):
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
-        
         #Mostrar Imagen 3 - ISO 12215-5
         h = val_data("Altura del mamparo (metros): ")
         pressure = self.N3 * h
         return pressure
 
     def mamparos_tanques_profundos(self, zone): #Insertar imagen
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
-        
-        x, y, Bx = calculate_x_y_Bx(zone)
-        ncgx = calculate_ncgx(x)
+        x, y, Bx = self.calculate_x_y_Bx(zone)
+        ncgx = self.calculate_ncgx(x)
+
         #Mostrar Imagen 3 - ISO 12215-5
         hb = val_data("Altura de la columna de agua (metros): ") 
         pg = max(10.05, val_data("Peso especifico del liquido (kN/m^3): ", True, True, -1, 0, 10.05))
@@ -445,16 +396,7 @@ class ZonePressure:
         una chapa lateral como prolongación de la chapa del forro exterior, o que no está instalada en el interior 
         del costado del casco más del 4% de la manga.
         """
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = get_h13()
+        L = self.craft.get_L()
         
         if context == 'Plating':
             pressures = {
@@ -489,45 +431,35 @@ class ZonePressure:
         return pressure
 
     def tuneles_waterjets(self):
-            L = craft.get_L()
-            LW = craft.get_LW()
-            BW = craft.get_BW()
-            D = craft.get_D()
-            d = craft.get_d()
-            W = craft.get_W()
-            V = craft.get_V()
-            Bcg = craft.get_Bcg()
-            tau = craft.get_tau()
-            h13 = get_h13()
-            
-            pressure_fondo, index = casco_fondo()
-            pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
-            return pressure, index
+        pressure_fondo, index = self.casco_fondo()
+        pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
+        return pressure, index
 
-    def calculate_x_y_Bx(self, craft, zone) -> tuple: #Corregir
-        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {craft.ZONES[zone]}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
+
+    def calculate_x_y_Bx(self, zone) -> tuple: #Corregir
+        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {zone}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
         
         if ask == 1:
-            x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, craft.get_L())
-            x = x / craft.get_L()
+            x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, self.craft.get_L())
+            x = x / self.craft.get_L()
+            Bx = val_data("Ángulo de astilla muerta de costado en el punto de análisis (grados): ", True, True, -1, 0, 55)
             
             if zone == 2:
-                return x, None, None
+                return x, None, Bx
             elif zone == 3:
-                y = val_data("Altura sobre la linea base hasta el punto de análisis (metros): ", True, True, 0, 0, craft.get_D())
-                Bx = val_data("Ángulo de astilla muerta de costado en el punto de análisis (grados): ", True, True, -1, 0, 55)
+                y = val_data("Altura sobre la linea base hasta el punto de análisis (metros): ", True, True, 0, 0, self.craft.get_D())
                 return x, y, Bx
 
         return None, None, None  # Si el usuario no desea análisis específico o la zona no requiere análisis específico
-
+    
     def calculate_ncgx(self, x) -> float:
         kn = 0.256
-        ncgx_limit = 1.39 + kn * (craft.get_V() / np.sqrt(craft.get_L()))
-        _ncgx = N2 * (((12 * craft.get_h13()) / craft.get_BW()) + 1) * craft.get_tau() * (50 - craft.get_Bcg()) * ((craft.get_V() ** 2 * craft.get_BW() ** 2) / craft.get_W())
+        ncgx_limit = 1.39 + kn * (self.craft.get_V() / np.sqrt(self.craft.get_L()))
+        _ncgx = self.N2 * (((12 * self.craft.get_h13()) / self.craft.get_BW()) + 1) * self.craft.get_tau() * (50 - self.craft.get_Bcg()) * ((self.craft.get_V() ** 2 * self.craft.get_BW() ** 2) / self.craft.get_W())
         ncgx = min(ncgx_limit, _ncgx)
-        if craft.get_V() > (18 * np.sqrt(craft.get_L())):
-            ncgx = 7 if craft.get_tipo_embarcacion() == 4 else 6
-        if craft.L < 24 and ncgx < 1:
+        if self.craft.get_V() > (18 * np.sqrt(self.craft.get_L())):
+            ncgx = 7 if self.craft.get_tipo_embarcacion() == 4 else 6
+        if self.craft.get_L() < 24 and ncgx < 1:
             ncgx = 1
 
         # Ajuste de ncgx basado en x
@@ -540,7 +472,7 @@ class ZonePressure:
         return ncgx
 
     def calculate_FD(self, context, l, s) -> float:
-        AR = 6.95 * craft.get_W() / craft.get_d()
+        AR = 6.95 * self.craft.get_W() / self.craft.get_d()
 
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
         y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
@@ -573,162 +505,11 @@ class ZonePressure:
         return np.interp(x, x_known, y_known)
 
     def calculate_H(self) -> float:
-        return max(0.0172 * craft.get_L() + 3.653, craft.get_h13())
-
+        return max(0.0172 * self.craft.get_L() + 3.653, self.craft.get_h13())
+    
     def calculate_Hs(self) -> float:
-        return max(0.083 * craft.get_L() * craft.get_d(), craft.get_D() + 1.22) if craft.get_L() < 30 else (0.64 * calculate_H() + craft.get_d())
+        return max(0.083 * self.craft.get_L() * self.craft.get_d(), self.craft.get_D() + 1.22) if self.craft.get_L() < 30 else (0.64 * self.calculate_H() + self.craft.get_d())
 
-
-    #class Materials:
-
-    #subclass Acero_Aluminio:
-        sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-        sigma_u = val_data("Limite elastico por tracción (MPa): ")
-
-
-def plating(material, zone, pressure):
-    if material in [1, 2]:
-        if zone in [2, 3, 4, 5, 8, 9]:
-            
-            thickness = max(lateral_loading(zone, pressure)), secondary_stiffening(), minimum_thickness())
-            return thickness
-        
-        elif zone in [6, 7]:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-        elif zone == 10:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-        elif zone == 11:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-        elif zone == 12:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-        elif zone == 13:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-        elif zone == 14:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-    
-    elif material == 3:
-        if zone == 2:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-        elif zone == 3:
-            #Pida Datos
-            thickness = max(lateral_loading(pressure), secondary_stiffening(), minimum_thickness())
-            return thickness
-
-
-def lateral_loading(s, pressure, k, sigma_a) -> float:
-    k = 
-    return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
-
-def secondary_stiffening(s) -> float:
-    if craft.material == "Acero":
-        return 0.01 * s
-    else:
-        return 0.012 * s
-    
-def minimum_thickness(zona, resistenci, sigma_y) -> float:
-    if craft.material == 'Acero':
-        q = 1.0 if resistencia == "Alta" else 245 / sigma_y
-    else:
-        q = 115 / sigma_y
-    
-    if zone == 2:    #Fondo
-        if craft.material == "Acero":
-            return max(0.44 * np.sqrt(craft.L * q) + 2, 3.5)
-        else:
-            return max(0.70 * np.sqrt(craft.L * q) + 1, 4.0)
-    elif zone == 3:  #Costados y Espejo
-        if craft.material == "Acero":
-            return max(0.40 * np.sqrt(craft.L * q) + 2, 3.0)
-        else:
-            return max(0.62 * np.sqrt(craft.L * q) + 1, 3.5)
-    elif zone == 4:  # Strength Deck - Cubierta principal
-        if craft.material == "Acero":
-            return max(0.40 * np.sqrt(craft.L * q) + 1, 3.0)
-        else:
-            return max(0.62 * np.sqrt(craft.L * q) + 1, 3.5)
-    else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-        if craft.material == "Acero":
-            return max(0.35 * np.sqrt(craft.L * q) + 1, 3.0)
-        else:
-            return max(0.52 * np.sqrt(craft.L * q) + 1, 3.5)
-
-    
-def determine_resistencia(material) -> str: #Revisar
-    if material == 'Acero':
-        if 200 < sigma_y < 300:
-            return 'Ordinaria'
-        elif 300 <= sigma_y:
-            return 'Alta'
-        else:
-            return 'Baja'
-    else:
-        return 'Ordinaria'
-
-
-def design_stress_plating(zone, index) -> float:
-    # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
-    sigma = min(sigma_y, 0.7 * sigma_u)
-
-    if zone in [2, 3]:
-        if index == True:
-            d_stress = 0.90 * sigma
-        else:
-            d_stress = 0.55 * sigma
-    elif zone in [4, 5, 7, 9, 10, 13]:
-        d_stress = 0.60 * sigma
-    elif zone == 6:
-        d_stress = 0.90 * sigma
-    elif zone == 8:
-        d_stress = 0.95 * sigma
-    elif zone == 11:
-        if index == True:
-            d_stress = 0.60 * sigma
-        else:
-            d_stress = 0.55 * sigma
-    else:
-        d_stress = "No aplicable"
-    
-    return d_stress
-
-def constant_k(l, s) -> float:
-    ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-    k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
-    ls = l / s
-    if ls > 2.0:
-        k = 0.500
-    elif ls < 1.0:
-        k = 0.308
-    else:
-        k = np.interp(ls, ls_known, k_known)
-    return k
-
-def constant_k1(l, s) -> float:
-    ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-    k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
-    ls = l / s
-    if ls > 2.0:
-        k1 = 0.028
-    elif ls < 1.0:
-        k1 = 0.014
-    else:
-        k1 = np.interp(ls, ls_known, k1_known)
-    return k1
-    
-        
     
 class Acero_Aluminio:
 
@@ -1002,9 +783,10 @@ def main():
     
     try:
         plating = cls_factory(craft)
+        context = "Plating" #Verificar
         
         for zone in craft.selected_zones:
-            pressure = zone_pressures.calculate_pressure(zone)
+            pressure = zone_pressures.calculate_pressure(zone, context)
             if craft.material in [1, 2]:
                 thickness = plating.calculate_acero_aluminio(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
@@ -1013,15 +795,15 @@ def main():
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material == 5:
                 section_modulus, moment_inertia, core_shear_strength = plating.calculate_alsandwich(zone, pressure)
-                print(f"Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],\\
-                        el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]")
+                print(f"""Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],
+                        el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]""")
             elif craft.material == 6:
                 thickness = plating.calculate_fibra_laminada(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material == 7:
                 section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate_fibra_sandwich(zone, pressure)
-                print(f"Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
-                    la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]")
+                print(f"""Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
+                    la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]""")
     except ValueError as e:
         print(e)
         
@@ -1029,102 +811,101 @@ if __name__ == '__main__':
     main()
     
 
-def main2():
-    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
-    craft = Craft()
-    material = craft.material
-    for zone in craft.selected_zones:
-        pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
+# def main2():
+#     print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
+#     craft = Craft()
+#     material = craft.material
+#     for zone in craft.selected_zones:
+#         pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
         
-        thickness, section_modulus, moment_inertia, core_shear_strength, section_modulus_outer, section_modulus_inner = plating(craft, zone, material, pressure)
+#         thickness, section_modulus, moment_inertia, core_shear_strength, section_modulus_outer, section_modulus_inner = plating(craft, zone, material, pressure)
     
-        print (f"\nEl plating de {zone} es: {plating} [mm], la presion es: {pressure} [MPa]")
+#         print (f"\nEl plating de {zone} es: {plating} [mm], la presion es: {pressure} [MPa]")
 
 
-def main3():
-    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
-    craft = Craft()
-    material = craft.material
+# def main3():
+#     print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
+#     craft = Craft()
+#     material = craft.material
 
-    # Diccionario para seleccionar el objeto de cálculo basado en el material
-    plating_classes = {
-        "Acero": Acero_Aluminio,
-        "Aluminio": Acero_Aluminio,
-        "Aluminio extruido": Alextruido_AlCorrugated,
-        "Aluminio Corrugado": Alextruido_AlCorrugated,
-        "Aluminio en Sandwich": Aluminio_Sandwich,
-        "Fibra Laminada": Fibra_Laminada,
-        "Fibra en sandwich": Fibra_Sandwich
-    }
+#     # Diccionario para seleccionar el objeto de cálculo basado en el material
+#     plating_classes = {
+#         "Acero": Acero_Aluminio,
+#         "Aluminio": Acero_Aluminio,
+#         "Aluminio extruido": Alextruido_AlCorrugated,
+#         "Aluminio Corrugado": Alextruido_AlCorrugated,
+#         "Aluminio en Sandwich": Aluminio_Sandwich,
+#         "Fibra Laminada": Fibra_Laminada,
+#         "Fibra en sandwich": Fibra_Sandwich
+#     }
 
-    # Crear instancia de plating basada en el material
-    plating = plating_classes[material](craft)
+#     # Crear instancia de plating basada en el material
+#     plating = plating_classes[material](craft)
     
-    for zone in craft.selected_zones:
-        pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
+#     for zone in craft.selected_zones:
+#         pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
             
-        if material in ["Acero", "Aluminio"]:
-            thickness = plating.calculate_acero_aluminio(zone, pressure)
-        elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
-            thickness = plating.calculate_alextruido_alcorrugado(zone, pressure)
-        elif material == "Aluminio en Sandwich":
-            section_modulus, moment_inertia, core_shear_strength = plating.calculate_alsandwich(zone, pressure)
-        elif material == "Fibra Laminada":
-            thickness = plating.calculate_fibra_laminada(zone, pressure)
-        elif material == "Fibra en sandwich":
-            section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate_fibra_sandwich(zone, pressure)
+#         if material in ["Acero", "Aluminio"]:
+#             thickness = plating.calculate_acero_aluminio(zone, pressure)
+#         elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
+#             thickness = plating.calculate_alextruido_alcorrugado(zone, pressure)
+#         elif material == "Aluminio en Sandwich":
+#             section_modulus, moment_inertia, core_shear_strength = plating.calculate_alsandwich(zone, pressure)
+#         elif material == "Fibra Laminada":
+#             thickness = plating.calculate_fibra_laminada(zone, pressure)
+#         elif material == "Fibra en sandwich":
+#             section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate_fibra_sandwich(zone, pressure)
         
         
-def main4():
-    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
-    craft = Craft()
-    material = craft.material
-    for zone in craft.selected_zones:
-        pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
+# def main4():
+#     print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
+#     craft = Craft()
+#     material = craft.material
+#     for zone in craft.selected_zones:
+#         pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
         
-        if material in ["Acero", "Aluminio"]:
-            plating = Acero_Aluminio(craft, zone, material, pressure)
-            espesor = plating.calculate()
-            print(f"El espesor de {zone} es: {espesor} [mm], la presion es: {pressure} [MPa]")
-        elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
-            plating = Alextruido_AlCorrugated(craft, zone, material, pressure)
-            espesor = plating.calculate()
-            print(f"El espesor de {zone} es: {espesor} [mm], la presion es: {pressure} [MPa]")
-        elif material == "Aluminio en Sandwich":
-            plating = Aluminio_Sandwich(craft, zone, pressure)
-            section_modulus, moment_inertia, core_shear_strength = plating.calculate()
-            print(f"Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],\\
-                    el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]")
-        elif material == "Fibra Laminada":
-            plating = Fibra_Laminada(craft, zone, pressure)
-            espesor = plating.calculate()
-            print(f"El espesor de {zone} es: {espesor} [mm], la presion es: {pressure} [MPa]")
-        elif material == "Fibra en sandwich":
-            plating = Fibra_Sandwich(craft, zone, pressure)
-            section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate()
-            print(f"Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
-                la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]")
+#         if material in ["Acero", "Aluminio"]:
+#             plating = Acero_Aluminio(craft, zone, material, pressure)
+#             espesor = plating.calculate()
+#             print(f"El espesor de {zone} es: {espesor} [mm], la presion es: {pressure} [MPa]")
+#         elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
+#             plating = Alextruido_AlCorrugated(craft, zone, material, pressure)
+#             espesor = plating.calculate()
+#             print(f"El espesor de {zone} es: {espesor} [mm], la presion es: {pressure} [MPa]")
+#         elif material == "Aluminio en Sandwich":
+#             plating = Aluminio_Sandwich(craft, zone, pressure)
+#             section_modulus, moment_inertia, core_shear_strength = plating.calculate()
+#             print(f"Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],\\
+#                     el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]")
+#         elif material == "Fibra Laminada":
+#             plating = Fibra_Laminada(craft, zone, pressure)
+#             espesor = plating.calculate()
+#             print(f"El espesor de {zone} es: {espesor} [mm], la presion es: {pressure} [MPa]")
+#         elif material == "Fibra en sandwich":
+#             plating = Fibra_Sandwich(craft, zone, pressure)
+#             section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate()
+#             print(f"Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
+#                 la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]")
 
-def main5():
-    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
-    craft = Craft()
-    material = craft.material
+# def main5():
+#     print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
+#     craft = Craft()
+#     material = craft.material
     
-    if material in ["Acero", "Aluminio"]:
-        plating = Acero_Aluminio(craft, zone, material, pressure)
-    elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
-        plating = Alextruido_AlCorrugated(craft, zone, material, pressure)
-    elif material == "Aluminio en Sandwich":
-        plating = Aluminio_Sandwich(craft, zone, pressure)
-    elif material == "Fibra Laminada":
-        plating = Fibra_Laminada(craft, zone, pressure)
-    elif material == "Fibra en sandwich":
-        plating = Fibra_Sandwich(craft, zone, pressure)
+#     if material in ["Acero", "Aluminio"]:
+#         plating = Acero_Aluminio(craft, zone, material, pressure)
+#     elif material in ["Aluminio extruido", 'Aluminio Corrugado']:
+#         plating = Alextruido_AlCorrugated(craft, zone, material, pressure)
+#     elif material == "Aluminio en Sandwich":
+#         plating = Aluminio_Sandwich(craft, zone, pressure)
+#     elif material == "Fibra Laminada":
+#         plating = Fibra_Laminada(craft, zone, pressure)
+#     elif material == "Fibra en sandwich":
+#         plating = Fibra_Sandwich(craft, zone, pressure)
     
     
-    for zone in craft.selected_zones:
-        pressures_list = []
-        pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
-        pressures_list.append(pressure)
-    
+#     for zone in craft.selected_zones:
+#         pressures_list = []
+#         pressure = None if zone in [13, 14] else calculate_pressure(craft, zone)
+#         pressures_list.append(pressure)
     
