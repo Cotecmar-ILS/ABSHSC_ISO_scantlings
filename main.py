@@ -114,10 +114,14 @@ class Craft:
 
             available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] if self.material not in ['Acero', 'Aluminio'] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
             print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
+        
+            # Mostrar las zonas disponibles desde una lista
+            for number in available_zones:
+                print(f"{number}. {zonas[number]}")
             selected_zones = []
             while True:
                 try:
-                    choice = int(input("Ingrese el número correspondiente y presione Enter: "))
+                    choice = int(input("\nIngrese el número correspondiente y presione Enter: "))
                     if choice == 0:
                         if not selected_zones:
                             raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
@@ -274,7 +278,7 @@ class ZonePressures:
 
         hidrostatic_pressure = self.N3 * (0.64 * H + d)
 
-        index = slamming_pressure > hidrostatic_pressure
+        index = "slamming pressure" if slamming_pressure > hidrostatic_pressure else "hidrostatic pressure"
         pressure = max(slamming_pressure, hidrostatic_pressure)
         
         return pressure, index
@@ -787,6 +791,7 @@ def main():
         
         for zone in craft.selected_zones:
             pressure = zone_pressures.calculate_pressure(zone, context)
+            print(f"\nLa presión de {zone} es: {pressure} [MPa]")
             if craft.material in [1, 2]:
                 thickness = plating.calculate_acero_aluminio(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
