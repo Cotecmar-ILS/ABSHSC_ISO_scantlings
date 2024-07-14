@@ -204,285 +204,63 @@ class Craft:
     def get_s(self, zone, l) -> float:
         return val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
     
-    
-def calculate_pressure(craft, zone):
-    N1 = 0.1
-    N2 = 0.0078
-    N3 = 9.8  
 
-    #def casco_fondo(self, context, zone, l, s):
-    if zone == 2:
-        L = craft.get_L()
-        LW = craft.get_LW()
-        BW = craft.get_BW()
-        D = craft.get_D()
-        d = craft.get_d()
-        W = craft.get_W()
-        V = craft.get_V()
-        Bcg = craft.get_Bcg()
-        tau = craft.get_tau()
-        h13 = craft.get_h13()
+class ZonePressure:
+    
+    def __init__(self, craft) -> None:
+        self.craft = craft
+        self.N1 = 0.1
+        self.N2 = 0.0078
+        self.N3 = 9.8
         
-        l = val_data("Longitud mas extensa de los paneles del fondo (mm): ")
-        s = val_data("Longitud mas corta de los paneles del fondo (mm): ", True, True, 0, 0.0001, l)
-        x, y, Bx = calculate_x_y_Bx(craft, zone)
-        ncgx = calculate_ncgx(x)
-        FD = calculate_FD(context, l, s)
-        FV = calculate_FV(x)
-        H = calculate_H()
-        
-        if L >= 61:
-            if x is None:
-                slamming_pressure = ((N1 * W) / (LW * BW)) * (1 + ncgx) * FD
-            else:  # x is not None
-                slamming_pressure = ((N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bcg) / 70) * FD
-        else:  # craft.L < 61
-            slamming_pressure = ((N1 * W) / (LW * BW)) * (1 + ncgx) * FD * FV
-
-        hidrostatic_pressure = N3 * (0.64 * H + d)
-
-        index = slamming_pressure > hidrostatic_pressure
-        pressure = max(slamming_pressure, hidrostatic_pressure)
-        
-        def plating(craft, zone, pressure, material):
-            if material == "Acero":
-                Acero_Aluminio(craft, zone)
-            elif material == "Aluminio":
-                Aluminio(craft, zone)
-            else:
-                print("Material no valido")
-        
-        return pressure, index
-
-def casco_costado(context, zone, l, s):
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
     
-    
-    x, y, Bx = calculate_x_y_Bx(zone)
-    ncgx = calculate_ncgx(x)
-    FD = calculate_FD(context, l, s)
-    Hs = calculate_Hs()
-    
-    if x is None:
-        slamming_pressure = ((N1 * W) / (LW * BW)) * (1 + ncgx) * FD
-        hidrostatic_pressure = N3 * Hs
-    else:
-        slamming_pressure = ((N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bx) / (70 - Bcg)) * FD
-        hidrostatic_pressure = N3 * (Hs - y)
-        
-    index = slamming_pressure > hidrostatic_pressure    
-    pressure = max(slamming_pressure, hidrostatic_pressure)
-    
-    return pressure, index
+    def calculate_pressure(self, craft, zone):
+         
 
-def espejo_popa(context):
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    
-    
-    pressure_costado, index = casco_costado()
-    
-    Fa = 3.25 if context == 'Plating' else 1
-    Cf = 0.0125 if L < 80 else 1.0
-    # MOSTRAR IMAGEN 1
-    alfa = val_data("Ángulo de ensanchamiento (grados): ")
-    beta = val_data("Ángulo de entrada (grados): ")
-    pressure_forend = 0.28 * Fa * Cf * N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * V * np.cos(beta) + 0.6 * L ** 0.5) ** 2)
-    
-    pressure = max(pressure_costado, pressure_forend)
-
-    return pressure, index
-    
-def cubierta_resitencia():
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    pressure = 0.20 * L + 7.6
-    return pressure
-
-def cubiertas_inferiores_otras():
-    #PARA UN POSTERIOR DESARROLLO:
-
-    # def decks_pressures(): 
-    #     """ Las diferentes cubiertas posibles están enumeradas """
-    #     cubiertas_proa = 0.20 * craft.L +7.6                                                   #1
-    #     cubiertas_popa = 0.10 * craft.L + 6.1                                                  #2
-    #     cubiertas_alojamientos = 5                                                                  #3     
-    #     carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
-    #     cubiertas_carga = carga * (1 + 0.5 * nxx)                                              #4
-    #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
-    #     height = val_data("Altura del almacén (metros): ", True, True, -1)
-    #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * nxx)                  #5
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = craft.get_h13()
-    pressure = 0.10 * L + 6.1
-    return pressure
-
-def cubiertas_humedas(context, zone, l, s):
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    
-    x, y, Bx = calculate_x_y_Bx(zone)
-    F1 = calculate_F1(x)
-    FD = calculate_FD(context, l, s)
-    
-    # Mostrar imagen 2
-    ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D - d)
-    if L < 61:
-        v1 = ((4 * h13) / (np.sqrt(L))) + 1
-        pressure = 30 * N1 * FD * F1 * V * v1 * (1 - 0.85 * ha / h13)
-    else:
-        v1 = 5 * np.sqrt(h13 / L) + 1
-        pressure = 55 * FD * F1 * np.pow(V, 0.1) * v1 * (1 - 0.35 * (ha / h13))
-        
-    return pressure
-
-def cubiertas_superestructura_casetas():
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    pressure = 0.10 * L + 6.1
-    return pressure
-
-def mamparos_estancos():
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    
-    #Mostrar Imagen 3 - ISO 12215-5
-    h = val_data("Altura del mamparo (metros): ")
-    pressure = N3 * h
-    return pressure
-
-def mamparos_tanques_profundos(zone): #Insertar imagen
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    
-    x, y, Bx = calculate_x_y_Bx(zone)
-    ncgx = calculate_ncgx(x)
-    #Mostrar Imagen 3 - ISO 12215-5
-    hb = val_data("Altura de la columna de agua (metros): ") 
-    pg = max(10.05, val_data("Peso especifico del liquido (kN/m^3): ", True, True, -1, 0, 10.05))
-    pressure_1 = N3 * hb
-    pressure_2 = pg * (1 + 0.5 * ncgx) * hb
-    pressure = max(pressure_1, pressure_2)
-    return pressure
-
-def superestructura_casetas(context):
-    """
-    A superstructure is an enclosed structure above the freeboard deck having side plating as an extension of
-    the shell plating, or not fitted inboard of the hull side more than 4% of the breadth B.
-
-    Una superestructura es una estructura cerrada situada por encima de la cubierta de francobordo que tiene 
-    una chapa lateral como prolongación de la chapa del forro exterior, o que no está instalada en el interior 
-    del costado del casco más del 4% de la manga.
-    """
-    L = craft.get_L()
-    LW = craft.get_LW()
-    BW = craft.get_BW()
-    D = craft.get_D()
-    d = craft.get_d()
-    W = craft.get_W()
-    V = craft.get_V()
-    Bcg = craft.get_Bcg()
-    tau = craft.get_tau()
-    h13 = get_h13()
-    
-    if context == 'Plating':
-        pressures = {
-            "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
-            "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
-            "Chapado de los techos que están en la proa": (6.9, 8.6),
-            "Chapado de los techos que están en la popa": (3.4, 6.9)
-        }
-    else:  # Stiffeners
-        pressures = {
-            "Refuerzos delanteros de la superestructura y caseta": (24.1, 24.1),
-            "Refuerzos traseros de la superestructura y caseta, y refuerzos laterales de la caseta": (10.3, 10.3),
-            "Refuerzos de los techos que están en la proa": (6.9, 8.6),
-            "Refuerzos de los techos que están en la popa": (3.4, 6.9)
-        }
-
-    # Inicialización del diccionario de resultados
-    result = {}
-
-    # Cálculo de la presión según la longitud de la embarcación
-    for location, (P1, P2) in pressures.items():
-        if L <= 12.2:
-            result[location] = P1
-        elif L > 30.5:
-            result[location] = P2
-        else:
-            result[location] = np.interp(L, [12.2, 30.5], [P1, P2])
+        #def casco_fondo(self, context, zone, l, s):
+        if zone == 2:
+            L = craft.get_L()
+            LW = craft.get_LW()
+            BW = craft.get_BW()
+            D = craft.get_D()
+            d = craft.get_d()
+            W = craft.get_W()
+            V = craft.get_V()
+            Bcg = craft.get_Bcg()
+            tau = craft.get_tau()
+            h13 = craft.get_h13()
             
-    #Retorna un diccionario
-    pressure = result
+            l = val_data("Longitud mas extensa de los paneles del fondo (mm): ")
+            s = val_data("Longitud mas corta de los paneles del fondo (mm): ", True, True, 0, 0.0001, l)
+            x, y, Bx = calculate_x_y_Bx(craft, zone)
+            ncgx = calculate_ncgx(x)
+            FD = calculate_FD(context, l, s)
+            FV = calculate_FV(x)
+            H = calculate_H()
+            
+            if L >= 61:
+                if x is None:
+                    slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
+                else:  # x is not None
+                    slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bcg) / 70) * FD
+            else:  # craft.L < 61
+                slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD * FV
 
-    return pressure
+            hidrostatic_pressure = self.N3 * (0.64 * H + d)
+            index = slamming_pressure > hidrostatic_pressure
+            pressure = max(slamming_pressure, hidrostatic_pressure)
+            
+            def plating(craft, zone, pressure, material):
+                if material == "Acero":
+                    Acero_Aluminio(craft, zone)
+                elif material == "Aluminio":
+                    Aluminio(craft, zone)
+                else:
+                    print("Material no valido")
+            
+            return pressure, index
 
-def tuneles_waterjets():
+    def casco_costado(self,context, zone, l, s):
         L = craft.get_L()
         LW = craft.get_LW()
         BW = craft.get_BW()
@@ -494,91 +272,318 @@ def tuneles_waterjets():
         tau = craft.get_tau()
         h13 = get_h13()
         
-        pressure_fondo, index = casco_fondo()
-        pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
+        
+        x, y, Bx = calculate_x_y_Bx(zone)
+        ncgx = calculate_ncgx(x)
+        FD = calculate_FD(context, l, s)
+        Hs = calculate_Hs()
+        
+        if x is None:
+            slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * FD
+            hidrostatic_pressure = self.N3 * Hs
+        else:
+            slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bx) / (70 - Bcg)) * FD
+            hidrostatic_pressure = self.N3 * (Hs - y)
+            
+        index = slamming_pressure > hidrostatic_pressure    
+        pressure = max(slamming_pressure, hidrostatic_pressure)
+        
         return pressure, index
 
-
-def calculate_x_y_Bx(craft, zone) -> tuple: #Corregir
-    ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {craft.ZONES[zone]}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
-    
-    if ask == 1:
-        x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, craft.get_L())
-        x = x / craft.get_L()
+    def espejo_popa(self, context):
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
         
-        if zone == 2:
-            return x, None, None
-        elif zone == 3:
-            y = val_data("Altura sobre la linea base hasta el punto de análisis (metros): ", True, True, 0, 0, craft.get_D())
-            Bx = val_data("Ángulo de astilla muerta de costado en el punto de análisis (grados): ", True, True, -1, 0, 55)
-            return x, y, Bx
+        
+        pressure_costado, index = casco_costado()
+        
+        Fa = 3.25 if context == 'Plating' else 1
+        Cf = 0.0125 if L < 80 else 1.0
+        # MOSTRAR IMAGEN 1
+        alfa = val_data("Ángulo de ensanchamiento (grados): ")
+        beta = val_data("Ángulo de entrada (grados): ")
+        pressure_forend = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * V * np.cos(beta) + 0.6 * L ** 0.5) ** 2)
+        
+        pressure = max(pressure_costado, pressure_forend)
 
-    return None, None, None  # Si el usuario no desea análisis específico o la zona no requiere análisis específico
+        return pressure, index
+        
+    def cubierta_resitencia(self):
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
+        pressure = 0.20 * L + 7.6
+        return pressure
 
-def calculate_ncgx(x) -> float:
-    kn = 0.256
-    ncgx_limit = 1.39 + kn * (craft.get_V() / np.sqrt(craft.get_L()))
-    _ncgx = N2 * (((12 * craft.get_h13()) / craft.get_BW()) + 1) * craft.get_tau() * (50 - craft.get_Bcg()) * ((craft.get_V() ** 2 * craft.get_BW() ** 2) / craft.get_W())
-    ncgx = min(ncgx_limit, _ncgx)
-    if craft.get_V() > (18 * np.sqrt(craft.get_L())):
-        ncgx = 7 if craft.get_tipo_embarcacion() == 4 else 6
-    if craft.L < 24 and ncgx < 1:
-        ncgx = 1
+    def cubiertas_inferiores_otras(self):
+        #PARA UN POSTERIOR DESARROLLO:
 
-    # Ajuste de ncgx basado en x
-    if x is not None:
-        x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-        y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
-        Kv = np.interp(x, x_known, y_known)
-        ncgx = ncgx * Kv
+        # def decks_pressures(): 
+        #     """ Las diferentes cubiertas posibles están enumeradas """
+        #     cubiertas_proa = 0.20 * craft.L +7.6                                                   #1
+        #     cubiertas_popa = 0.10 * craft.L + 6.1                                                  #2
+        #     cubiertas_alojamientos = 5                                                                  #3     
+        #     carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
+        #     cubiertas_carga = carga * (1 + 0.5 * nxx)                                              #4
+        #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
+        #     height = val_data("Altura del almacén (metros): ", True, True, -1)
+        #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * nxx)                  #5
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = craft.get_h13()
+        pressure = 0.10 * L + 6.1
+        return pressure
 
-    return ncgx
+    def cubiertas_humedas(self, context, zone, l, s):
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
+        
+        x, y, Bx = calculate_x_y_Bx(zone)
+        F1 = calculate_F1(x)
+        FD = calculate_FD(context, l, s)
+        
+        # Mostrar imagen 2
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D - d)
+        if L < 61:
+            v1 = ((4 * h13) / (np.sqrt(L))) + 1
+            pressure = 30 * self.N1 * FD * F1 * V * v1 * (1 - 0.85 * ha / h13)
+        else:
+            v1 = 5 * np.sqrt(h13 / L) + 1
+            pressure = 55 * FD * F1 * np.pow(V, 0.1) * v1 * (1 - 0.35 * (ha / h13))
+            
+        return pressure
 
-def calculate_FD(context, l, s) -> float:
-    AR = 6.95 * craft.get_W() / craft.get_d()
+    def cubiertas_superestructura_casetas(self):
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
+        pressure = 0.10 * L + 6.1
+        return pressure
 
-    x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
-    y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
-    
-    if context == "Plating":
-        AD = min(s * l, 2.5 * pow(s, 2))
-        ADR = AD / AR
-    else:
-        AD = max(s * l, 0.33 * pow(l, 2))
-        ADR = AD / AR
+    def mamparos_estancos(self):
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
+        
+        #Mostrar Imagen 3 - ISO 12215-5
+        h = val_data("Altura del mamparo (metros): ")
+        pressure = self.N3 * h
+        return pressure
 
-    FD = np.interp(ADR, x_known, y_known)
-    FD = min(max(FD, 0.4), 1.0)
-    
-    return FD
+    def mamparos_tanques_profundos(self, zone): #Insertar imagen
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
+        
+        x, y, Bx = calculate_x_y_Bx(zone)
+        ncgx = calculate_ncgx(x)
+        #Mostrar Imagen 3 - ISO 12215-5
+        hb = val_data("Altura de la columna de agua (metros): ") 
+        pg = max(10.05, val_data("Peso especifico del liquido (kN/m^3): ", True, True, -1, 0, 10.05))
+        pressure_1 = self.N3 * hb
+        pressure_2 = pg * (1 + 0.5 * ncgx) * hb
+        pressure = max(pressure_1, pressure_2)
+        return pressure
 
-def calculate_FV(x) -> float:
-    if x is None:
-        return 1.0
-    x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
-    y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
-    FV = np.interp(x, x_known, y_known)
-    return min(max(FV, 0.25), 1.0)
+    def superestructura_casetas(self, context):
+        """
+        A superstructure is an enclosed structure above the freeboard deck having side plating as an extension of
+        the shell plating, or not fitted inboard of the hull side more than 4% of the breadth B.
 
-def calculate_F1(x) -> float:
-    if x is None:
-        return 1.0
-    x_known = [0, 0.2, 0.7, 0.8, 1.0]
-    y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
-    return np.interp(x, x_known, y_known)
+        Una superestructura es una estructura cerrada situada por encima de la cubierta de francobordo que tiene 
+        una chapa lateral como prolongación de la chapa del forro exterior, o que no está instalada en el interior 
+        del costado del casco más del 4% de la manga.
+        """
+        L = craft.get_L()
+        LW = craft.get_LW()
+        BW = craft.get_BW()
+        D = craft.get_D()
+        d = craft.get_d()
+        W = craft.get_W()
+        V = craft.get_V()
+        Bcg = craft.get_Bcg()
+        tau = craft.get_tau()
+        h13 = get_h13()
+        
+        if context == 'Plating':
+            pressures = {
+                "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
+                "Chapado a popa y costados de superestructuras y casetas": (10.3, 13.8),
+                "Chapado de los techos que están en la proa": (6.9, 8.6),
+                "Chapado de los techos que están en la popa": (3.4, 6.9)
+            }
+        else:  # Stiffeners
+            pressures = {
+                "Refuerzos delanteros de la superestructura y caseta": (24.1, 24.1),
+                "Refuerzos traseros de la superestructura y caseta, y refuerzos laterales de la caseta": (10.3, 10.3),
+                "Refuerzos de los techos que están en la proa": (6.9, 8.6),
+                "Refuerzos de los techos que están en la popa": (3.4, 6.9)
+            }
 
-def calculate_H() -> float:
-    return max(0.0172 * craft.get_L() + 3.653, craft.get_h13())
+        # Inicialización del diccionario de resultados
+        result = {}
 
-def calculate_Hs() -> float:
-    return max(0.083 * craft.get_L() * craft.get_d(), craft.get_D() + 1.22) if craft.get_L() < 30 else (0.64 * calculate_H() + craft.get_d())
+        # Cálculo de la presión según la longitud de la embarcación
+        for location, (P1, P2) in pressures.items():
+            if L <= 12.2:
+                result[location] = P1
+            elif L > 30.5:
+                result[location] = P2
+            else:
+                result[location] = np.interp(L, [12.2, 30.5], [P1, P2])
+                
+        #Retorna un diccionario
+        pressure = result
+
+        return pressure
+
+    def tuneles_waterjets(self):
+            L = craft.get_L()
+            LW = craft.get_LW()
+            BW = craft.get_BW()
+            D = craft.get_D()
+            d = craft.get_d()
+            W = craft.get_W()
+            V = craft.get_V()
+            Bcg = craft.get_Bcg()
+            tau = craft.get_tau()
+            h13 = get_h13()
+            
+            pressure_fondo, index = casco_fondo()
+            pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
+            return pressure, index
+
+    def calculate_x_y_Bx(self, craft, zone) -> tuple: #Corregir
+        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {craft.ZONES[zone]}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
+        
+        if ask == 1:
+            x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, craft.get_L())
+            x = x / craft.get_L()
+            
+            if zone == 2:
+                return x, None, None
+            elif zone == 3:
+                y = val_data("Altura sobre la linea base hasta el punto de análisis (metros): ", True, True, 0, 0, craft.get_D())
+                Bx = val_data("Ángulo de astilla muerta de costado en el punto de análisis (grados): ", True, True, -1, 0, 55)
+                return x, y, Bx
+
+        return None, None, None  # Si el usuario no desea análisis específico o la zona no requiere análisis específico
+
+    def calculate_ncgx(self, x) -> float:
+        kn = 0.256
+        ncgx_limit = 1.39 + kn * (craft.get_V() / np.sqrt(craft.get_L()))
+        _ncgx = N2 * (((12 * craft.get_h13()) / craft.get_BW()) + 1) * craft.get_tau() * (50 - craft.get_Bcg()) * ((craft.get_V() ** 2 * craft.get_BW() ** 2) / craft.get_W())
+        ncgx = min(ncgx_limit, _ncgx)
+        if craft.get_V() > (18 * np.sqrt(craft.get_L())):
+            ncgx = 7 if craft.get_tipo_embarcacion() == 4 else 6
+        if craft.L < 24 and ncgx < 1:
+            ncgx = 1
+
+        # Ajuste de ncgx basado en x
+        if x is not None:
+            x_known = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+            y_known = [0.8, 0.8, 0.8, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]
+            Kv = np.interp(x, x_known, y_known)
+            ncgx = ncgx * Kv
+
+        return ncgx
+
+    def calculate_FD(self, context, l, s) -> float:
+        AR = 6.95 * craft.get_W() / craft.get_d()
+
+        x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
+        y_known = [1, 0.86, 0.76, 0.47, 0.37, 0.235, 0.2]
+        
+        if context == "Plating":
+            AD = min(s * l, 2.5 * pow(s, 2))
+            ADR = AD / AR
+        else:
+            AD = max(s * l, 0.33 * pow(l, 2))
+            ADR = AD / AR
+
+        FD = np.interp(ADR, x_known, y_known)
+        FD = min(max(FD, 0.4), 1.0)
+        
+        return FD
+
+    def calculate_FV(self, x) -> float:
+        if x is None:
+            return 1.0
+        x_known = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.445, 0.4, 0.3, 0.2, 0.1, 0]
+        y_known = [0.25, 0.39, 0.52, 0.66, 0.8, 0.92, 1, 1, 1, 1, 1, 0.5]
+        FV = np.interp(x, x_known, y_known)
+        return min(max(FV, 0.25), 1.0)
+
+    def calculate_F1(self, x) -> float:
+        if x is None:
+            return 1.0
+        x_known = [0, 0.2, 0.7, 0.8, 1.0]
+        y_known = [0.5, 0.4, 0.4, 1.0, 1.0]
+        return np.interp(x, x_known, y_known)
+
+    def calculate_H(self) -> float:
+        return max(0.0172 * craft.get_L() + 3.653, craft.get_h13())
+
+    def calculate_Hs(self) -> float:
+        return max(0.083 * craft.get_L() * craft.get_d(), craft.get_D() + 1.22) if craft.get_L() < 30 else (0.64 * calculate_H() + craft.get_d())
 
 
-#class Materials:
+    #class Materials:
 
-#subclass Acero_Aluminio:
-    sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-    sigma_u = val_data("Limite elastico por tracción (MPa): ")
+    #subclass Acero_Aluminio:
+        sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+        sigma_u = val_data("Limite elastico por tracción (MPa): ")
 
 
 def plating(material, zone, pressure):
@@ -991,15 +996,15 @@ def cls_factory(craft):
 
 
 def main():
-    print("ESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
+    print("\nESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n\n")
     craft = Craft()
-    pressures = ZonePressures(craft)
+    zone_pressures = ZonePressures(craft)
     
     try:
         plating = cls_factory(craft)
         
         for zone in craft.selected_zones:
-            pressure = pressures.calculate_pressure(zone)
+            pressure = zone_pressures.calculate_pressure(zone)
             if craft.material in [1, 2]:
                 thickness = plating.calculate_acero_aluminio(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
