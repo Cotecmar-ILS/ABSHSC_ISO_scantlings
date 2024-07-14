@@ -214,9 +214,9 @@ class ZonePressures:
         self.N3 = 9.8
 
     def calculate_pressure(self, zone, context):
-        if zone in [2, 3, 4, 5, 6, 7, 8, 9, 10]:
-            s = val_data(f"Longitud mas corta de los paneles de (mm): ")
-            l = val_data(f"Longitud mas larga de los paneles de (mm): ", True, True, 0, s)
+        if zone in [2, 3, 7, 8, 9]:
+            s = val_data(f"Longitud mas corta de los paneles (mm): ")
+            l = val_data(f"Longitud mas larga de los paneles (mm): ", True, True, 0, s)
         if zone == 2:
             pressure, index = self.casco_fondo(zone, context, l, s)
             return pressure, index
