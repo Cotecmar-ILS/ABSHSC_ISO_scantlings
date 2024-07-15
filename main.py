@@ -176,7 +176,7 @@ class Craft:
     def get_h13(self) -> float:
         L = self.get_L()
         tipo_embarcacion = self.get_tipo_embarcacion()
-        h13_values = {1: 4, 2: 2.5, 3: 0.5}
+        h13_values = {1: 4, 2: 2.5, 3: 0.5, 4: 4}
         h13 = max(h13_values.get(tipo_embarcacion), (L / 12))
         return h13
     
@@ -534,19 +534,22 @@ class Acero_Aluminio:
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s), self.minimum_thickness(zone))
             return pressure, thickness
         elif zone in [7, 8]:
+            pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
         elif zone == 11: #Superestructura
+            pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
         elif zone == 12: #Waterjets
+            pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.waterjet_tunnels(pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
         elif zone == 13: #Boat Thrusters
-            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
+            thickness = max(self.boat_thrusters(), self.secondary_stiffening(s))
             return thickness
         elif zone == 14: #Cubiertas de Operación
-            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
+            thickness = max(self.operation_decks(s, l), self.secondary_stiffening(s))
             return thickness
     
     # Funciones de calculo y auxiliares
@@ -610,6 +613,60 @@ class Acero_Aluminio:
             k1 = np.interp(ls, ls_known, k1_known)
         return k1
     
+    def calculate_beta(a, b, s, l):
+        beta_values = {
+            1: [
+                [0, 1.82, 1.38, 1.12, 0.93, 0.76],
+                [1.82, 1.28, 1.08, 0.90, 0.63, 0.63],
+                [1.39, 1.07, 0.84, 0.72, 0.52, 0.52],
+                [1.12, 0.90, 0.74, 0.60, 0.43, 0.42],
+                [0.92, 0.76, 0.62, 0.51, 0.42, 0.36],
+                [0.76, 0.63, 0.52, 0.42, 0.35, 0.30]
+            ],
+            1.4: [
+                [0, 2.00, 1.55, 1.20, 0.84, 0.75],
+                [1.78, 1.43, 1.23, 0.95, 0.74, 0.63],
+                [1.39, 1.13, 1.00, 0.80, 0.62, 0.55],
+                [1.12, 0.92, 0.82, 0.68, 0.53, 0.47],
+                [0.90, 0.76, 0.68, 0.57, 0.45, 0.38],
+                [0.75, 0.62, 0.57, 0.47, 0.38, 0.30]
+            ],
+            2: [
+                [0, 1.64, 1.20, 0.97, 0.78, 0.64],
+                [1.73, 1.31, 1.03, 0.80, 0.68, 0.57],
+                [1.32, 1.08, 0.88, 0.76, 0.64, 0.50],
+                [1.09, 0.90, 0.76, 0.70, 0.64, 0.44],
+                [0.87, 0.76, 0.68, 0.64, 0.60, 0.44],
+                [0.71, 0.61, 0.63, 0.55, 0.45, 0.38]
+            ]
+        }
+
+        a_s_indices = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        b_s_indices = {
+            1: [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+            1.4: [0, 0.2, 0.4, 0.8, 1.2, 1.4],
+            2: [0, 0.4, 0.8, 1.2, 1.6, 2.0]
+        }
+
+        l_s = l / s
+        a_s = a / s
+        b_s = b / s
+
+        if l_s >= 2:
+            tabla = beta_values[2]
+            b_s_idx_array = b_s_indices[2]
+        elif abs(l_s - 1.4) < abs(l_s - 1):
+            tabla = beta_values[1.4]
+            b_s_idx_array = b_s_indices[1.4]
+        else:
+            tabla = beta_values[1]
+            b_s_idx_array = b_s_indices[1]
+
+        a_s_idx = min(range(len(a_s_indices)), key=lambda i: abs(a_s_indices[i] - a_s))
+        b_s_idx = min(range(len(b_s_idx_array)), key=lambda i: abs(b_s_idx_array[i] - b_s))
+
+        return tabla[a_s_idx][b_s_idx]
+    
     def lateral_loading(self, zone, pressure, index, s, l) -> float:
         k = self.constant_k(s, l)
         sigma_a = self.design_stress_plating(zone, index)
@@ -656,10 +713,17 @@ class Acero_Aluminio:
         return s * np.sqrt((pressure * k) / (1000 * sigma_a))
     
     def boat_thrusters(self) -> float:
+        d = self.craft.get_d()
         Q = self.calculate_Q()
-        sigma_a = self.design_stress_plating(13, index)
-        return s * np.sqrt((pressure * k) / (1000 * sigma_a))
+        return 0.008 * d * np.sqrt(Q) + 3
     
+    def operation_decks(self, s, l) -> float:
+        a = val_data("Dimensión de la huella de la rueda, paralela al borde más corto, s, del panel de la placa [mm]: ")
+        b = val_data("Dimensión de la huella de la rueda, paralela al borde más largo, l, del panel de la placa [mm]: ")
+        d = self.craft.get_d()
+        Q = self.calculate_Q(a, b, s, l)
+        return 0.008 * d * np.sqrt(Q) + 3
+
 
 class Alextruido_AlCorrugated:
     
