@@ -222,36 +222,47 @@ class ZonePressures:
             l = val_data(f"Longitud mas larga de los paneles (mm): ", True, True, 0, s)
         if zone == 2:
             pressure, index = self.casco_fondo(zone, context, s, l)
+            self.pressure_results[zone] = pressure
             return pressure, index, s, l
         elif zone == 3:
-            pressure, index = self.casco_costado(context, zone, s, l)
+            pressure, index = self.casco_costado(zone, context, s, l)
+            self.pressure_results[zone] = pressure
             return pressure, index, s, l
         elif zone == 4:
             pressure, index = self.espejo_popa(context)
+            self.pressure_results[zone] = pressure
             return pressure
         elif zone == 5:
             pressure, index = self.cubierta_principal()
+            self.pressure_results[zone] = pressure
             return pressure
         elif zone == 6:
             pressure, index = self.cubiertas_inferiores_otras()
+            self.pressure_results[zone] = pressure
             return pressure
         elif zone == 7:
             pressure, index = self.cubiertas_humedas(zone, context, s, l)
+            self.pressure_results[zone] = pressure
             return pressure, s, l
         elif zone == 8:
-            pressure, index = self.cubiertas_superestructura_casetas(context, zone, s, l)
+            pressure, index = self.cubiertas_superestructura_casetas(zone, context, s, l)
+            self.pressure_results[zone] = pressure
             return pressure, s, l
         elif zone == 9:
-            pressure, index = self.mamparos_estancos(context, zone, s, l)
+            pressure, index = self.mamparos_estancos(zone, context, s, l)
+            self.pressure_results[zone] = pressure
             return pressure, s, l
         elif zone == 10:
             pressure, index = self.mamparos_tanques_profundos(zone)
+            self.pressure_results[zone] = pressure
             return pressure
         elif zone == 11:
             pressure, index = self.superestructura_casetas(context)
+            self.pressure_results[zone] = pressure
             return pressure
         elif zone == 12:
             pressure, index = self.tuneles_waterjets()
+            self.pressure_results[zone] = pressure
             return pressure
         else:
             pressure = None
@@ -312,10 +323,14 @@ class ZonePressures:
         return pressure, index
 
     def espejo_popa(self, context):
+        if self.pressure_results[3] is None:
+            print("\nPrimero se debe calcular la presión del costado\n")
+            _s = val_data(f"Longitud mas corta de los paneles del costado (mm): ")
+            _l = val_data(f"Longitud mas larga de los paneles del costado (mm): ", True, True, 0, _s)
+            pressure_costado, index = self.casco_costado(3, context, _s, _l)
+            self.pressure_results[2] = pressure
         L = self.craft.get_L()
         V = self.craft.get_V()
-        
-        pressure_costado, index = self.casco_costado()
         
         Fa = 3.25 if context == 'Plating' else 1
         Cf = 0.0125 if L < 80 else 1.0
