@@ -328,7 +328,7 @@ class ZonePressures:
             _s = val_data(f"Longitud mas corta de los paneles del costado (mm): ")
             _l = val_data(f"Longitud mas larga de los paneles del costado (mm): ", True, True, 0, _s)
             pressure_costado, index = self.casco_costado(3, context, _s, _l)
-            self.pressure_results[2] = pressure
+            self.pressure_results[3] = pressure
         L = self.craft.get_L()
         V = self.craft.get_V()
         
