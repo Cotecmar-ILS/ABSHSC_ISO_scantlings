@@ -322,7 +322,7 @@ class ZonePressures:
         
         return pressure, index
 
-    def espejo_popa(self, context):
+    def espejo_popa(self, context): # Necesito verificar si la presion del costado ya existe cual es y cual es el index
         if self.pressure_results[3] is None:
             print("\nPrimero se debe calcular la presión del costado\n")
             _s = val_data(f"Longitud mas corta de los paneles del costado (mm): ")
@@ -453,8 +453,13 @@ class ZonePressures:
 
         return pressure
 
-    def tuneles_waterjets(self):
-        pressure_fondo, index = self.casco_fondo()
+    def tuneles_waterjets(self): # Necesito verificar si la presion del fondo ya existe cual es y cual es el index
+        if self.pressure_results[2] is None:
+            print("\nPrimero se debe calcular la presión del fondo\n")
+            _s = val_data(f"Longitud mas corta de los paneles del fondo (mm): ")
+            _l = val_data(f"Longitud mas larga de los paneles del fondo (mm): ", True, True, 0, _s)
+            pressure_fondo, index = self.casco_fondo(2, context, _s, _l)
+            self.pressure_results[2] = pressure_fondo
         pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
         return pressure, index
 
