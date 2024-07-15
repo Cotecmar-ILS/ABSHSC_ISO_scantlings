@@ -99,20 +99,21 @@ class Craft:
             zonas = {
                 1: 'Vagra Maestra',
                 2: 'Casco de Fondo',
-                3: 'Casco de Costado y Espejo de Popa',
-                4: 'Cubierta de Principal',
-                5: 'Cubiertas Inferiores/Otras Cubiertas',
-                6: 'Cubiertas Humedas',
-                7: 'Cubiertas de Superestructura y Casetas de Cubierta',
-                8: 'Mamparos Estancos',
-                9: 'Mamparos de Tanques Profundos',
-                10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-                11: 'Túneles de Waterjets',
-                12: 'Túneles de Bow Thrusters',
-                13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+                3: 'Casco de Costado',
+                4: 'Espejo de Popa',
+                5: 'Cubierta de Principal',
+                6: 'Cubiertas Inferiores/Otras Cubiertas',
+                7: 'Cubiertas Humedas',
+                8: 'Cubiertas de Superestructura y Casetas de Cubierta',
+                9: 'Mamparos Estancos',
+                10: 'Mamparos de Tanques Profundos',
+                11: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+                12: 'Túneles de Waterjets',
+                13: 'Túneles de Bow Thrusters',
+                14: 'Cubiertas de Operación o Almacenamiento de Vehículos'
             }
 
-            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] if self.material not in ['Acero', 'Aluminio'] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if self.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
             print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
         
             # Mostrar las zonas disponibles desde una lista
