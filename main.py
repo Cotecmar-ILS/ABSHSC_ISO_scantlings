@@ -218,10 +218,10 @@ class ZonePressures:
             s = val_data(f"Longitud mas corta de los paneles (mm): ")
             l = val_data(f"Longitud mas larga de los paneles (mm): ", True, True, 0, s)
         if zone == 2:
-            pressure, index = self.casco_fondo(zone, context, l, s)
-            return pressure, index
+            pressure, index = self.casco_fondo(zone, context, s, l)
+            return pressure, index, s, l
         elif zone == 3:
-            pressure, index = self.casco_costado(context, zone, l, s)
+            pressure, index = self.casco_costado(context, zone, s, l)
             return pressure, index
         elif zone == 4:
             pressure, index = self.espejo_popa(context)
@@ -233,13 +233,13 @@ class ZonePressures:
             pressure, index = self.cubiertas_inferiores_otras()
             return pressure
         elif zone == 7:
-            pressure, index = self.cubiertas_humedas(zone, context, l, s)
+            pressure, index = self.cubiertas_humedas(zone, context, s, l)
             return pressure
         elif zone == 8:
-            pressure, index = self.cubiertas_superestructura_casetas(context, zone, l, s)
+            pressure, index = self.cubiertas_superestructura_casetas(context, zone, s, l)
             return pressure
         elif zone == 9:
-            pressure, index = self.mamparos_estancos(context, zone, l, s)
+            pressure, index = self.mamparos_estancos(context, zone, s, l)
             return pressure
         elif zone == 10:
             pressure, index = self.mamparos_tanques_profundos(zone)
@@ -254,7 +254,7 @@ class ZonePressures:
             pressure = None
             return pressure
 
-    def casco_fondo(self, zone, context, l, s):
+    def casco_fondo(self, zone, context, s, l):
         L = self.craft.get_L()
         LW = self.craft.get_LW()
         BW = self.craft.get_BW()
@@ -283,7 +283,7 @@ class ZonePressures:
         
         return pressure, index
 
-    def casco_costado(self, zone, context, l, s):
+    def casco_costado(self, zone, context, s, l):
         L = self.craft.get_L()
         LW = self.craft.get_LW()
         BW = self.craft.get_BW()
@@ -346,7 +346,7 @@ class ZonePressures:
         pressure = 0.10 * L + 6.1
         return pressure
 
-    def cubiertas_humedas(self, zone, context, l, s):
+    def cubiertas_humedas(self, zone, context, s, l):
         L = self.craft.get_L()
         D = self.craft.get_D()
         d = self.craft.get_d()
@@ -475,7 +475,7 @@ class ZonePressures:
 
         return ncgx
 
-    def calculate_FD(self, context, l, s) -> float:
+    def calculate_FD(self, context, s, l) -> float:
         AR = 6.95 * self.craft.get_W() / self.craft.get_d()
 
         x_known = [0.001, 0.005, 0.010, 0.05, 0.100, 0.500, 1]
@@ -518,18 +518,20 @@ class ZonePressures:
 class Acero_Aluminio:
 
 
-    def __init__(self, craft: Craft):
+    def __init__(self, craft, zone_pressures):
         self.craft = craft
+        self.pressures = zone_pressures
         self.sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_u = val_data("Limite elastico por tracción (MPa): ")
         zone_results = {}
 
     
-    def acero_aluminio_plating(self, zone, pressure):
+    def acero_aluminio_plating(self, zone):
         
         if zone in [2, 3, 4, 5, 8, 9]:
-            thickness = max(self.lateral_loading(zone, pressure), self.secondary_stiffening(), self.minimum_thickness(zone))
-            return thickness
+            pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
+            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s), self.minimum_thickness(zone))
+            return pressure, thickness
         elif zone in [6, 7]:
             thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
@@ -561,9 +563,9 @@ class Acero_Aluminio:
         else:
             return 'Ordinaria'
     
-    def design_stress_plating(self, zone, sigma_y, sigma_u, index) -> float:
+    def design_stress_plating(self, zone, index) -> float:
         # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
-        sigma = min(sigma_y, 0.7 * sigma_u)
+        sigma = min(self.sigma_y, 0.7 * self.sigma_u)
 
         if zone in [2, 3]:
             if index == True:
@@ -586,7 +588,7 @@ class Acero_Aluminio:
         
         return d_stress
     
-    def constant_k(self, l, s) -> float:
+    def constant_k(self, s, l) -> float:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k_known = [0.308, 0.348, 0.383, 0.412, 0.436, 0.454, 0.468, 0.479, 0.487, 0.493, 0.500]
         ls = l / s
@@ -598,7 +600,7 @@ class Acero_Aluminio:
             k = np.interp(ls, ls_known, k_known)
         return k
     
-    def constant_k1(self, l, s) -> float:
+    def constant_k1(self, s, l) -> float:
         ls_known = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
         k1_known = [0.014, 0.017, 0.019, 0.021, 0.024, 0.024, 0.025, 0.026, 0.027, 0.027, 0.028]
         ls = l / s
@@ -610,41 +612,45 @@ class Acero_Aluminio:
             k1 = np.interp(ls, ls_known, k1_known)
         return k1
     
-    def lateral_loading(self, s, pressure, k, sigma_a) -> float:
+    def lateral_loading(self, zone, pressure, index, s, l) -> float:
+        k = self.constant_k(s, l)
+        sigma_a = self.design_stress_plating(zone, index)
         return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
     
     def secondary_stiffening(self, s) -> float:
-        if self.craft.material == "Acero":
+        if self.craft.material == 1:
             return 0.01 * s
         else:
             return 0.012 * s
         
-    def minimum_thickness(self, zona, resistenci, sigma_y) -> float:
-        if self.craft.material == 'Acero':
-            q = 1.0 if resistencia == "Alta" else 245 / sigma_y
+    def minimum_thickness(self, zone) -> float:
+        resistencia = self.determine_resistencia()
+        L = self.craft.get_L()
+        if self.craft.material == 1:
+            q = 1.0 if resistencia == "Alta" else 245 / self.sigma_y
         else:
-            q = 115 / sigma_y
+            q = 115 / self.sigma_y
         
         if zone == 2:    #Fondo
-            if self.craft.material == "Acero":
-                return max(0.44 * np.sqrt(self.craft.L * q) + 2, 3.5)
+            if self.craft.material == 1:
+                return max(0.44 * np.sqrt(L * q) + 2, 3.5)
             else:
-                return max(0.70 * np.sqrt(self.craft.L * q) + 1, 4.0)
+                return max(0.70 * np.sqrt(L * q) + 1, 4.0)
         elif zone == 3:  #Costados y Espejo
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * q) + 2, 3.0)
+            if self.craft.material == 1:
+                return max(0.40 * np.sqrt(L * q) + 2, 3.0)
             else:
-                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+                return max(0.62 * np.sqrt(L * q) + 1, 3.5)
         elif zone == 4:  # Strength Deck - Cubierta principal
-            if self.craft.material == "Acero":
-                return max(0.40 * np.sqrt(self.craft.L * q) + 1, 3.0)
+            if self.craft.material == 1:
+                return max(0.40 * np.sqrt(L * q) + 1, 3.0)
             else:
-                return max(0.62 * np.sqrt(self.craft.L * q) + 1, 3.5)
+                return max(0.62 * np.sqrt(L * q) + 1, 3.5)
         else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
-            if self.craft.material == "Acero":
-                return max(0.35 * np.sqrt(self.craft.L * q) + 1, 3.0)
+            if self.craft.material == 1:
+                return max(0.35 * np.sqrt(L * q) + 1, 3.0)
             else:
-                return max(0.52 * np.sqrt(self.craft.L * q) + 1, 3.5)
+                return max(0.52 * np.sqrt(L * q) + 1, 3.5)
 
     #def plating_fondo():
 
@@ -762,7 +768,7 @@ class Fibra_Sandwich:
         return core_shear
 
 
-def cls_factory(craft):
+def cls_factory(craft, zone_pressures):
     # Diccionario que mapea los identificadores de material a clases correspondientes
     plating_classes = {
         1: Acero_Aluminio,
@@ -777,7 +783,7 @@ def cls_factory(craft):
     # Obtener la clase del diccionario utilizando el identificador de material
     cls = plating_classes.get(craft.material)
     
-    return cls(craft)
+    return cls(craft, zone_pressures)
 
 
 def main():
@@ -786,27 +792,26 @@ def main():
     zone_pressures = ZonePressures(craft)
     
     try:
-        plating = cls_factory(craft)
-        context = "Plating" #Verificar
+        plating_stiffeners = cls_factory(craft, zone_pressures)
         
         for zone in craft.selected_zones:
-            pressure = zone_pressures.calculate_pressure(zone, context)
-            print(f"\nLa presión de {zone} es: {pressure} [MPa]")
+            # pressure = zone_pressures.calculate_pressure(zone)
+            # print(f"\nLa presión de {zone} es: {pressure} [MPa]")
             if craft.material in [1, 2]:
-                thickness = plating.calculate_acero_aluminio(zone, pressure)
+                pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material in [3, 4]:
-                thickness = plating.calculate_alextruido_alcorrugado(zone, pressure)
+                thickness = plating_stiffeners.calculate_alextruido_alcorrugado(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material == 5:
-                section_modulus, moment_inertia, core_shear_strength = plating.calculate_alsandwich(zone, pressure)
+                section_modulus, moment_inertia, core_shear_strength = plating_stiffeners.calculate_alsandwich(zone, pressure)
                 print(f"""Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],
                         el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]""")
             elif craft.material == 6:
-                thickness = plating.calculate_fibra_laminada(zone, pressure)
+                thickness = plating_stiffeners.calculate_fibra_laminada(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material == 7:
-                section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating.calculate_fibra_sandwich(zone, pressure)
+                section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating_stiffeners.calculate_fibra_sandwich(zone, pressure)
                 print(f"""Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
                     la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]""")
     except ValueError as e:
