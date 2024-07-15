@@ -100,7 +100,7 @@ class Craft:
                 1: 'Vagra Maestra',
                 2: 'Casco de Fondo',
                 3: 'Casco de Costado y Espejo de Popa',
-                4: 'Cubierta de resistencia',
+                4: 'Cubierta de Principal',
                 5: 'Cubiertas Inferiores/Otras Cubiertas',
                 6: 'Cubiertas Humedas',
                 7: 'Cubiertas de Superestructura y Casetas de Cubierta',
@@ -212,7 +212,9 @@ class ZonePressures:
         self.N1 = 0.1
         self.N2 = 0.0078
         self.N3 = 9.8
+        self.pressure_results = {}
 
+    # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
         if zone in [2, 3, 7, 8, 9]:
             s = val_data(f"Longitud mas corta de los paneles (mm): ")
@@ -222,25 +224,25 @@ class ZonePressures:
             return pressure, index, s, l
         elif zone == 3:
             pressure, index = self.casco_costado(context, zone, s, l)
-            return pressure, index
+            return pressure, index, s, l
         elif zone == 4:
             pressure, index = self.espejo_popa(context)
             return pressure
         elif zone == 5:
-            pressure, index = self.cubierta_resitencia()
+            pressure, index = self.cubierta_principal()
             return pressure
         elif zone == 6:
             pressure, index = self.cubiertas_inferiores_otras()
             return pressure
         elif zone == 7:
             pressure, index = self.cubiertas_humedas(zone, context, s, l)
-            return pressure
+            return pressure, s, l
         elif zone == 8:
             pressure, index = self.cubiertas_superestructura_casetas(context, zone, s, l)
-            return pressure
+            return pressure, s, l
         elif zone == 9:
             pressure, index = self.mamparos_estancos(context, zone, s, l)
-            return pressure
+            return pressure, s, l
         elif zone == 10:
             pressure, index = self.mamparos_tanques_profundos(zone)
             return pressure
@@ -254,6 +256,7 @@ class ZonePressures:
             pressure = None
             return pressure
 
+    # Funciones por zona
     def casco_fondo(self, zone, context, s, l):
         L = self.craft.get_L()
         LW = self.craft.get_LW()
@@ -324,7 +327,7 @@ class ZonePressures:
 
         return pressure, index
         
-    def cubierta_resitencia(self):
+    def cubierta_principal(self):
         L = self.craft.get_L()
         pressure = 0.20 * L + 7.6
         return pressure
@@ -439,7 +442,7 @@ class ZonePressures:
         pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
         return pressure, index
 
-
+    # Funciones auxiliares
     def calculate_x_y_Bx(self, zone) -> tuple: #Corregir
         ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {zone}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
         
@@ -517,18 +520,16 @@ class ZonePressures:
     
 class Acero_Aluminio:
 
-
     def __init__(self, craft, zone_pressures):
         self.craft = craft
         self.pressures = zone_pressures
         self.sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_u = val_data("Limite elastico por tracción (MPa): ")
-        zone_results = {}
+        self.zone_results = {}
 
-    
+    # Funcion principal para calcular el plating (Controlador)
     def acero_aluminio_plating(self, zone):
-        
-        if zone in [2, 3, 4, 5, 8, 9]:
+        if zone in [2, 3, 4, 5, 8, 9, 10]:
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s), self.minimum_thickness(zone))
             return pressure, thickness
@@ -551,7 +552,7 @@ class Acero_Aluminio:
             thickness = max(lateral_loading(), secondary_stiffening())
             return thickness
     
-    
+    # Funciones de calculo y auxiliares
     def determine_resistencia(self) -> str: #Revisar
         if self.craft.material == 'Acero':
             if 200 < self.sigma_y < 300:
@@ -567,18 +568,18 @@ class Acero_Aluminio:
         # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
         sigma = min(self.sigma_y, 0.7 * self.sigma_u)
 
-        if zone in [2, 3]:
+        if zone in [2, 3, 4]:
             if index == True:
                 d_stress = 0.90 * sigma
             else:
                 d_stress = 0.55 * sigma
-        elif zone in [4, 5, 7, 9, 10, 13]:
+        elif zone in [5, 6, 8, 10, 11]:
             d_stress = 0.60 * sigma
-        elif zone == 6:
+        elif zone == 7:
             d_stress = 0.90 * sigma
-        elif zone == 8:
+        elif zone == 9:
             d_stress = 0.95 * sigma
-        elif zone == 11:
+        elif zone == 12:
             if index == True:
                 d_stress = 0.60 * sigma
             else:
@@ -636,23 +637,21 @@ class Acero_Aluminio:
                 return max(0.44 * np.sqrt(L * q) + 2, 3.5)
             else:
                 return max(0.70 * np.sqrt(L * q) + 1, 4.0)
-        elif zone == 3:  #Costados y Espejo
+        elif zone in [3, 4]:  #Costados y Espejo
             if self.craft.material == 1:
                 return max(0.40 * np.sqrt(L * q) + 2, 3.0)
             else:
                 return max(0.62 * np.sqrt(L * q) + 1, 3.5)
-        elif zone == 4:  # Strength Deck - Cubierta principal
+        elif zone == 5:  # Strength Deck - Cubierta principal
             if self.craft.material == 1:
                 return max(0.40 * np.sqrt(L * q) + 1, 3.0)
             else:
                 return max(0.62 * np.sqrt(L * q) + 1, 3.5)
-        else: #zone in [4, 7, 8]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
+        else: #zone in [6, 9, 10]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
             if self.craft.material == 1:
                 return max(0.35 * np.sqrt(L * q) + 1, 3.0)
             else:
                 return max(0.52 * np.sqrt(L * q) + 1, 3.5)
-
-    #def plating_fondo():
 
 
 class Alextruido_AlCorrugated:
@@ -795,8 +794,6 @@ def main():
         plating_stiffeners = cls_factory(craft, zone_pressures)
         
         for zone in craft.selected_zones:
-            # pressure = zone_pressures.calculate_pressure(zone)
-            # print(f"\nLa presión de {zone} es: {pressure} [MPa]")
             if craft.material in [1, 2]:
                 pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
