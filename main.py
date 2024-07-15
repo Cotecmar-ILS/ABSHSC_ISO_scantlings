@@ -529,27 +529,24 @@ class Acero_Aluminio:
 
     # Funcion principal para calcular el plating (Controlador)
     def acero_aluminio_plating(self, zone):
-        if zone in [2, 3, 4, 5, 8, 9, 10]:
+        if zone in [2, 3, 4, 5, 6, 9, 10]:
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s), self.minimum_thickness(zone))
             return pressure, thickness
-        elif zone in [6, 7]:
-            thickness = max(lateral_loading(), secondary_stiffening())
+        elif zone in [7, 8]:
+            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
-        elif zone == 10:
-            thickness = max(lateral_loading(), secondary_stiffening())
+        elif zone == 11: #Superestructura
+            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
-        elif zone == 11:
-            thickness = max(lateral_loading(), secondary_stiffening())
+        elif zone == 12: #Waterjets
+            thickness = max(self.waterjet_tunnels(pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
-        elif zone == 12:
-            thickness = max(lateral_loading(), secondary_stiffening())
+        elif zone == 13: #Boat Thrusters
+            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
-        elif zone == 13:
-            thickness = max(lateral_loading(), secondary_stiffening())
-            return thickness
-        elif zone == 14:
-            thickness = max(lateral_loading(), secondary_stiffening())
+        elif zone == 14: #Cubiertas de Operación
+            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
             return thickness
     
     # Funciones de calculo y auxiliares
@@ -653,6 +650,16 @@ class Acero_Aluminio:
             else:
                 return max(0.52 * np.sqrt(L * q) + 1, 3.5)
 
+    def waterjet_tunnels(self, pressure, index, s, l) -> float:
+        k = self.constant_k(s, l)
+        sigma_a = self.design_stress_plating(12, index)
+        return s * np.sqrt((pressure * k) / (1000 * sigma_a))
+    
+    def boat_thrusters(self) -> float:
+        Q = self.calculate_Q()
+        sigma_a = self.design_stress_plating(13, index)
+        return s * np.sqrt((pressure * k) / (1000 * sigma_a))
+    
 
 class Alextruido_AlCorrugated:
     
