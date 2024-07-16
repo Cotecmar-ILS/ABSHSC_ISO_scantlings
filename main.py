@@ -218,15 +218,15 @@ class ZonePressures:
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
         if zone in [2, 3, 7, 8, 9]:
-            s = val_data(f"Longitud mas corta de los paneles (mm): ")
-            l = val_data(f"Longitud mas larga de los paneles (mm): ", True, True, 0, s)
+            s = val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
+            l = val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
         if zone == 2:
             pressure, index = self.casco_fondo(zone, context, s, l)
-            self.pressure_results[zone] = pressure
+            self.pressure_results[zone] = pressure, index
             return pressure, index, s, l
         elif zone == 3:
             pressure, index = self.casco_costado(zone, context, s, l)
-            self.pressure_results[zone] = pressure
+            self.pressure_results[zone] = pressure, index
             return pressure, index, s, l
         elif zone == 4:
             pressure, index = self.espejo_popa(context)
@@ -317,7 +317,7 @@ class ZonePressures:
             slamming_pressure = ((self.N1 * W) / (LW * BW)) * (1 + ncgx) * ((70 - Bx) / (70 - Bcg)) * FD
             hidrostatic_pressure = self.N3 * (Hs - y)
             
-        index = slamming_pressure > hidrostatic_pressure    
+        index = "slamming pressure" if slamming_pressure > hidrostatic_pressure else "hidrostatic pressure"   
         pressure = max(slamming_pressure, hidrostatic_pressure)
         
         return pressure, index
@@ -330,6 +330,7 @@ class ZonePressures:
             pressure_costado, index = self.casco_costado(3, context, _s, _l)
             self.pressure_results[3] = pressure_costado, index
         else:
+            print(self.pressure_results[3])
             pressure_costado, index = self.pressure_results[3]
         
         L = self.craft.get_L()
