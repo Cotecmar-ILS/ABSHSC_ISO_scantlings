@@ -782,9 +782,16 @@ class Aluminio_Sandwich:
         I = (s**3 * pressure * k1) / (120e5 * 0.24 * E)
         return I
     
-    def core_shear_strength(self, v, pressure, s, tau) -> float:
+    def core_shear_strength(self, v, pressure, s) -> float:
+        t_u = val_data("Resistencia mínima al cortante del núcleo [N/mm^2]: ")
+        print("\nMaterial del nucleo\n1.BALSA\n2.PVC")
+        material_nucleo = val_data("\nIngrese el numero correspondiente:")
+        if material_nucleo == 1:
+            ta_o = 0.3 * t_u
+        else:
+            ta_o = 0.4 * t_u
         #core_shear:=(do + dc) / 2     #do = thickness of skins, dc = thickness of core
-        core_shear = (v * pressure * s) / tau     #The thickness of core and sandwich is to be not less than given by the following equation
+        core_shear = (v * pressure * s) / ta_o    #The thickness of core and sandwich is to be not less than given by the following equation
         return core_shear
 
 
@@ -867,9 +874,9 @@ class Fibra_Sandwich:
         I = ((s * c)**2 * pressure * k1) / (120e5 * k2 * El)
         return I
     
-    def core_shear_strength(self, v, pressure, s, tau) -> float:
-        #core_shear: (do + dc) / 2 = (v * pressure * s) / 1000 * tau    #do = thickness of skins, dc = thickness of core
-        core_shear = (v * pressure * s) / 1000 * tau     #The thickness of core and sandwich is to be not less than given by the following equation
+    def core_shear_strength(self, v, pressure, s, tao) -> float:
+        #core_shear: (do + dc) / 2 = (v * pressure * s) / 1000 * tao    #do = thickness of skins, dc = thickness of core
+        core_shear = (v * pressure * s) / 1000 * tao     #The thickness of core and sandwich is to be not less than given by the following equation
         return core_shear
 
 
