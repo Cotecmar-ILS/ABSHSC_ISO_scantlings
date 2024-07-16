@@ -835,10 +835,20 @@ class Fibra_Sandwich:
     def __init__(self, craft: Craft):
         self.craft = craft
         self.A = val_data("Corona del panel [mm]: ")
-        self.kb = self
+        self.kb = self.get_kb()
+        self.Ef = val_data("Modulo de Elasticidad del Fibra paralelo a 's' [MPa]: ")
+        
 
-
-
+    def get_kb(self) -> float:
+        print("\nEstructura de la embarcación\n1.Longitudinal\n2.Transversal con relacion de aspecto del panel 1\3. Transversal con relacion de aspecto del panel 2 a 4")
+        entramado = val_data("\nIngrese el numero correspondiente: ", False, True, -1, 1, 3)
+        if entramado == 1:
+            kb = 2.5
+        elif entramado == 2:
+            kb = 2.5
+        else:
+            kb = 1
+        return kb
     
     #Laminate with Essentially Same Bending Strength and Stiffness in 0° and 90° Axes
     def section_modulus_outer_skin(self, pressure, s, c, k, sigma_ao) -> float:
