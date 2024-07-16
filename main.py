@@ -261,7 +261,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure
             return pressure, None, None, None
         elif zone == 12:
-            pressure, index = self.tuneles_waterjets()
+            pressure, index = self.tuneles_waterjets(context)
             self.pressure_results[zone] = pressure
             return pressure, None, None, None
         else:
