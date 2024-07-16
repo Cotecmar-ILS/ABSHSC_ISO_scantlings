@@ -202,7 +202,7 @@ class Craft:
     def get_l(self, zone, s) -> float:
         return val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
     
-    def get_s(self, zone, l) -> float:
+    def get_s(self, zone) -> float:
         return val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
     
 
@@ -834,6 +834,10 @@ class Fibra_Sandwich:
     
     def __init__(self, craft: Craft):
         self.craft = craft
+        self.A = val_data("Corona del panel [mm]: ")
+        self.kb = self
+
+
 
     
     #Laminate with Essentially Same Bending Strength and Stiffness in 0° and 90° Axes
