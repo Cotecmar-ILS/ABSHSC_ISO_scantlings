@@ -231,15 +231,15 @@ class ZonePressures:
         elif zone == 4:
             pressure, index = self.espejo_popa(context)
             self.pressure_results[zone] = pressure
-            return pressure
+            return pressure, None, None, None
         elif zone == 5:
             pressure, index = self.cubierta_principal()
             self.pressure_results[zone] = pressure
-            return pressure
+            return pressure, None, None, None
         elif zone == 6:
             pressure, index = self.cubiertas_inferiores_otras()
             self.pressure_results[zone] = pressure
-            return pressure
+            return pressure, None, None, None
         elif zone == 7:
             pressure, index = self.cubiertas_humedas(zone, context, s, l)
             self.pressure_results[zone] = pressure
@@ -247,26 +247,26 @@ class ZonePressures:
         elif zone == 8:
             pressure, index = self.cubiertas_superestructura_casetas(zone, context, s, l)
             self.pressure_results[zone] = pressure
-            return pressure, s, l
+            return pressure, None, s, l
         elif zone == 9:
-            pressure, index = self.mamparos_estancos(zone, context, s, l)
+            pressure, index = self.mamparos_estancos()
             self.pressure_results[zone] = pressure
-            return pressure, s, l
+            return pressure, None, None, None
         elif zone == 10:
             pressure, index = self.mamparos_tanques_profundos(zone)
             self.pressure_results[zone] = pressure
-            return pressure
+            return pressure, None, None, None
         elif zone == 11:
             pressure, index = self.superestructura_casetas(context)
             self.pressure_results[zone] = pressure
-            return pressure
+            return pressure, None, None, None
         elif zone == 12:
             pressure, index = self.tuneles_waterjets()
             self.pressure_results[zone] = pressure
-            return pressure
+            return pressure, None, None, None
         else:
             pressure = None
-            return pressure
+            return pressure, None, None, None
 
     # Funciones por zona
     def casco_fondo(self, zone, context, s, l):
@@ -469,7 +469,7 @@ class ZonePressures:
         return pressure, index
 
     # Funciones auxiliares
-    def calculate_x_y_Bx(self, zone) -> tuple: #Corregir
+    def calculate_x_y_Bx(self, zone) -> tuple:
         ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {zone}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
         
         if ask == 1:
@@ -483,7 +483,7 @@ class ZonePressures:
                 y = val_data("Altura sobre la linea base hasta el punto de análisis (metros): ", True, True, 0, 0, self.craft.get_D())
                 return x, y, Bx
 
-        return None, None, None  # Si el usuario no desea análisis específico o la zona no requiere análisis específico
+        return None, None, None
     
     def calculate_ncgx(self, x) -> float:
         kn = 0.256
@@ -611,7 +611,7 @@ class Acero_Aluminio:
             else:
                 d_stress = 0.55 * sigma
         else:
-            d_stress = "No aplicable"
+            raise ValueError(f"La zona {zone} no tine design stress plating")
         
         return d_stress
     
