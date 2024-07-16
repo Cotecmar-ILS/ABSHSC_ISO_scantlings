@@ -217,7 +217,7 @@ class ZonePressures:
 
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
-        if zone in [2, 3, 7, 8, 9]:
+        if zone in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]:
             s = val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
             l = val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
         if zone == 2:
@@ -231,35 +231,35 @@ class ZonePressures:
         elif zone == 4:
             pressure, index = self.espejo_popa(context)
             self.pressure_results[zone] = pressure
-            return pressure, None, None, None
+            return pressure, index, s, l
         elif zone == 5:
-            pressure, index = self.cubierta_principal()
+            pressure = self.cubierta_principal()
             self.pressure_results[zone] = pressure
-            return pressure, None, None, None
+            return pressure, None, s, l
         elif zone == 6:
-            pressure, index = self.cubiertas_inferiores_otras()
+            pressure = self.cubiertas_inferiores_otras()
             self.pressure_results[zone] = pressure
-            return pressure, None, None, None
+            return pressure, None, s, l
         elif zone == 7:
-            pressure, index = self.cubiertas_humedas(zone, context, s, l)
+            pressure = self.cubiertas_humedas(zone, context, s, l)
             self.pressure_results[zone] = pressure
-            return pressure, s, l
+            return pressure, None, s, l
         elif zone == 8:
-            pressure, index = self.cubiertas_superestructura_casetas()
+            pressure = self.cubiertas_superestructura_casetas()
             self.pressure_results[zone] = pressure
             return pressure, None, s, l
         elif zone == 9:
-            pressure, index = self.mamparos_estancos()
+            pressure = self.mamparos_estancos()
             self.pressure_results[zone] = pressure
-            return pressure, None, None, None
+            return pressure, None, s, l
         elif zone == 10:
-            pressure, index = self.mamparos_tanques_profundos(zone)
+            pressure = self.mamparos_tanques_profundos(zone)
             self.pressure_results[zone] = pressure
-            return pressure, None, None, None
+            return pressure, None, s, l
         elif zone == 11:
-            pressure, index = self.superestructura_casetas(context)
+            pressure = self.superestructura_casetas(context)
             self.pressure_results[zone] = pressure
-            return pressure, None, None, None
+            return pressure, None, s, l
         elif zone == 12:
             pressure, index = self.tuneles_waterjets(context)
             self.pressure_results[zone] = pressure
@@ -372,16 +372,15 @@ class ZonePressures:
     def cubiertas_humedas(self, zone, context, s, l):
         L = self.craft.get_L()
         D = self.craft.get_D()
-        d = self.craft.get_d()
         V = self.craft.get_V()
-        h13 = self.get_h13()
+        h13 = self.craft.get_h13()
         
         x, y, Bx = self.calculate_x_y_Bx(zone)
         F1 = self.calculate_F1(x)
         FD = self.calculate_FD(context, l, s)
         
         # Mostrar imagen 2
-        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D - d)
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D)
         if L < 61:
             v1 = ((4 * h13) / (np.sqrt(L))) + 1
             pressure = 30 * self.N1 * FD * F1 * V * v1 * (1 - 0.85 * ha / h13)
@@ -425,6 +424,10 @@ class ZonePressures:
         """
         L = self.craft.get_L()
         
+        # Verificar que el contexto sea válido
+        if context not in ['Plating', 'Stiffeners']:
+            raise ValueError("Contexto no válido. Debe ser 'Plating' o 'Stiffeners'.")
+        
         if context == 'Plating':
             pressures = {
                 "Chapado a proa de superestructuras y casetas": (24.1, 37.9),
@@ -451,12 +454,10 @@ class ZonePressures:
                 result[location] = P2
             else:
                 result[location] = np.interp(L, [12.2, 30.5], [P1, P2])
-                
-        #Retorna un diccionario
-        pressure = result
 
-        return pressure
-
+        # Retorna un diccionario con las presiones calculadas
+        return result
+    
     def tuneles_waterjets(self, context):
         if self.pressure_results[2] is None:
             print("\nPrimero se debe calcular la presión del fondo\n")
@@ -563,21 +564,21 @@ class Acero_Aluminio:
         elif zone in [7, 8]:
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
-            return thickness
+            return pressure, thickness
         elif zone == 11: #Superestructura
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
-            return thickness
+            return pressure, thickness
         elif zone == 12: #Waterjets
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.waterjet_tunnels(pressure, index, s, l), self.secondary_stiffening(s))
-            return thickness
+            return pressure, thickness
         elif zone == 13: #Boat Thrusters
             thickness = max(self.boat_thrusters(), self.secondary_stiffening(s))
-            return thickness
+            return pressure, thickness
         elif zone == 14: #Cubiertas de Operación
             thickness = max(self.operation_decks(s, l), self.secondary_stiffening(s))
-            return thickness
+            return pressure, thickness
     
     # Funciones de calculo y auxiliares
     def determine_resistencia(self) -> str: #Revisar
@@ -896,7 +897,7 @@ def main():
                 pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material in [3, 4]:
-                thickness = plating_stiffeners.calculate_alextruido_alcorrugado(zone, pressure)
+                pressure, thickness = plating_stiffeners.calculate_alextruido_alcorrugado(zone, pressure)
                 print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
             elif craft.material == 5:
                 section_modulus, moment_inertia, core_shear_strength = plating_stiffeners.calculate_alsandwich(zone, pressure)
