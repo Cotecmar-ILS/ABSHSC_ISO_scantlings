@@ -567,7 +567,10 @@ class Acero_Aluminio:
             return pressure, thickness
         elif zone == 11: #Superestructura
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
-            thickness = max(self.lateral_loading(zone, pressure, index, s, l), self.secondary_stiffening(s))
+            for i in pressure:
+                thickness = {}
+                thickness[i] = max(self.lateral_loading(zone, pressure[i], index, s, l), self.secondary_stiffening(s))
+                print(f"La presion es: {pressure[i]} [MPa], el espesor es: {thickness[i]} [mm]")
             return pressure, thickness
         elif zone == 12: #Waterjets
             pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
