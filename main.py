@@ -245,7 +245,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure
             return pressure, s, l
         elif zone == 8:
-            pressure, index = self.cubiertas_superestructura_casetas(zone, context, s, l)
+            pressure, index = self.cubiertas_superestructura_casetas()
             self.pressure_results[zone] = pressure
             return pressure, None, s, l
         elif zone == 9:
