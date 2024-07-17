@@ -361,7 +361,7 @@ class ZonePressures:
         FD = self.calculate_FD(context, l, s)
         
         # Mostrar imagen 2
-        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D)
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta (metros): ", True, True, 0, 0, D)
         if L < 61:
             v1 = ((4 * h13) / (np.sqrt(L))) + 1
             pressure = 30 * self.N1 * FD * F1 * V * v1 * (1 - 0.85 * ha / h13)
