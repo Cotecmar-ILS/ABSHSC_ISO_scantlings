@@ -78,7 +78,7 @@ class Craft:
 
     def get_tipo_embarcacion(self) -> int:
         if 'tipo_embarcacion' not in self.values:
-            print("\nSeleccione el tipo de embarcación")
+            print("\nSeleccione su tipo de embarcación")
             tipo_embarcacion = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
             self.display_menu(tipo_embarcacion)
             choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(tipo_embarcacion))
@@ -114,7 +114,7 @@ class Craft:
             }
 
             available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if self.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-            print("\nSeleccione las zonas que desea escantillonar (ingrese '0' para finalizar)\n")
+            print("\nSeleccione las zonas que desea escantillonar\n")
         
             # Mostrar las zonas disponibles desde una lista
             for number in available_zones:
@@ -122,7 +122,7 @@ class Craft:
             selected_zones = []
             while True:
                 try:
-                    choice = int(input("\nIngrese el número correspondiente y presione Enter: "))
+                    choice = int(input("\nIngrese el número correspondiente y presione Enter\n(ingrese '0' para finalizar)\n-> "))
                     if choice == 0:
                         if not selected_zones:
                             raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
@@ -200,10 +200,10 @@ class Craft:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
     def get_s(self, zone) -> float:
-        return val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
+        return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
     
     def get_l(self, zone, s) -> float:
-        return val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
+        return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
     
 
 class ZonePressures:
@@ -478,7 +478,7 @@ class ZonePressures:
 
     # Funciones auxiliares
     def calculate_x_y_Bx(self, zone) -> tuple:
-        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {zone}, 0 = No, 1 = Si ?\n", False, False, 0, 0, 1)
+        ask = val_data(f"¿Desea realizar el análisis en algún punto específico de la zona: {zone}, 0 = No, 1 = Si ?\n-> ", False, False, 0, 0, 1)
         
         if ask == 1:
             x = val_data("Distancia desde proa hasta el punto de análisis (metros): ", True, True, -1, 0, self.craft.get_L())
@@ -557,8 +557,8 @@ class Acero_Aluminio:
     def __init__(self, craft, zone_pressures):
         self.craft = craft
         self.pressures = zone_pressures
-        self.sigma_y = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-        self.sigma_u = val_data("Limite elastico por tracción (MPa): ")
+        self.sigma_y = val_data(f"\nEsfuerzo ultimo a la tracción del material {self.craft.material} (MPa): ")
+        self.sigma_u = val_data(f"Limite elastico por tracción del material {self.craft.material} (MPa): ")
         self.zone_results = {}
 
     # Funcion principal para calcular el plating (Controlador)
@@ -933,7 +933,7 @@ def main():
                     pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
                 else:
                     pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
-                    print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
+                    print(f"\nEl espesor de la zona {zone} es: {thickness} [mm], la presion es de: {pressure} [MPa]")
             else:
                 print("Cooming Soon...")
             # elif craft.material in [3, 4]:
