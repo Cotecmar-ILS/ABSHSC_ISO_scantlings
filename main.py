@@ -217,7 +217,7 @@ class ZonePressures:
 
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
-        if zone not in [4, 12, 13, 14]:
+        if zone not in [4, 12,]:
             s = self.craft.get_s(zone)
             l = self.craft.get_l(zone, s)
         if zone == 2:
@@ -233,7 +233,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure
             return pressure, index, s, l
         elif zone == 5:
-            pressure = self.cubierta_principal()
+            pressure = self.cubierta_principal(zone, context, s, l)
             self.pressure_results[zone] = pressure
             return pressure, None, s, l
         elif zone == 6:
@@ -241,7 +241,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure
             return pressure, None, s, l
         elif zone == 7:
-            pressure = self.cubiertas_humedas(zone, context, s, l)
+            pressure = self.cubiertas_humedas()
             self.pressure_results[zone] = pressure
             return pressure, None, s, l
         elif zone == 8:
@@ -265,8 +265,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure
             return pressure, index, s, l
         else:
-            pressure = None
-            return pressure, None, None, None
+            return None, None, s, l
 
     # Funciones por zona
     def casco_fondo(self, zone, context, s, l):
@@ -351,29 +350,7 @@ class ZonePressures:
 
         return pressure, index, s, l
         
-    def cubierta_principal(self):
-        L = self.craft.get_L()
-        pressure = 0.20 * L + 7.6
-        return pressure
-    
-    def cubiertas_inferiores_otras(self):
-        #PARA UN POSTERIOR DESARROLLO:
-
-        # def decks_pressures(self): 
-        #     """ Las diferentes cubiertas posibles están enumeradas """
-        #     cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
-        #     cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
-        #     cubiertas_alojamientos = 5                                                                  #3     
-        #     carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
-        #     cubiertas_carga = carga * (1 + 0.5 * self.nxx)                                              #4
-        #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
-        #     height = val_data("Altura del almacén (metros): ", True, True, -1)
-        #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
-        L = self.craft.get_L()
-        pressure = 0.10 * L + 6.1
-        return pressure
-
-    def cubiertas_humedas(self, zone, context, s, l):
+    def cubierta_principal(self, zone, context, s, l):
         L = self.craft.get_L()
         D = self.craft.get_D()
         V = self.craft.get_V()
@@ -393,7 +370,29 @@ class ZonePressures:
             pressure = 55 * FD * F1 * np.pow(V, 0.1) * v1 * (1 - 0.35 * (ha / h13))
             
         return pressure
+    
+    def cubiertas_inferiores_otras(self):
+        #PARA UN POSTERIOR DESARROLLO:
 
+        # def decks_pressures(self): 
+        #     """ Las diferentes cubiertas posibles están enumeradas """
+        #     cubiertas_proa = 0.20 * self.craft.L +7.6                                                   #1
+        #     cubiertas_popa = 0.10 * self.craft.L + 6.1                                                  #2
+        #     cubiertas_alojamientos = 5                                                                  #3     
+        #     carga = val_data("Carga en la cubierta (kN/m^2): ", True, True, -1)                         
+        #     cubiertas_carga = carga * (1 + 0.5 * self.nxx)                                              #4
+        #     cargo_density = max(val_data("Densidad de la carga (kN/m^3): ", True, True, -1), 7.04)      
+        #     height = val_data("Altura del almacén (metros): ", True, True, -1)
+        #     almacenes_maquinaria_otros = cargo_density * height * (1 + 0.5 * self.nxx)                  #5
+        L = self.craft.get_L()
+        pressure = 0.10 * L + 6.1
+        return pressure
+    
+    def cubiertas_humedas(self):
+        L = self.craft.get_L()
+        pressure = 0.20 * L + 7.6
+        return pressure
+    
     def cubiertas_superestructura_casetas(self):
         L = self.craft.get_L()
         pressure = 0.10 * L + 6.1
@@ -589,10 +588,12 @@ class Acero_Aluminio:
             return pressure, thickness
         
         elif zone == 13: #Boat Thrusters
+            pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.boat_thrusters(), self.secondary_stiffening(s))
             return pressure, thickness
         
         elif zone == 14: #Cubiertas de Operación
+            pressure, index, s, l = self.pressures.calculate_pressure(zone, context="Plating")
             thickness = max(self.operation_decks(s, l), self.secondary_stiffening(s))
             return pressure, thickness
     
@@ -629,7 +630,7 @@ class Acero_Aluminio:
             else:
                 d_stress = 0.55 * sigma
         else:
-            raise ValueError(f"La zona {zone} no tine design stress plating")
+            d_stress = 0.60 * sigma
         
         return d_stress
     
@@ -657,7 +658,48 @@ class Acero_Aluminio:
             k1 = np.interp(ls, ls_known, k1_known)
         return k1
     
-    def calculate_beta(a, b, s, l):
+    def calculate_Q(self) -> float:
+        if self.craft.material == 1:
+            yield_point = {
+                "Acero de resistencia ordinaria": (206.842, 234.421),
+                "Acero de grado H32": (234.421, 313.711),
+                "Acero de grado H36": (313.711, 351.632)
+            }
+            tensile_strength = {
+                "Acero de resistencia ordinaria": (399.895, 517.106),
+                "Acero de grado H32": (441.264, 586.054),
+                "Acero de grado H36": (489.527, 620.528)
+            }
+            grado_acero = "Otros Aceros"  # Valor por defecto
+            for grado in yield_point:
+                min_yield, max_yield = yield_point[grado]
+                min_tensile, max_tensile = tensile_strength[grado]
+                if (min_yield <= self.sigma_y <= max_yield) and (min_tensile <= self.sigma_u <= max_tensile):
+                    grado_acero = grado
+                    break
+            # Asignación de coeficiente Q dependiendo del grado de acero:
+            if grado_acero == "Acero de resistencia ordinaria":
+                return 1.0
+            elif grado_acero == "Acero de grado H32":
+                return 0.78
+            elif grado_acero == "Acero de grado H36":
+                return 0.72
+            else:  # "Otros Aceros"
+                return 490 / (min(self.sigma_y, 0.7 * self.sigma_u) + 0.66 * self.sigma_u)
+
+        elif self.craft.material == 2:
+            sigma_y = min(self.sigma_y, 0.7 * self.sigma_u)
+            q5 = 115 / sigma_y
+            Qo = 635 / (sigma_y + self.sigma_u)
+            return max(0.9 + q5, Qo)
+
+        elif self.craft.material in (6, 7):
+            return 400 / (0.75 * self.sigma_u)
+        else:
+            raise ValueError(
+                f"El material {self.craft.material}, no se encuentra en la base de datos")
+    
+    def calculate_beta(self, a, b, s, l):
         beta_values = {
             1: [
                 [0, 1.82, 1.38, 1.12, 0.93, 0.76],
@@ -767,11 +809,14 @@ class Acero_Aluminio:
         return 0.008 * d * np.sqrt(Q) + 3
     
     def operation_decks(self, s, l) -> float:
+        x, y, Bx = self.pressures.calculate_x_y_Bx(14)
+        W = self.craft.get_W()
         a = val_data("Dimensión de la huella de la rueda, paralela al borde más corto, s, del panel de la placa [mm]: ")
         b = val_data("Dimensión de la huella de la rueda, paralela al borde más largo, l, del panel de la placa [mm]: ")
-        d = self.craft.get_d()
-        Q = self.calculate_Q(a, b, s, l)
-        return 0.008 * d * np.sqrt(Q) + 3
+        ncgx = self.pressures.calculate_ncgx(x)
+        sigma_a = self.design_stress_plating(14, None)
+        Beta = self.calculate_beta(a, b, s, l)
+        return np.sqrt((Beta * W * (1 + 0.5 * ncgx)) / (sigma_a))
 
 
 class Alextruido_AlCorrugated:
@@ -927,7 +972,7 @@ def cls_factory(craft, zone_pressures):
 
 
 def main():
-    print("\nESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n\n")
+    print("\nESCANTILLONDAO ABS-HSC - ABS-HSC SCANTLINGS\n")
     craft = Craft()
     zone_pressures = ZonePressures(craft)
     
