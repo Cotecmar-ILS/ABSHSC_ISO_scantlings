@@ -271,7 +271,7 @@ class ZonePressures:
     # Funciones por zona
     def casco_fondo(self, zone, context, s, l):
         L = self.craft.get_L()
-        LW = self.craft.get_LW()
+        LW = self.craft.get_LW() 
         BW = self.craft.get_BW()
         d = self.craft.get_d()
         W = self.craft.get_W()
@@ -296,6 +296,7 @@ class ZonePressures:
         index = "slamming pressure" if slamming_pressure > hidrostatic_pressure else "hidrostatic pressure"
         pressure = max(slamming_pressure, hidrostatic_pressure)
         
+        print(f"La Presión del Casco es: {pressure} [MPa], Index: {index}, x: {x}, y: {y}, Bx: {Bx}, ncgx: {ncgx}, FD: {FD}, FV: {FV}, H: {H}")
         return pressure, index
 
     def casco_costado(self, zone, context, s, l):
@@ -557,8 +558,8 @@ class Acero_Aluminio:
     def __init__(self, craft, zone_pressures):
         self.craft = craft
         self.pressures = zone_pressures
-        self.sigma_y = val_data(f"\nEsfuerzo ultimo a la tracción del material {self.craft.material} (MPa): ")
-        self.sigma_u = val_data(f"Limite elastico por tracción del material {self.craft.material} (MPa): ")
+        self.sigma_y = val_data(f"\nLimite elastico por tracción del material {self.craft.material} (MPa): ")
+        self.sigma_u = val_data(f"Esfuerzo ultimo a la tracción del material {self.craft.material} (MPa): ", True, True, -1, self.sigma_y)
         self.zone_results = {}
 
     # Funcion principal para calcular el plating (Controlador)
@@ -609,9 +610,9 @@ class Acero_Aluminio:
     def design_stress_plating(self, zone, index) -> float:
         # Asegurarse que sigma_y no sea mayor que 0.7 * sigma u
         sigma = min(self.sigma_y, 0.7 * self.sigma_u)
-
+        print(f"sigma = {sigma}, index = {index}")
         if zone in [2, 3, 4]:
-            if index == True:
+            if index == "slamming pressure":
                 d_stress = 0.90 * sigma
             else:
                 d_stress = 0.55 * sigma
@@ -622,7 +623,7 @@ class Acero_Aluminio:
         elif zone == 9:
             d_stress = 0.95 * sigma
         elif zone == 12:
-            if index == True:
+            if index == "slamming pressure":
                 d_stress = 0.60 * sigma
             else:
                 d_stress = 0.55 * sigma
@@ -712,12 +713,15 @@ class Acero_Aluminio:
     def lateral_loading(self, zone, pressure, index, s, l) -> float:
         k = self.constant_k(s, l)
         sigma_a = self.design_stress_plating(zone, index)
-        return s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))
+        print(f"pressure = {pressure}, k = {k}, sigma_a = {sigma_a}, lateral_loading = {s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))}")
+        return s * np.sqrt((pressure * k)/(1000 * sigma_a))
     
     def secondary_stiffening(self, s) -> float:
         if self.craft.material == 1:
+            print(f"secondary_stiffening = {0.01 * s}")
             return 0.01 * s
         else:
+            print(f"secondary_stiffening = {0.012 * s}")
             return 0.012 * s
         
     def minimum_thickness(self, zone) -> float:
@@ -727,11 +731,13 @@ class Acero_Aluminio:
             q = 1.0 if resistencia == "Alta" else 245 / self.sigma_y
         else:
             q = 115 / self.sigma_y
-        
+        print(f"resistencia = {resistencia}, q = {q}")
         if zone == 2:    #Fondo
             if self.craft.material == 1:
+                print(f"minimum_thickness = {0.44 * np.sqrt(L * q) + 2}")
                 return max(0.44 * np.sqrt(L * q) + 2, 3.5)
             else:
+                print(f"minimum_thickness = {0.70 * np.sqrt(L * q) + 1}")
                 return max(0.70 * np.sqrt(L * q) + 1, 4.0)
         elif zone in [3, 4]:  #Costados y Espejo
             if self.craft.material == 1:
