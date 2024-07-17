@@ -300,7 +300,6 @@ class ZonePressures:
         return pressure, index
 
     def casco_costado(self, zone, context, s, l):
-        L = self.craft.get_L()
         LW = self.craft.get_LW()
         BW = self.craft.get_BW()
         W = self.craft.get_W()
@@ -338,15 +337,17 @@ class ZonePressures:
         
         L = self.craft.get_L()
         V = self.craft.get_V()
-        
-        Fa = 3.25 if context == 'Plating' else 1
-        Cf = 0.0125 if L < 80 else 1.0
-        # MOSTRAR IMAGEN 1
-        alfa = val_data("Ángulo de ensanchamiento (grados): ")
-        beta = val_data("Ángulo de entrada (grados): ")
-        pressure_forend = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * V * np.cos(beta) + 0.6 * L ** 0.5) ** 2)
-        
-        pressure = max(pressure_costado, pressure_forend)
+        if L >= 30: 
+            Fa = 3.25 if context == 'Plating' else 1
+            Cf = 0.0125 if L < 80 else 1.0
+            # MOSTRAR IMAGEN 1
+            alfa = val_data("Ángulo de ensanchamiento (grados): ")
+            beta = val_data("Ángulo de entrada (grados): ")
+            pressure_forend = 0.28 * Fa * Cf * self.N3 * (0.22 + 0.15 * np.tan(alfa)) * ((0.4 * V * np.cos(beta) + 0.6 * L ** 0.5) ** 2)
+            
+            pressure = max(pressure_costado, pressure_forend)
+        else:
+            pressure = pressure_costado
 
         return pressure, index, s, l
         
@@ -474,7 +475,7 @@ class ZonePressures:
         s = self.craft.get_s(zone)
         l = self.craft.get_l(zone, s)
         
-        pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
+        pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ")
         return pressure, index, s, l
 
     # Funciones auxiliares
