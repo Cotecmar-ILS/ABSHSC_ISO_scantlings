@@ -199,11 +199,11 @@ class Craft:
     def get_sigma_ub(self) -> float:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
-    def get_l(self, zone, s) -> float:
-        return val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
-    
     def get_s(self, zone) -> float:
         return val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
+    
+    def get_l(self, zone, s) -> float:
+        return val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
     
 
 class ZonePressures:
@@ -217,9 +217,9 @@ class ZonePressures:
 
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
-        if zone not in [13, 14]:
-            s = val_data(f"Longitud mas corta de los paneles de {zone} (mm): ")
-            l = val_data(f"Longitud mas larga de los paneles de {zone} (mm): ", True, True, 0, s)
+        if zone not in [4, 12, 13, 14]:
+            s = self.craft.get_s(zone)
+            l = self.craft.get_l(zone, s)
         if zone == 2:
             pressure, index = self.casco_fondo(zone, context, s, l)
             self.pressure_results[zone] = pressure, index
@@ -229,7 +229,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure, index
             return pressure, index, s, l
         elif zone == 4:
-            pressure, index= self.espejo_popa(context)
+            pressure, index, s, l = self.espejo_popa(zone, context)
             self.pressure_results[zone] = pressure
             return pressure, index, s, l
         elif zone == 5:
@@ -261,7 +261,7 @@ class ZonePressures:
             self.pressure_results[zone] = pressure
             return pressure, None, s, l
         elif zone == 12:
-            pressure, index = self.tuneles_waterjets(context)
+            pressure, index, s, l = self.tuneles_waterjets(zone, context)
             self.pressure_results[zone] = pressure
             return pressure, index, s, l
         else:
@@ -322,7 +322,7 @@ class ZonePressures:
         
         return pressure, index
 
-    def espejo_popa(self, context):
+    def espejo_popa(self, zone, context):
         if self.pressure_results[3] is None:
             print("\nPrimero se debe calcular la presión del costado\n")
             _s = val_data(f"Longitud mas corta de los paneles del costado (mm): ")
@@ -331,6 +331,9 @@ class ZonePressures:
             self.pressure_results[3] = pressure_costado, index
         else:
             pressure_costado, index = self.pressure_results[3]
+            
+        s = self.craft.get_s(zone)
+        l = self.craft.get_l(zone, s)
         
         L = self.craft.get_L()
         V = self.craft.get_V()
@@ -344,7 +347,7 @@ class ZonePressures:
         
         pressure = max(pressure_costado, pressure_forend)
 
-        return pressure, index, _s, _l
+        return pressure, index, s, l
         
     def cubierta_principal(self):
         L = self.craft.get_L()
@@ -457,7 +460,7 @@ class ZonePressures:
         # Retorna un diccionario con las presiones calculadas
         return result
     
-    def tuneles_waterjets(self, context):
+    def tuneles_waterjets(self, zone, context):
         if self.pressure_results[2] is None:
             print("\nPrimero se debe calcular la presión del fondo\n")
             _s = val_data(f"Longitud mas corta de los paneles del fondo (mm): ")
@@ -466,8 +469,12 @@ class ZonePressures:
             self.pressure_results[2] = pressure_fondo, index
         else:
             pressure_fondo, index = self.pressure_results[2]
+        
+        s = self.craft.get_s(zone)
+        l = self.craft.get_l(zone, s)
+        
         pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ", True, True, -1)
-        return pressure, index
+        return pressure, index, s, l
 
     # Funciones auxiliares
     def calculate_x_y_Bx(self, zone) -> tuple:
