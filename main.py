@@ -934,20 +934,22 @@ def main():
                 else:
                     pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
                     print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
-            elif craft.material in [3, 4]:
-                pressure, thickness = plating_stiffeners.calculate_alextruido_alcorrugado(zone, pressure)
-                print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
-            elif craft.material == 5:
-                section_modulus, moment_inertia, core_shear_strength = plating_stiffeners.calculate_alsandwich(zone, pressure)
-                print(f"""Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],
-                        el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]""")
-            elif craft.material == 6:
-                thickness = plating_stiffeners.calculate_fibra_laminada(zone, pressure)
-                print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
-            elif craft.material == 7:
-                section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating_stiffeners.calculate_fibra_sandwich(zone, pressure)
-                print(f"""Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
-                    la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]""")
+            else:
+                print("Cooming Soon...")
+            # elif craft.material in [3, 4]:
+            #     pressure, thickness = plating_stiffeners.calculate_alextruido_alcorrugado(zone, pressure)
+            #     print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
+            # elif craft.material == 5:
+            #     section_modulus, moment_inertia, core_shear_strength = plating_stiffeners.calculate_alsandwich(zone, pressure)
+            #     print(f"""Módulo de sección de {zone} es {section_modulus} [mm^3], la presion es: {pressure} [MPa],
+            #             el momento de inercía es: {moment_inertia} [mm^4],  el espesor del nucleo: {core_shear_strength} [mm]]""")
+            # elif craft.material == 6:
+            #     thickness = plating_stiffeners.calculate_fibra_laminada(zone, pressure)
+            #     print(f"El espesor de {zone} es: {thickness} [mm], la presion es: {pressure} [MPa]")
+            # elif craft.material == 7:
+            #     section_modulus_outer, section_modulus_inner, moment_inertia, core_shear_strength  = plating_stiffeners.calculate_fibra_sandwich(zone, pressure)
+            #     print(f"""Módulo de sección de {zone} de la fibra externa es {section_modulus_outer} [mm^3], de la fibra interna es {section_modulus_inner}\\
+            #         la presion es: {pressure} [MPa], el momento de inercía es: {moment_inertia} [mm^4], el espesor del nucleo: {core_shear_strength} [mm]]""")
     except ValueError as e:
         print(e)
         
