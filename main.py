@@ -756,7 +756,7 @@ class Acero_Aluminio:
     def lateral_loading(self, zone, pressure, index, s, l) -> float:
         k = self.constant_k(s, l)
         sigma_a = self.design_stress_plating(zone, index)
-        print(f"pressure = {pressure}, k = {k}, sigma_a = {sigma_a}, lateral_loading = {s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))}")
+        print(f"pressure = {pressure}, k = {k}, sigma_a = {sigma_a}, lateral_loading = {s * np.sqrt((pressure * k)/(1000 * sigma_a))}")
         return s * np.sqrt((pressure * k)/(1000 * sigma_a))
     
     def secondary_stiffening(self, s) -> float:
@@ -789,8 +789,10 @@ class Acero_Aluminio:
                 return max(0.62 * np.sqrt(L * q) + 1, 3.5)
         elif zone == 5:  # Strength Deck - Cubierta principal
             if self.craft.material == 1:
+                print(f"minimum_thickness = {0.40 * np.sqrt(L * q) + 1, 3.0}")
                 return max(0.40 * np.sqrt(L * q) + 1, 3.0)
             else:
+                print(f"minimum_thickness = {0.62 * np.sqrt(L * q) + 1, 3.5}")
                 return max(0.62 * np.sqrt(L * q) + 1, 3.5)
         else: #zone in [6, 9, 10]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
             if self.craft.material == 1:
