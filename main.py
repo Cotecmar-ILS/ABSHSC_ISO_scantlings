@@ -960,16 +960,34 @@ class Stiffeners:
         self.craft = craft
         self.zone_pressures = zone_pressures
         
-    def section_modulus(self, zone):
-        pressure, index, s, l = self.zone_pressures.get_pressure(zone, context="stiffeners")
-        sigma_s = self.design_stress_stiffeners(zone, index)#Verificar
-        SM = (83.3 * pressure * s * l**2) / sigma_s
-        return SM
+    def calculate_stiffeners(self, zone):
+        SM_longitudinals, SM_transverse_girders, SM, I = None, None, None, None
+        pressure, index, s, l = self.zone_pressures.calculate_pressure(zone, context="stiffeners")
+        if self.craft.material in [1, 2, 3, 4, 5]:
+            if zone in [2, 3, 4, 5, 6, 7, 8]:
+                SM_longitudinals, SM_transverse_girders = self.section_modulus(zone, pressure, index, s, l)
+            else: 
+                SM = self.section_modulus(zone, pressure, index, s, l)
+            I = self.moment_intertia(zone, pressure, s, l)
+            return pressure, SM_longitudinals, SM_transverse_girders, SM, I
+        else:
+            SM = self.section_modulus(zone, pressure, index, s, l)
+            return pressure, SM_longitudinals, SM_transverse_girders, SM
+        
+    def section_modulus(self, zone, pressure, index, s, l):
+        if zone in [2, 3, 4, 5, 6, 7, 8]:
+            sigma_s_longitudinals, sigma_s_transverse_girders, sigma_s = self.design_stress_stiffeners(zone, index)
+            SM_longitudinals = (83.3 * pressure * s * l**2) / sigma_s_longitudinals
+            SM_transverse_girders = (83.3 * pressure * s * l**2) / sigma_s_transverse_girders
+            return SM_longitudinals, SM_transverse_girders
+        else:
+            sigma_s_longitudinals, sigma_s_transverse_girders, sigma_s = self.design_stress_stiffeners(zone, index)
+            SM = (83.3 * pressure * s * l**2) / sigma_s
+            return SM
     
-    def moment_intertia(self, zone):
-        pressure, index, s, l = self.zone_pressures.get_pressure(zone, context="stiffeners")
-        E = 2.06e5 if self.craft.aluminum else 6.9e4
-        k4 = self.calculate_k4(zone)#Verificar
+    def moment_intertia(self, zone, pressure, s, l):
+        E = 2.06e5 if self.craft.material == 1 else 6.9e4
+        k4 = self.calculate_k4(zone)
         I = (260* pressure * s * l**3) / (k4 * E)
         return I
     
@@ -989,80 +1007,66 @@ class Stiffeners:
         return k4
     
     def design_stress_stiffeners(self, zone, index):
+        d_stress_longitudinals, d_stress_transverse_girders, d_stress = None, None, None
         if self.craft.material in [1, 2, 3, 4, 5]:
-            sigma = self.craft.get_sigma_y() 
+            sigma = self.craft.get_sigma_y()
             print(f"sigma = {sigma}, index = {index}")
             if zone == 2:
                 if index == "slamming pressure":
                     d_stress_longitudinals = 0.65 * sigma
                     d_stress_transverse_girders = 0.80 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
                 else:
                     d_stress_longitudinals = 0.50 * sigma
                     d_stress_transverse_girders = 0.60 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
             elif zone in [3, 4]:
                 if index == "slamming pressure":
                     d_stress_longitudinals = 0.60 * sigma
                     d_stress_transverse_girders = 0.80 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
                 else:
                     d_stress_longitudinals = 0.50 * sigma
                     d_stress_transverse_girders = 0.60 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
             elif zone == 5:
                 d_stress_longitudinals = 0.33 * sigma
                 d_stress_transverse_girders = 0.75 * sigma
-                return d_stress_longitudinals, d_stress_transverse_girders
             elif zone in [6, 8]:
                 d_stress_longitudinals = 0.40 * sigma
                 d_stress_transverse_girders = 0.75 * sigma
-                return d_stress_longitudinals, d_stress_transverse_girders
             elif zone == 7:
                 d_stress_longitudinals = 0.75 * sigma
                 d_stress_transverse_girders = 0.75 * sigma
-                return d_stress_longitudinals, d_stress_transverse_girders
             elif zone == 9:
                 d_stress = 0.85 * sigma
-                return d_stress
             elif zone == 10:
                 d_stress = 0.60 * sigma
-                return d_stress
             elif zone == 11:
                 d_stress = 0.70 * sigma
-                return d_stress
             else:
                 d_stress = None
-                return d_stress
         else:
             sigma = self.craft.get_sigma_u()
             if zone == 2:
                 if index == "slamming pressure":
                     d_stress_longitudinals = 0.33 * sigma
                     d_stress_transverse_girders = 0.33 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
                 else:
                     d_stress_longitudinals = 0.40 * sigma
                     d_stress_transverse_girders = 0.33 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
             elif zone == 9:
                 d_stress = 0.50 * sigma
-                return d_stress
             elif zone in [10, 11]:
                 d_stress = 0.33 * sigma
-                return d_stress
             else:
                 if index == "slamming pressure":
                     d_stress_longitudinals = 0.40 * sigma
                     d_stress_transverse_girders = 0.33 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
                 else:
                     d_stress_longitudinals = 0.40 * sigma
                     d_stress_transverse_girders = 0.33 * sigma
-                    return d_stress_longitudinals, d_stress_transverse_girders
+
+        return d_stress_longitudinals, d_stress_transverse_girders, d_stress
         
         
-def cls_factory(craft, zone_pressures):
+def cls_factory(craft, zone_pressures): 
     # Diccionario que mapea los identificadores de material a clases correspondientes
     plating_classes = {
         1: Acero_Aluminio,
@@ -1086,15 +1090,19 @@ def main():
     zone_pressures = ZonePressures(craft)
     
     try:
-        plating_stiffeners = cls_factory(craft, zone_pressures)
+        plating = cls_factory(craft, zone_pressures)
+        stiffeners = Stiffeners(craft, zone_pressures)
         
         for zone in craft.selected_zones:
             if craft.material in [1, 2]:
-                if zone == 11:
-                    pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
+                pressure_plating, thickness = plating.acero_aluminio_plating(zone)
+                pressure_stiffeners, SM_longitudinals, SM_transverse_girders, SM, I = stiffeners.calculate_stiffeners(zone)
+                print(f"\nEl espesor de la zona {zone} es: {thickness} [mm], la presion es de: {pressure_plating} [MPa]")
+                if zone in [2, 3, 4, 5, 6, 7, 8]:
+                    print(f"""\nEl modulo de seccion de los longitudinales es {SM_longitudinals} [cm^3], y de los transversales es {SM_transverse_girders} [cm^3],
+                                el momento de inercia es {I} [cm^4] y la presion es de: {pressure_stiffeners} [MPa]""")
                 else:
-                    pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
-                    print(f"\nEl espesor de la zona {zone} es: {thickness} [mm], la presion es de: {pressure} [MPa]")
+                    print(f"\nEl modulo de seccion es {SM} [cm^3], el momento de inercia es {I} [cm^4] y la presion es de: {pressure_stiffeners} [MPa]")
             else:
                 print("Cooming Soon...")
             # elif craft.material in [3, 4]:
