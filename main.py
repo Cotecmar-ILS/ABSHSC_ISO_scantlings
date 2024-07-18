@@ -818,7 +818,7 @@ class Acero_Aluminio:
         ncgx = self.pressures.calculate_ncgx(x)
         sigma_a = self.design_stress_plating(14, None)
         Beta = self.calculate_beta(a, b, s, l)
-        return np.sqrt((Beta * W * (1 + 0.5 * ncgx)) / (sigma_a))
+        return np.sqrt((Beta * Wheel_load * (1 + 0.5 * ncgx)) / (sigma_a))
 
 
 class Alextruido_AlCorrugated:
