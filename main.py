@@ -182,10 +182,10 @@ class Craft:
         return h13
     
     def get_sigma_y(self) -> float:
-        return self.get_value('sigma_y', "Esfuerzo último a la tracción (MPa): ")
+        return self.get_value('sigma_y', "Limite elastico por tracción del material (MPa): ")
     
     def get_sigma_u(self) -> float:
-        return self.get_value('sigma_u', "Límite elástico por tracción (MPa): ")
+        return self.get_value('sigma_u', "Esfuerzo ultimo a la tracción del material (MPa): ")
     
     def get_sigma_uf(self) -> float:
         return self.get_value('sigma_uf', "Resistencia mínima a la flexión (MPa): ")
@@ -557,9 +557,9 @@ class Acero_Aluminio:
 
     def __init__(self, craft, zone_pressures):
         self.craft = craft
+        self.sigma_y = self.craft.get_sigma_y()
+        self.sigma_u = self.craft.get_sigma_u()
         self.pressures = zone_pressures
-        self.sigma_y = val_data(f"\nLimite elastico por tracción del material {self.craft.material} (MPa): ")
-        self.sigma_u = val_data(f"Esfuerzo ultimo a la tracción del material {self.craft.material} (MPa): ", True, True, -1, self.sigma_y)
         self.zone_results = {}
 
     # Funcion principal para calcular el plating (Controlador)
@@ -955,6 +955,113 @@ class Fibra_Sandwich:
         return core_shear
 
 
+class Stiffeners:
+    def __init__(self, craft, zone_pressures):
+        self.craft = craft
+        self.zone_pressures = zone_pressures
+        
+    def section_modulus(self, zone):
+        pressure, index, s, l = self.zone_pressures.get_pressure(zone, context="stiffeners")
+        sigma_s = self.design_stress_stiffeners(zone, index)#Verificar
+        SM = (83.3 * pressure * s * l**2) / sigma_s
+        return SM
+    
+    def moment_intertia(self, zone):
+        pressure, index, s, l = self.zone_pressures.get_pressure(zone, context="stiffeners")
+        E = 2.06e5 if self.craft.aluminum else 6.9e4
+        k4 = self.calculate_k4(zone)#Verificar
+        I = (260* pressure * s * l**3) / (k4 * E)
+        return I
+    
+    def calculate_k4(self, zone):
+        if self.craft.material == 1:
+            if zone in [2, 3, 4, 9, 10, 11]:
+                k4 = 0.0015
+            else:
+                k4 = 0.0011
+        elif self.craft.material in [2, 3, 4, 5]:
+            if zone in [2, 3, 4, 9, 10, 11]:
+                k4 = 0.0021
+            else:
+                k4 = 0.0018
+        else:
+            k4 = "No aplica para fibra"
+        return k4
+    
+    def design_stress_stiffeners(self, zone, index):
+        if self.craft.material in [1, 2, 3, 4, 5]:
+            sigma = self.craft.get_sigma_y() 
+            print(f"sigma = {sigma}, index = {index}")
+            if zone == 2:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.65 * sigma
+                    d_stress_transverse_girders = 0.80 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+                else:
+                    d_stress_longitudinals = 0.50 * sigma
+                    d_stress_transverse_girders = 0.60 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+            elif zone in [3, 4]:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.60 * sigma
+                    d_stress_transverse_girders = 0.80 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+                else:
+                    d_stress_longitudinals = 0.50 * sigma
+                    d_stress_transverse_girders = 0.60 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+            elif zone == 5:
+                d_stress_longitudinals = 0.33 * sigma
+                d_stress_transverse_girders = 0.75 * sigma
+                return d_stress_longitudinals, d_stress_transverse_girders
+            elif zone in [6, 8]:
+                d_stress_longitudinals = 0.40 * sigma
+                d_stress_transverse_girders = 0.75 * sigma
+                return d_stress_longitudinals, d_stress_transverse_girders
+            elif zone == 7:
+                d_stress_longitudinals = 0.75 * sigma
+                d_stress_transverse_girders = 0.75 * sigma
+                return d_stress_longitudinals, d_stress_transverse_girders
+            elif zone == 9:
+                d_stress = 0.85 * sigma
+                return d_stress
+            elif zone == 10:
+                d_stress = 0.60 * sigma
+                return d_stress
+            elif zone == 11:
+                d_stress = 0.70 * sigma
+                return d_stress
+            else:
+                d_stress = None
+                return d_stress
+        else:
+            sigma = self.craft.get_sigma_u()
+            if zone == 2:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.33 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+                else:
+                    d_stress_longitudinals = 0.40 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+            elif zone == 9:
+                d_stress = 0.50 * sigma
+                return d_stress
+            elif zone in [10, 11]:
+                d_stress = 0.33 * sigma
+                return d_stress
+            else:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.40 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+                else:
+                    d_stress_longitudinals = 0.40 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+                    return d_stress_longitudinals, d_stress_transverse_girders
+        
+        
 def cls_factory(craft, zone_pressures):
     # Diccionario que mapea los identificadores de material a clases correspondientes
     plating_classes = {
