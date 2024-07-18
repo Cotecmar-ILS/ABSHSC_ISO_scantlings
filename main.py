@@ -199,11 +199,17 @@ class Craft:
     def get_sigma_ub(self) -> float:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
-    def get_s(self, zone) -> float:
-        return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
+    def get_s(self, zone, context) -> float:
+        if context == 'Plating':
+            return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
+        else:
+            return val_data(f"Separación del alma o viga longitudinal, rigidizadora, transversal, etc. de la zona {zone} (metros): ")
     
-    def get_l(self, zone, s) -> float:
-        return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
+    def get_l(self, zone, context, s) -> float:
+        if context == 'Plating':
+            return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
+        else:
+            return val_data(f"Longitud del alma longitudinal, rigidizadora, transversal o viga de la zona {zone} (metros): ", True, True, 0, s)
     
 
 class ZonePressures:
@@ -962,7 +968,9 @@ class Stiffeners:
         
     def calculate_stiffeners(self, zone):
         SM_longitudinals, SM_transverse_girders, SM, I = None, None, None, None
-        pressure, index, s, l = self.zone_pressures.calculate_pressure(zone, context="stiffeners")
+        pressure, index, s, l = self.zone_pressures.calculate_pressure(zone, context="Stiffeners")
+        s = s / 1000
+        l = l / 1000
         if self.craft.material in [1, 2, 3, 4, 5]:
             if zone in [2, 3, 4, 5, 6, 7, 8]:
                 SM_longitudinals, SM_transverse_girders = self.section_modulus(zone, pressure, index, s, l)
@@ -979,19 +987,23 @@ class Stiffeners:
             sigma_s_longitudinals, sigma_s_transverse_girders, sigma_s = self.design_stress_stiffeners(zone, index)
             SM_longitudinals = (83.3 * pressure * s * l**2) / sigma_s_longitudinals
             SM_transverse_girders = (83.3 * pressure * s * l**2) / sigma_s_transverse_girders
+            print(f"El esfuerzo de diseño de los longitudinales es {sigma_s_longitudinals} [MPa], y de los transversales es {sigma_s_transverse_girders} [MPa]")
+            print(f"El modulo de seccion de los longitudinales es {SM_longitudinals} [cm^3], y de los transversales es {SM_transverse_girders} [cm^3]")
             return SM_longitudinals, SM_transverse_girders
         else:
             sigma_s_longitudinals, sigma_s_transverse_girders, sigma_s = self.design_stress_stiffeners(zone, index)
             SM = (83.3 * pressure * s * l**2) / sigma_s
+            print(f"El esfuerzo de diseño es {sigma_s} [MPa], el modulo de seccion es {SM} [cm^3]")
             return SM
     
     def moment_intertia(self, zone, pressure, s, l):
         E = 2.06e5 if self.craft.material == 1 else 6.9e4
         k4 = self.calculate_k4(zone)
         I = (260* pressure * s * l**3) / (k4 * E)
+        print(f"E = {E}, k4 = {k4}, I = {I}")
         return I
     
-    def calculate_k4(self, zone):
+    def calculate_k4(self, zone): #Corregir
         if self.craft.material == 1:
             if zone in [2, 3, 4, 9, 10, 11]:
                 k4 = 0.0015
