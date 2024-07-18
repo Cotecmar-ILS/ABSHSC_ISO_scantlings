@@ -812,7 +812,7 @@ class Acero_Aluminio:
     
     def operation_decks(self, s, l) -> float:
         x, y, Bx = self.pressures.calculate_x_y_Bx(14)
-        W = self.craft.get_W()
+        Wheel_load = val_data("Carga estatica de la rueda [N]: ")
         a = val_data("Dimensión de la huella de la rueda, paralela al borde más corto, s, del panel de la placa [mm]: ")
         b = val_data("Dimensión de la huella de la rueda, paralela al borde más largo, l, del panel de la placa [mm]: ")
         ncgx = self.pressures.calculate_ncgx(x)
