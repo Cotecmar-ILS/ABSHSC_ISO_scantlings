@@ -337,8 +337,8 @@ class ZonePressures:
         else:
             pressure_costado, index = self.pressure_results[3]
             
-        s = self.craft.get_s(zone)
-        l = self.craft.get_l(zone, s)
+        s = self.craft.get_s(zone, context)
+        l = self.craft.get_l(zone, context, s)
         
         L = self.craft.get_L()
         V = self.craft.get_V()
@@ -477,8 +477,8 @@ class ZonePressures:
         else:
             pressure_fondo, index = self.pressure_results[2]
         
-        s = self.craft.get_s(zone)
-        l = self.craft.get_l(zone, s)
+        s = self.craft.get_s(zone, context)
+        l = self.craft.get_l(zone, context, s)
         
         pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ")
         return pressure, index, s, l
@@ -974,6 +974,12 @@ class Stiffeners:
         if self.craft.material in [1, 2, 3, 4, 5]:
             if zone in [2, 3, 4, 5, 6, 7, 8]:
                 SM_longitudinals, SM_transverse_girders = self.section_modulus(zone, pressure, index, s, l)
+            elif zone == 11:
+                pressure, index, s, l = self.zone_pressures.calculate_pressure(zone, context="Stiffeners")
+                S_Modulus = {}
+                for part, part_pressure in pressure.items():
+                    SM[part] = self.section_modulus(zone, part_pressure, index, s, l)
+                    return pressure, S_Modulus
             else: 
                 SM = self.section_modulus(zone, pressure, index, s, l)
             I = self.moment_intertia(zone, pressure, s, l)
