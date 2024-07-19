@@ -217,7 +217,7 @@ class ZonePressures:
 
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
-        if zone not in [4, 12,]:
+        if zone not in [4, 12]:
             s = self.craft.get_s(zone)
             l = self.craft.get_l(zone, s)
         if zone == 2:
@@ -414,6 +414,7 @@ class ZonePressures:
         pressure_1 = self.N3 * hb
         pressure_2 = pg * (1 + 0.5 * ncgx) * hb
         pressure = max(pressure_1, pressure_2)
+        print(ncgx, hb, pg, pressure_1, pressure_2, pressure)
         return pressure
 
     def superestructura_casetas(self, context):
