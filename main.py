@@ -182,10 +182,10 @@ class Craft:
         return h13
     
     def get_sigma_y(self) -> float:
-        return self.get_value('sigma_y', "Esfuerzo último a la tracción (MPa): ")
+        return self.get_value('sigma_y', "Limite elastico por tracción del material (MPa): ")
     
     def get_sigma_u(self) -> float:
-        return self.get_value('sigma_u', "Límite elástico por tracción (MPa): ")
+        return self.get_value('sigma_u', "Esfuerzo ultimo a la tracción del material (MPa): ")
     
     def get_sigma_uf(self) -> float:
         return self.get_value('sigma_uf', "Resistencia mínima a la flexión (MPa): ")
@@ -199,11 +199,17 @@ class Craft:
     def get_sigma_ub(self) -> float:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
-    def get_s(self, zone) -> float:
-        return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
+    def get_s(self, zone, context) -> float:
+        if context == 'Plating':
+            return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
+        else:
+            return val_data(f"Separación del alma o viga longitudinal, rigidizadora, transversal, etc. de la zona {zone} (metros): ")
     
-    def get_l(self, zone, s) -> float:
-        return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
+    def get_l(self, zone, context, s) -> float:
+        if context == 'Plating':
+            return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
+        else:
+            return val_data(f"Longitud del alma longitudinal, rigidizadora, transversal o viga de la zona {zone} (mm): ", True, True, 0, s)
     
 
 class ZonePressures:
@@ -217,9 +223,9 @@ class ZonePressures:
 
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
-        if zone not in [4, 12]:
-            s = self.craft.get_s(zone)
-            l = self.craft.get_l(zone, s)
+        if zone not in [4, 12,]:
+            s = self.craft.get_s(zone, context)
+            l = self.craft.get_l(zone, context, s)
         if zone == 2:
             pressure, index = self.casco_fondo(zone, context, s, l)
             self.pressure_results[zone] = pressure, index
@@ -331,8 +337,8 @@ class ZonePressures:
         else:
             pressure_costado, index = self.pressure_results[3]
             
-        s = self.craft.get_s(zone)
-        l = self.craft.get_l(zone, s)
+        s = self.craft.get_s(zone, context)
+        l = self.craft.get_l(zone, context, s)
         
         L = self.craft.get_L()
         V = self.craft.get_V()
@@ -361,7 +367,7 @@ class ZonePressures:
         FD = self.calculate_FD(context, l, s)
         
         # Mostrar imagen 2
-        ha = val_data("Altura desde la línea de flotación hasta la cubierta humeda en cuestión (metros): ", True, True, 0, 0, D)
+        ha = val_data("Altura desde la línea de flotación hasta la cubierta (metros): ", True, True, 0, 0, D)
         if L < 61:
             v1 = ((4 * h13) / (np.sqrt(L))) + 1
             pressure = 30 * self.N1 * FD * F1 * V * v1 * (1 - 0.85 * ha / h13)
@@ -414,7 +420,6 @@ class ZonePressures:
         pressure_1 = self.N3 * hb
         pressure_2 = pg * (1 + 0.5 * ncgx) * hb
         pressure = max(pressure_1, pressure_2)
-        print(ncgx, hb, pg, pressure_1, pressure_2, pressure)
         return pressure
 
     def superestructura_casetas(self, context):
@@ -472,8 +477,8 @@ class ZonePressures:
         else:
             pressure_fondo, index = self.pressure_results[2]
         
-        s = self.craft.get_s(zone)
-        l = self.craft.get_l(zone, s)
+        s = self.craft.get_s(zone, context)
+        l = self.craft.get_l(zone, context, s)
         
         pressure = val_data("Presión máxima positiva o negativa de diseño del túnel [kN/m^2]: ")
         return pressure, index, s, l
@@ -558,9 +563,9 @@ class Acero_Aluminio:
 
     def __init__(self, craft, zone_pressures):
         self.craft = craft
+        self.sigma_y = self.craft.get_sigma_y()
+        self.sigma_u = self.craft.get_sigma_u()
         self.pressures = zone_pressures
-        self.sigma_y = val_data(f"\nLimite elastico por tracción del material {self.craft.material} (MPa): ")
-        self.sigma_u = val_data(f"Esfuerzo ultimo a la tracción del material {self.craft.material} (MPa): ", True, True, -1, self.sigma_y)
         self.zone_results = {}
 
     # Funcion principal para calcular el plating (Controlador)
@@ -757,7 +762,7 @@ class Acero_Aluminio:
     def lateral_loading(self, zone, pressure, index, s, l) -> float:
         k = self.constant_k(s, l)
         sigma_a = self.design_stress_plating(zone, index)
-        print(f"pressure = {pressure}, k = {k}, sigma_a = {sigma_a}, lateral_loading = {s * 10 * np.sqrt((pressure * k)/(1000 * sigma_a))}")
+        print(f"pressure = {pressure}, k = {k}, sigma_a = {sigma_a}, lateral_loading = {s * np.sqrt((pressure * k)/(1000 * sigma_a))}")
         return s * np.sqrt((pressure * k)/(1000 * sigma_a))
     
     def secondary_stiffening(self, s) -> float:
@@ -790,8 +795,10 @@ class Acero_Aluminio:
                 return max(0.62 * np.sqrt(L * q) + 1, 3.5)
         elif zone == 5:  # Strength Deck - Cubierta principal
             if self.craft.material == 1:
+                print(f"minimum_thickness = {0.40 * np.sqrt(L * q) + 1, 3.0}")
                 return max(0.40 * np.sqrt(L * q) + 1, 3.0)
             else:
+                print(f"minimum_thickness = {0.62 * np.sqrt(L * q) + 1, 3.5}")
                 return max(0.62 * np.sqrt(L * q) + 1, 3.5)
         else: #zone in [6, 9, 10]:  #Lower Decks, W.T. Bulkheads, Deep Tank Bulkheads
             if self.craft.material == 1:
@@ -811,13 +818,13 @@ class Acero_Aluminio:
     
     def operation_decks(self, s, l) -> float:
         x, y, Bx = self.pressures.calculate_x_y_Bx(14)
-        W = self.craft.get_W()
+        Wheel_load = val_data("Carga estatica de la rueda [N]: ")
         a = val_data("Dimensión de la huella de la rueda, paralela al borde más corto, s, del panel de la placa [mm]: ")
         b = val_data("Dimensión de la huella de la rueda, paralela al borde más largo, l, del panel de la placa [mm]: ")
         ncgx = self.pressures.calculate_ncgx(x)
         sigma_a = self.design_stress_plating(14, None)
         Beta = self.calculate_beta(a, b, s, l)
-        return np.sqrt((Beta * W * (1 + 0.5 * ncgx)) / (sigma_a))
+        return np.sqrt((Beta * Wheel_load * (1 + 0.5 * ncgx)) / (sigma_a))
 
 
 class Alextruido_AlCorrugated:
@@ -954,7 +961,130 @@ class Fibra_Sandwich:
         return core_shear
 
 
-def cls_factory(craft, zone_pressures):
+class Stiffeners:
+    def __init__(self, craft, zone_pressures):
+        self.craft = craft
+        self.zone_pressures = zone_pressures
+        
+    def calculate_stiffeners(self, zone):
+        SM_longitudinals, SM_transverse_girders, SM, I = None, None, None, None
+        pressure, index, s, l = self.zone_pressures.calculate_pressure(zone, context="Stiffeners")
+        s = s / 1000
+        l = l / 1000
+        if self.craft.material in [1, 2, 3, 4, 5]:
+            if zone in [2, 3, 4, 5, 6, 7, 8]:
+                SM_longitudinals, SM_transverse_girders = self.section_modulus(zone, pressure, index, s, l)
+            elif zone == 11:
+                pressure, index, s, l = self.zone_pressures.calculate_pressure(zone, context="Stiffeners")
+                S_Modulus = {}
+                for part, part_pressure in pressure.items():
+                    SM[part] = self.section_modulus(zone, part_pressure, index, s, l)
+                    return pressure, S_Modulus
+            else: 
+                SM = self.section_modulus(zone, pressure, index, s, l)
+            I = self.moment_intertia(zone, pressure, s, l)
+            return pressure, SM_longitudinals, SM_transverse_girders, SM, I
+        else:
+            SM = self.section_modulus(zone, pressure, index, s, l)
+            return pressure, SM_longitudinals, SM_transverse_girders, SM
+        
+    def section_modulus(self, zone, pressure, index, s, l):
+        if zone in [2, 3, 4, 5, 6, 7, 8]:
+            sigma_s_longitudinals, sigma_s_transverse_girders, sigma_s = self.design_stress_stiffeners(zone, index)
+            SM_longitudinals = (83.3 * pressure * s * l**2) / sigma_s_longitudinals
+            SM_transverse_girders = (83.3 * pressure * s * l**2) / sigma_s_transverse_girders
+            print(f"El esfuerzo de diseño de los longitudinales es {sigma_s_longitudinals} [MPa], y de los transversales es {sigma_s_transverse_girders} [MPa]")
+            print(f"El modulo de seccion de los longitudinales es {SM_longitudinals} [cm^3], y de los transversales es {SM_transverse_girders} [cm^3]")
+            return SM_longitudinals, SM_transverse_girders
+        else:
+            sigma_s_longitudinals, sigma_s_transverse_girders, sigma_s = self.design_stress_stiffeners(zone, index)
+            SM = (83.3 * pressure * s * l**2) / sigma_s
+            print(f"El esfuerzo de diseño es {sigma_s} [MPa], el modulo de seccion es {SM} [cm^3]")
+            return SM
+    
+    def moment_intertia(self, zone, pressure, s, l):
+        E = 2.06e5 if self.craft.material == 1 else 6.9e4
+        k4 = self.calculate_k4(zone)
+        I = (260* pressure * s * l**3) / (k4 * E)
+        print(f"E = {E}, k4 = {k4}, I = {I}")
+        return I
+    
+    def calculate_k4(self, zone):
+        if self.craft.material == 1:
+            if zone in [2, 3, 4, 9, 10, 11]:
+                k4 = 0.0015
+            else:
+                k4 = 0.0011
+        elif self.craft.material in [2, 3, 4, 5]:
+            if zone in [2, 3, 4, 9, 10, 11]:
+                k4 = 0.0021
+            else:
+                k4 = 0.0018
+        else:
+            k4 = "No aplica para fibra"
+        return k4
+    
+    def design_stress_stiffeners(self, zone, index):
+        d_stress_longitudinals, d_stress_transverse_girders, d_stress = None, None, None
+        if self.craft.material in [1, 2, 3, 4, 5]:
+            sigma = self.craft.get_sigma_y()
+            print(f"sigma = {sigma}, index = {index}")
+            if zone == 2:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.65 * sigma
+                    d_stress_transverse_girders = 0.80 * sigma
+                else:
+                    d_stress_longitudinals = 0.50 * sigma
+                    d_stress_transverse_girders = 0.60 * sigma
+            elif zone in [3, 4]:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.60 * sigma
+                    d_stress_transverse_girders = 0.80 * sigma
+                else:
+                    d_stress_longitudinals = 0.50 * sigma
+                    d_stress_transverse_girders = 0.60 * sigma
+            elif zone == 5:
+                d_stress_longitudinals = 0.33 * sigma
+                d_stress_transverse_girders = 0.75 * sigma
+            elif zone in [6, 8]:
+                d_stress_longitudinals = 0.40 * sigma
+                d_stress_transverse_girders = 0.75 * sigma
+            elif zone == 7:
+                d_stress_longitudinals = 0.75 * sigma
+                d_stress_transverse_girders = 0.75 * sigma
+            elif zone == 9:
+                d_stress = 0.85 * sigma
+            elif zone == 10:
+                d_stress = 0.60 * sigma
+            elif zone == 11:
+                d_stress = 0.70 * sigma
+            else:
+                d_stress = None
+        else:
+            sigma = self.craft.get_sigma_u()
+            if zone == 2:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.33 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+                else:
+                    d_stress_longitudinals = 0.40 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+            elif zone == 9:
+                d_stress = 0.50 * sigma
+            elif zone in [10, 11]:
+                d_stress = 0.33 * sigma
+            else:
+                if index == "slamming pressure":
+                    d_stress_longitudinals = 0.40 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+                else:
+                    d_stress_longitudinals = 0.40 * sigma
+                    d_stress_transverse_girders = 0.33 * sigma
+
+        return d_stress_longitudinals, d_stress_transverse_girders, d_stress
+        
+        
+def cls_factory(craft, zone_pressures): 
     # Diccionario que mapea los identificadores de material a clases correspondientes
     plating_classes = {
         1: Acero_Aluminio,
@@ -978,15 +1108,19 @@ def main():
     zone_pressures = ZonePressures(craft)
     
     try:
-        plating_stiffeners = cls_factory(craft, zone_pressures)
+        plating = cls_factory(craft, zone_pressures)
+        stiffeners = Stiffeners(craft, zone_pressures)
         
         for zone in craft.selected_zones:
             if craft.material in [1, 2]:
-                if zone == 11:
-                    pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
+                pressure_plating, thickness = plating.acero_aluminio_plating(zone)
+                pressure_stiffeners, SM_longitudinals, SM_transverse_girders, SM, I = stiffeners.calculate_stiffeners(zone)
+                print(f"\nEl espesor de la zona {zone} es: {thickness} [mm], la presion es de: {pressure_plating} [MPa]")
+                if zone in [2, 3, 4, 5, 6, 7, 8]:
+                    print(f"""\nEl modulo de seccion de los longitudinales es {SM_longitudinals} [cm^3], y de los transversales es {SM_transverse_girders} [cm^3],
+                                el momento de inercia es {I} [cm^4] y la presion es de: {pressure_stiffeners} [MPa]""")
                 else:
-                    pressure, thickness = plating_stiffeners.acero_aluminio_plating(zone)
-                    print(f"\nEl espesor de la zona {zone} es: {thickness} [mm], la presion es de: {pressure} [MPa]")
+                    print(f"\nEl modulo de seccion es {SM} [cm^3], el momento de inercia es {I} [cm^4] y la presion es de: {pressure_stiffeners} [MPa]")
             else:
                 print("Cooming Soon...")
             # elif craft.material in [3, 4]:
