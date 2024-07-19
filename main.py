@@ -209,7 +209,7 @@ class Craft:
         if context == 'Plating':
             return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
         else:
-            return val_data(f"Longitud del alma longitudinal, rigidizadora, transversal o viga de la zona {zone} (metros): ", True, True, 0, s)
+            return val_data(f"Longitud del alma longitudinal, rigidizadora, transversal o viga de la zona {zone} (mm): ", True, True, 0, s)
     
 
 class ZonePressures:
@@ -224,8 +224,8 @@ class ZonePressures:
     # Función principal para calculo de presiones (Controlador)
     def calculate_pressure(self, zone, context):
         if zone not in [4, 12,]:
-            s = self.craft.get_s(zone)
-            l = self.craft.get_l(zone, s)
+            s = self.craft.get_s(zone, context)
+            l = self.craft.get_l(zone, context, s)
         if zone == 2:
             pressure, index = self.casco_fondo(zone, context, s, l)
             self.pressure_results[zone] = pressure, index
@@ -1003,7 +1003,7 @@ class Stiffeners:
         print(f"E = {E}, k4 = {k4}, I = {I}")
         return I
     
-    def calculate_k4(self, zone): #Corregir
+    def calculate_k4(self, zone):
         if self.craft.material == 1:
             if zone in [2, 3, 4, 9, 10, 11]:
                 k4 = 0.0015
