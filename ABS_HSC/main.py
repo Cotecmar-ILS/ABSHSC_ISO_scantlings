@@ -47,7 +47,7 @@ ZONAS
 """
 
 import numpy as np
-from ABS_HSC.ABS_HSC.validations import val_data
+from validations import val_data
 
 
 class Craft:
