@@ -2,7 +2,7 @@
     Main de la calculadora de ISO 12215-5
 """
 
-from validations import val_data
+from ABS_HSC.validations import val_data
 
 class Craft:
     def __init__(self, material):

@@ -1,5 +1,5 @@
 from ABS_Craft import Craft
-from validations import val_data
+from ABS_HSC.validations import val_data
 from math import sqrt, pow
 
 

@@ -10,7 +10,7 @@ class Pressure():
         self.PSM_MIN = 0.9 * self.craft.LWL * self.design_category_kDC()
         self.PDM_BASE = 0.35 * self.craft.LWL + 14.6
         self.PDM_MIN = 5
-
+        
     #Función para exportar la presión requerida (NUEVA)
     def get_zone_pressure(self, b, l, s, lu, x):
         if self.craft.zone == 'Fondo':
@@ -31,7 +31,7 @@ class Pressure():
             return self.collision_bulkheads_pressure()
         else:
             raise ValueError(f"Zona '{self.craft.zone}' no reconocida o no implementada.")
-
+    
     #Pressure Adjusting Factors
     def design_category_kDC(self):
         if self.craft.category == 'A':
@@ -43,7 +43,7 @@ class Pressure():
         else:
             kDC = 0.4
         return kDC
-
+    
     def dynamic_load_nCG(self):
         """
         Calcula el factor de carga dinámica nCG para embarcaciones de motor en modo de planeo.
@@ -112,20 +112,20 @@ class Pressure():
         else:
             h = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
         return (Z-h)/Z
-
+    
     def superstructure_deckhouse_pressure_reduction_kSUP(self):
         # Devuelve un diccionario con todos los valores de kSUP
         kSUP_values = {
-            'Frente': 1,
-            "Lateral (Área de Paso)": 0.67,
-            "Lateral (Área de No Paso)": 0.5,
-            'A Popa': 0.5,
-            "Superior <= 800 mm sobre cubierta": 0.5, # Área caminada
-            "Superior > 800 mm sobre cubierta": 0.35, # Área caminada
-            "Niveles Superiores": 0                   # Elementos no expuestos al clima
+            'Front': 1,
+            'Side (Walking Area)': 0.67,
+            'Side (Non Walking Area)': 0.5,
+            'Aft end': 0.5,
+            'Top <= 800 mm above deck': 0.5,  # Área de caminata
+            'Top > 800mm above deck': 0.35,   # Área de caminata
+            'Upper_Tiers': 0                   # Elementos no expuestos al clima
         }
         return kSUP_values
-
+    
     #Design Pressures
     def bottom_pressure(self, b, l, s, lu, x):
         kAR = self.area_pressure_reduction_kAR(b, l, s, lu)
@@ -144,7 +144,7 @@ class Pressure():
 
         # Siempre usa la mayor presión de fondo entre desplazamiento y planeo
         return max(PBMD, PBMP)
-
+    
     def side_transom_pressure(self, b, l, s, lu, x):
         kZ = self.hull_side_pressure_reduction_kZ()
         kAR = self.area_pressure_reduction_kAR(b, l, s, lu)
@@ -158,7 +158,7 @@ class Pressure():
         PSMP = max(self.PSM_MIN, PSMP)
         side_pressure = max(PSMD, PSMP)
         return side_pressure
-
+    
     def deck_pressure(self, b, l, s, lu, x):
         kAR = self.area_pressure_reduction_kAR(b, l, s, lu)
         kDC = self.design_category_kDC()
@@ -180,19 +180,19 @@ class Pressure():
         # Calcula y devuelve un diccionario con las presiones de diseño para cada ubicación posible
         PSUP_M_values = {location: max(self.PDM_BASE * kDC * kAR * kSUP, self.PDM_MIN) for location, kSUP in kSUP_values.items()}
         return PSUP_M_values
-
+    
     @property
     def hB(self):
         return val_data("Ingrese la altura de la columna de agua (en metros): ", True, True, -1, 0.0001) #Modificado
-
+    
     def watertight_bulkheads_pressure(self):
         PWB = 7 * self.hB
         return PWB
-
+    
     def integral_tank_bulkheads_pressure(self):
         PTB = 10 * self.hB
         return PTB
-
+    
     def wash_plates_pressure(self):
         # Calcular el área total del mamparo
         h = val_data("Ingrese la altura del mamparo de tanque integral: ")
@@ -210,3 +210,9 @@ class Pressure():
     def collision_bulkheads_pressure(self):
         PTB = 10 * self.hB
         return PTB
+   
+    def structural_bulkheads_pressure(self):
+        return print("Verificar norma ISO 12215-5, inciso 8.3.5 & 11.8")
+    
+    def transmision_pilar_loads_pressure(self):
+        return print("Verificar norma ISO 12215-5, inciso 8.3.6")

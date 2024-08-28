@@ -1,19 +1,10 @@
-# Bottom Shell
-# Side Shell
-# Decks
-# Superstructure and Deckhouses – Front, Sides, Ends, and Tops
-# Tank Bulkheads
-# Watertight Bulkheads
-
-
 from ABS_HSC.validations import val_data
-
+from typing import List
 
 class Craft:
 
-
-    MATERIALS = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
-    ZONES = ('Vagra Maestra', 'Fondo', 'Costado', 'Cubiertas, Mamparos y Superestructura')
+    MATERIALS: List[str] = ['Acero', 'Aluminio', 'FRP - single skin', 'FRP - sandwich']
+    ZONES: List[str] = ['Cuaderna Maestra', 'Fondo', 'Costado', 'Cubiertas, Mamparos y Superestructura']
 
     def __init__(self):
         print("\nCalculadora de Escantillonado ABS --- 'ABS - Scantlings'\n")
@@ -26,7 +17,7 @@ class Craft:
         self.V = val_data("\nIngrese la velocidad (Nudos): ")
         self.W = val_data("\nIngrese el desplazamiento de la embarcación (Toneladas): ") * 1000
         self.Bcg = val_data("\nIngrese la astilla muerta fondo en LCG (°grados): ")
-        self.material = self.select_material()
+        self.material = self.calculate_material()
         self.sigma_u = val_data("\nIngrese el esfuerzo ultimo a la tracción (MPa): ")
         self.sigma_y = val_data("Ingrese el limite elastico por tracción (MPa): ")
         self.resistencia = self.determine_resistencia()
@@ -34,20 +25,21 @@ class Craft:
         self.sigma_ap = self.dstress_plating(self.zone)
         self.sigma_ai = self.dstress_internals(self.zone)
 
-
-    #Función para mostrar el menú en consola
-    def display_menu(self, items) -> None:
+    def display_menu(self, items: List[str]) -> None:
         """Muestra un menú basado en una lista de items."""
         for idx, item in enumerate(items, 1):
             print(f"{idx}. {item}")
 
-    def select_material(self) -> int:
-        print("\nLista de materiales disponibles")
+    def calculate_material(self) -> str:
+        """Calcula y devuelve el material seleccionado para la embarcación."""
+        print("\nLista de materiales disponibles:")
         self.display_menu(self.MATERIALS)
-        opcion = val_data("Seleccione un material (Ingrese el número correspondiente): ", False, True, -1, 1, len(self.MATERIALS))
-        return opcion
+        opcion = val_data("Seleccione un material (Ingrese el número correspondiente): ", False, True, 0, 1, len(self.MATERIALS))
+        material = self.MATERIALS[opcion - 1]
+        return material
 
     def determine_resistencia(self) -> str:
+        """Determina la resistencia del material."""
         if self.material == 'Acero':
             if 200 < self.sigma_y < 300:
                 return 'Ordinaria'
@@ -57,13 +49,14 @@ class Craft:
                 return 'Baja'
         return 'Ordinaria'
 
-    def select_zone(self) -> int:
-        print("\nSeleccione la zona que desea escantillonar")
+    def select_zone(self) -> str:
+        """Permite al usuario seleccionar una zona."""
+        print("\nSeleccione la zona donde desea realizar los calculos")
         self.display_menu(self.ZONES)
-        choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(self.ZONES))
-        return choice
+        choice = val_data("Ingrese el número correspondiente: ", False, True, 0, 1, len(self.ZONES))
+        return self.ZONES[choice - 1]
 
-    def dstress_plating(self, zone) -> tuple:  #Corregir
+    def dstress_plating(self, zone) -> tuple:
         """Calcula el esfuerzo de diseño basado en la zona seleccionada."""
         zones = {
             'Fondo': {
@@ -88,7 +81,7 @@ class Craft:
         stress_values = tuple(selected_zone.values())
         return stress_values
 
-    def dstress_internals(self, zone) -> tuple:  #Corregir
+    def dstress_internals(self, zone) -> tuple:
         """Calcula el esfuerzo de diseño basado en la zona seleccionada."""
         zones = {
             'Fondo': {

@@ -21,7 +21,7 @@ class Stiffener():
         kCS = max(min(kCS, 1.0), 0.5)
         return kCS
 
-    #Stiffeners equiations based on different materials
+    #Stiffeners equiations based on different materials3
     def web_area_AW(self, pressure, s, lu, tau_d):
         if self.craft.zone == 'Superestructura':
             return {location: ((self.kSA * pres * s * lu) / tau_d) * 1e-6 for location, pres in pressure.items()}
@@ -74,7 +74,6 @@ class Stiffener():
             SM = self.min_section_modulus_SM(pressure, s, lu, cu, sigma_d)
             I = self.supplementary_stiffness_requirements_for_FRP(pressure, s, lu, cu)
             return AW, SM, I
-        
         elif self.craft.material in ['Acero', 'Aluminio']:
             sigma_y = val_data(f"Esfuerzo de fluencia a la tracción ({self.craft.material}): ", True, True, -1, 0.001)
             tau_d = 0.45 * sigma_y if self.craft.material == 'Acero' else 0.4 * sigma_y
@@ -82,7 +81,6 @@ class Stiffener():
             AW = self.web_area_AW(pressure, s, lu, tau_d)
             SM = self.min_section_modulus_SM(pressure, s, lu, cu, sigma_d)
             return AW, SM
-        
         else: # Madera (laminada y plywood)
             tau = val_data(f"Resistencia al cortante mínima ({self.craft.material}, refuerzo): ", True, True, -1, 0.001)
             tau_d = 0.4 * tau

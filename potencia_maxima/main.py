@@ -1,4 +1,4 @@
-from validations import val_data
+from ABS_HSC.validations import val_data
 
 
 class Craft_1:  # Norma ISO 11592-1

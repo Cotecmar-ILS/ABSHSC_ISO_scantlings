@@ -6,7 +6,7 @@ class Plating():
     def __init__(self, craft: Craft, pressure: Pressure):
         self.craft = craft
         self.pressure = pressure
-
+        
     def curvature_correction_kC(self, b, c):
         cb = c / b
         if cb <= 0.03:
@@ -18,7 +18,7 @@ class Plating():
         # Aplica las restricciones de que kC no debe ser menor a 0.5 ni mayor a 1.0
         kC = max(min(kC, 1.0), 0.5)
         return kC
-
+    
     #Plating equiations based on different materials
     def FRP_single_skin_plating(self, b, sigma_uf, c, k2, pressure):
         sigma_d = 0.5 * sigma_uf
@@ -31,12 +31,12 @@ class Plating():
         kC = self.curvature_correction_kC(b, c)
         thickness = b * kC * ((pressure * k2)/(1000 * sigma_d))**0.5
         return thickness
-
+    
     def wood_plating(self, b, sigma_uf, k2, pressure):
         sigma_d = 0.5 * sigma_uf
         thickness = b * ((pressure * k2)/(1000 * sigma_d))**0.5
         return thickness
-
+    
     def FRP_sandwich_plating(self, b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure):
         #Note: For a sandwich the b dimension corresponds to the length of a stiffener.
         k1 = 0.017  #Bending deflection factor k1 for sandwich plating
@@ -100,7 +100,7 @@ class Plating():
         elif self.craft.material == "Madera (laminada y plywood)":
             t_min = ((30/sigma_uf)**0.5) * (3 + 0.05 * self.craft.V + 0.3 * self.craft.mLDC**0.33)
         return t_min
-
+        
     def min_side_transom_thickness(self, sigma_y, sigma_uf):
         if self.craft.material in ['Fibra laminada', 'Fibra con nucleo (Sandwich)']:
             k4 = 0.9
@@ -194,7 +194,7 @@ class Plating():
             SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
             wos, wis, w_min = self.min_bottom_thickness(b, c, sigma_y=None,  sigma_uf=None)
             return t_final, SM_inner, SM_outter, second_I, wos, wis, w_min
-
+    
     def side_transom_plating(self):
         print(f"\nIngrese las dimensiones y las propiedades de: {self.craft.material} para: {self.craft.zone}\n")
         b = val_data("Ingrese la dimensión más corta o base del panel de la lamina 'b' (mm): ", True, True, -1, 1)
@@ -233,7 +233,7 @@ class Plating():
             SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
             wos, wis, w_min = self.min_side_transom_thickness(b, c, sigma_y=None,  sigma_uf=None)
             return t_final, SM_inner, SM_outter, second_I, wos, wis, w_min 
-
+        
     def deck_plating(self):
         print(f"\nIngrese las dimensiones y las propiedades de: {self.craft.material} para: {self.craft.zone}\n")
         b = val_data("Ingrese la dimensión más corta o base del panel de la lamina 'b' (mm): ", True, True, -1, 1)
@@ -279,49 +279,34 @@ class Plating():
         l = val_data("Digite el lado más largo del panel de la lamina 'l' (mm): ", True, True, -1, b, 330 * self.craft.LH)
         ar = l / b
         #Panel aspect ratio factor for strength k2
-        k2 = min(max((0.271 * (ar*2) + 0.910 * ar - 0.554) / ((ar*2) - 0.313 * ar + 1.351), 0.308), 0.5)
-        pressure_dict = self.pressure.superstructures_deckhouses_pressure(b, l, s=None, lu=None)
-        results = {}
-
+        k2 = min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+        pressure = self.pressure.superstructures_deckhouses_pressure(b, l, s=None, lu=None)
+        
         if self.craft.material == 'Fibra laminada':
             c = val_data("Ingrese la corona o curvatura del panel 'c' (mm): ", True, True, 0)
             sigma_uf = val_data(f"Ingrese la resistencia ultima a la flexión de la {self.craft.material}: ")
-            for location, pressure in pressure_dict.items():
-                t_final = self.FRP_single_skin_plating(b, sigma_uf, c, k2, pressure)
-                results[location] = t_final
-                
-        elif self.craft.material in ['Acero', 'Aluminio']:
+            t_final = self.FRP_single_skin_plating(b, sigma_uf, c, k2, pressure)
+            return t_final
+        elif self.craft.material == 'Acero' or self.craft.material == 'Aluminio':
             c = val_data("Ingrese la corona o curvatura del panel 'c' (mm): ", True, True, 0)
             sigma_u = val_data(f"Ingrese el esfuerzo último a la tracción del {self.craft.material}: ")
             sigma_y = val_data(f"Ingrese el esfuerzo de fluencia a la tracción del {self.craft.material}: ", True, True, -1, 0.001, sigma_u)
-            for location, pressure in pressure_dict.items():
-                t_final = self.metal_plating(b, sigma_u, sigma_y, c, k2, pressure)
-                results[location] = t_final
-
+            t_final = self.metal_plating(b, sigma_u, sigma_y, c, k2, pressure)
+            return t_final
         elif self.craft.material == 'Madera (laminada y plywood)':
             sigma_uf = val_data(f"Ingrese la resistencia ultima a la flexión de la {self.craft.material} paralela al lado corto del panel: ")
-            for location, pressure in pressure_dict.items():
-                t_final = self.wood_plating(b, sigma_uf, k2, pressure)
-                results[location] = t_final
-
-        else: #self.craft.material == 'Fibra con nucleo (Sandwich)'
+            t_final = self.wood_plating(b, sigma_uf, k2, pressure)
+            return t_final
+        else: #self.craft.material == 'Fibra con nucleo (Sandwich)':
             b = min(b, 330 * self.craft.LH)
             c = val_data("Ingrese la corona o curvatura del panel 'c' (mm): ", True, True, 0)
             sigma_ut = val_data("Ingrese el esfuerzo último a la tracción de la fibra externa: ")
             sigma_uc = val_data("Ingrese el esfuerzo último a la compresión de la fibra interna: ")
             Eio = val_data("Ingrese el promedio de los módulos de Young de las caras interna y externa (MPa): ")
             tau_u = val_data("Ingrese el esfuerzo último al cortante del núcleo: ")
-            k3 = min(max((0.027 * (ar*2) - 0.029 * ar + 0.011) / ((ar*2) - 1.463 * ar + 1.108), 0.014), 0.028)
-            for location, pressure in pressure_dict.items():
-                SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
-                results[location] = {
-                'Thickness': t_final,
-                'SM_Inner': SM_inner,
-                'SM_Outter': SM_outter,
-                'Second_Moment_of_Area': second_I
-                }
-
-        return results
+            k3 = min(max((0.027 * (ar**2) - 0.029 * ar + 0.011) / ((ar**2) - 1.463 * ar + 1.108), 0.014), 0.028)
+            SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
+            return t_final, SM_inner, SM_outter, second_I
 
     def watertight_bulkheads_plating(self):
         print(f"\nIngrese las dimensiones y las propiedades de: {self.craft.material} para: {self.craft.zone}\n")
@@ -357,7 +342,7 @@ class Plating():
             k3 = min(max((0.027 * (ar**2) - 0.029 * ar + 0.011) / ((ar**2) - 1.463 * ar + 1.108), 0.014), 0.028)
             SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
             return t_final, SM_inner, SM_outter, second_I
-
+        
     def integral_tank_bulkheads_plating(self):
         print(f"\nIngrese las dimensiones y las propiedades de: {self.craft.material} para: {self.craft.zone}\n")
         b = val_data("Ingrese la dimensión más corta o base del panel de la lamina 'b' (mm): ", True, True, -1, 1)
@@ -392,7 +377,7 @@ class Plating():
             k3 = min(max((0.027 * (ar**2) - 0.029 * ar + 0.011) / ((ar**2) - 1.463 * ar + 1.108), 0.014), 0.028)
             SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
             return t_final, SM_inner, SM_outter, second_I
-
+        
     def wash_plates_plating(self):
         print(f"\nIngrese las dimensiones y las propiedades de: {self.craft.material} para: {self.craft.zone}\n")
         b = val_data("Ingrese la dimensión más corta o base del panel de la lamina 'b' (mm): ", True, True, -1, 1)
@@ -427,7 +412,7 @@ class Plating():
             k3 = min(max((0.027 * (ar**2) - 0.029 * ar + 0.011) / ((ar**2) - 1.463 * ar + 1.108), 0.014), 0.028)
             SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
             return t_final, SM_inner, SM_outter, second_I
-
+        
     def collision_bulkheads_plating(self):
         print(f"\nIngrese las dimensiones y las propiedades de: {self.craft.material} para: {self.craft.zone}\n")
         b = val_data("Ingrese la dimensión más corta o base del panel de la lamina 'b' (mm): ", True, True, -1, 1)
@@ -463,4 +448,8 @@ class Plating():
             SM_inner, SM_outter, second_I, t_final = self.FRP_sandwich_plating(b, ar, c, sigma_ut, sigma_uc, Eio, tau_u, k2, k3, pressure)
             return t_final, SM_inner, SM_outter, second_I
          
+    def structural_bulkheads_plating(self):
+        return self.pressure.structural_bulkheads_pressure()
+        
+    def transmision_pilar_loads_plating(self):
         return self.pressure.transmision_pilar_loads_pressure()
