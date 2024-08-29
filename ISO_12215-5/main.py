@@ -48,7 +48,7 @@ class Craft:
     def get_material(self) -> int:
         if 'material' not in self.values:
             print("\nLista de materiales disponibles")
-            materiales = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
+            materiales = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra con nucleo (Sandwich)')
             self.display_menu(materiales)
             choice = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
             self.values['material'] = choice
@@ -214,8 +214,10 @@ class Pressures:
     def __init__(self, craft) -> None:
         self.craft = craft
         self.kDC = self.calculate_kDC()
+        self.PBMD_BASE = 2.4 * (self.craft.get_mLDC()**0.33) + 20
+        self.PDM_MIN = 5
 
-    def calculate_kDC(self) -> float:
+    def design_category_factor_kDC(self) -> float:
         # Asegurarse de que la categoría de diseño ya está definida a través de la instancia de 'craft'
         design_category = self.craft.get_design_category()
         
@@ -224,4 +226,89 @@ class Pressures:
         
         # Retornar el valor correspondiente de kDC
         return kDC_values[design_category]
+    
+    def dynamic_load_factor_nCG(self) -> float:
+        """
+        Calcula el factor de carga dinámica nCG para embarcaciones de motor en modo de planeo.
+        Retorna:
+        float: El valor de nCG, limitado a un máximo de 7.
+        """
+        # Obtener los valores necesarios desde la instancia craft
+        LWL = self.craft.get_LWL()
+        BC = self.craft.get_BC()
+        B04 = self.craft.get_B04()
+        V = self.craft.get_V()
+        mLDC = self.craft.get_mLDC()
 
+        # Calcular nCG usando la ecuación (1)
+        nCG_1 = 0.32 * ((LWL / (10 * BC)) + 0.084) * (50 - B04) * ((V**2 * BC**2) / mLDC)
+        
+        # Calcular nCG usando la ecuación (2)
+        nCG_2 = (0.5 * V) / (mLDC**0.17)
+        
+        # Determinar el valor de nCG
+        if nCG_1 > 3:
+            nCG = min(nCG_1, nCG_2)
+        else:
+            nCG = nCG_1  # Si nCG_1 es menor o igual a 3, lo usamos directamente
+        
+        # Limitar nCG a un máximo de 7
+        nCG = min(nCG, 7)
+        
+        # Imprimir una advertencia si nCG es mayor que 7 (aunque este caso no debería ocurrir dado el min anterior)
+        if nCG > 7:
+            print(f"\nCUIDADO: El valor de carga dinámica (nCG)= {nCG} no debe ser mayor a 7, revise sus parámetros iniciales")
+        
+        return nCG
+
+    def longitudinal_pressure_factor_kL(self, x) -> float:
+        """
+        Parámetros:
+            x (float): Posición longitudinal a lo largo de la longitud de la línea de flotación (LWL),
+            medida desde el extremo de popa.
+        """
+        LWL = self.craft.get_LWL()  # Obtener la eslora de flotación
+        xLWL = x / LWL  # Calcula la relación x/LWL
+        
+        if xLWL > 0.6:
+            kL = 1.0  # Si x/LWL es mayor que 0.6, kL es 1.0
+        else:
+            nCG = self.dynamic_load_nCG()  # Calcular nCG
+            nCG_clamped = min(max(nCG, 3.0), 6.0)  # Limitar nCG entre 3 y 6
+            
+            # Aplica la ecuación para valores de x/LWL <= 0.6
+            kL = ((1 - 0.167 * nCG_clamped) * (xLWL / 0.6)) + (0.167 * nCG_clamped)
+            kL = min(kL, 1.0)  # Asegurarse de que kL no sea mayor que 1.0
+        
+        return kL
+
+    def area_pressure_factor_kAR(self, context, l, b, lu, s) -> float: #Revisar
+        """
+        Retorna:
+        float: El valor de kAR ajustado al material y limitado a un máximo de 1.
+        """
+        
+        mLDC = self.craft.get_mLDC()
+        material = self.craft.get_material()
+        
+        # Cálculo de AD dependiendo del contexto
+        if context == 'Plating':
+            AD = min((l * b) * 1e-6, 2.5 * (b**2) * 1e-6)
+        else:  # 'Stiffeners'
+            AD = max((lu * s) * 1e-6, 0.33 * (lu**2) * 1e-6)
+            
+        # Cálculo de kR dependiendo del contexto
+        kR = 1.5 - 3e-4 * b if context == 'Plating' else 1 - 2e-4 * lu
+        # Asegurar que kR no sea menor que el valor para el planeo
+        kR = max(kR, 1.0)
+        
+        # Calculo de kAR
+        kAR = (kR * 0.1 * (mLDC**0.15)) / (AD**0.3)
+        kAR = min(kAR, 1)  # kAR no debe ser mayor que 1 
+        
+        # Ajustes basados en el material
+        min_kAR = 0.4 if material == 'Fibra con nucleo (Sandwich)' else 0.25
+        kAR = max(min_kAR, kAR)
+        return kAR
+    
+    
