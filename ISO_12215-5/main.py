@@ -15,6 +15,7 @@ class Craft:
         self.management_name = input("Gerencia: ")
         self.division_name = input("División: ")
         self.values = {}
+        self.design_category = self.get_design_category()
         self.material = self.get_material()
         self.selected_zones = self.get_zones()
         
@@ -31,19 +32,23 @@ class Craft:
         for idx, item in enumerate(items, 1):
             print(f"{idx}. {item}")
 
-    def get_tipo_embarcacion(self) -> int:
-        if 'tipo_embarcacion' not in self.values:
-            print("\nSeleccione su tipo de embarcación")
-            tipo_embarcacion = ('Alta velocidad', 'Costera', 'Fluvial', 'Búsqueda y rescate')
-            self.display_menu(tipo_embarcacion)
-            choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(tipo_embarcacion))
-            self.values['tipo_embarcacion'] = choice
-        return self.values['tipo_embarcacion']
+    def get_design_category(self) -> str:
+        if 'categoria_diseño' not in self.values:
+            print("\nSeleccione la categoría de diseño de la embarcación")
+            categoria_diseño = ('Oceano', 'Offshore', 'Costera', 'Aguas calmadas')
+            self.display_menu(categoria_diseño)
+            choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(categoria_diseño))
+            
+            # Mapeo de la selección a la categoría de diseño
+            categorias = {1: 'A', 2: 'B', 3: 'C', 4: 'D'}
+            self.values['categoria_diseño'] = categorias[choice]
+            
+        return self.values['categoria_diseño']
     
     def get_material(self) -> int:
         if 'material' not in self.values:
             print("\nLista de materiales disponibles")
-            materiales = ('Acero', 'Aluminio', 'Aluminio extruido', 'Aluminio en Sandwich', 'Aluminio Corrugado', 'Fibra laminada', 'Fibra en sandwich')
+            materiales = ('Acero', 'Aluminio', 'Fibra laminada', 'Fibra en sandwich')
             self.display_menu(materiales)
             choice = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
             self.values['material'] = choice
@@ -97,7 +102,8 @@ class Craft:
     
     """PRINCIPAL CRAFT DATA"""
     def get_BC(self) -> float:
-        return self.get_value('BC', "Manga entre pantoques 'Chine beam' (metros): ")
+        LWL = self.get_LWL()
+        return self.get_value('BC', f"Manga entre pantoques ó 'Chine beam' a {0.4 * LWL} metros de la popa (metros): ")
     
     def get_BH(self) -> float:
         return self.get_value('BH', "Manga del casco (metros): ")
@@ -109,12 +115,46 @@ class Craft:
         return self.get_value('Db', "Profundidad del mamparo (metros): ")
     
     def get_LH(self) -> float:
-        return self.get_value('LH', "Eslora del casco (metros): ")
+        return self.get_value('LH', "Eslora del casco (metros): ", True, True, -1, 2.5, 24)
 
     def get_LWL(self) -> float:
-        LH = self.get_LH()  # Asegura que L es obtenido y validado primero
+        LH = self.get_LH()
         return self.get_value('LWL', "Eslora de flotación (metros): ", True, True, -1, 0, LH)
 
+    def get_V(self) -> float:
+        LWL = self.get_LWL()
+        min_speed = 2.26 * np.sqrt(LWL)
+        return self.get_value('V', f"Velocidad máxima (nudos, debe ser >= {min_speed:.2f}): ", True, True, -1, min_speed)
+
+    def get_mLDC(self) -> float:
+        return self.get_value('mLDC', "Desplazamiento de la embarcación (kg): ")
+
+    def get_B04(self) -> float:
+        LWL = self.get_LWL()
+        B04 = self.get_value('B04', f"Ángulo de astilla muerta fondo a {0.4 * LWL:.2f} metros de la popa (°grados): ")
+        
+        if B04 < 10 or B04 > 30:
+            print(f"Advertencia: El ángulo de astilla muerta {B04}° está fuera del rango sugerido (10° a 30°).")
+        return B04
+    
+    def get_craft_type(self) -> str:
+        # Obtener la velocidad y eslora de flotación
+        V = self.get_V()
+        LWL = self.get_LWL()
+
+        # Determinar el tipo de embarcación basado en la relación V/LWL
+        if V / np.sqrt(LWL) >= 5:
+            craft_type = "planning_craft"
+        else: # V / LWL < 5
+            craft_type = "displacement_craft"
+
+        # Si no está almacenado, lo añadimos a values
+        if 'craft_type' not in self.values:
+            self.values['craft_type'] = craft_type
+
+        # Devolvemos el tipo de embarcación
+        return self.values['craft_type']
+    
     # def get_D(self) -> float:
     #     return self.get_value('D', "Puntal (metros): ")
 
@@ -122,15 +162,8 @@ class Craft:
     #     L = self.get_L()
     #     D = self.get_D()
     #     return self.get_value('d', "Calado (metros): ", True, True, 0, 0.04 * L, D)
-
-    def get_V(self) -> float:
-        return self.get_value('V', "Velocidad maxima (nudos): ")
-
-    def get_mLDC(self) -> float:
-        return self.get_value('mLDC', "Desplazamiento de la embarcación (kg): ")
-
-    def get_B04(self) -> float:
-        return self.get_value('B04', "Ángulo de astilla muerta fondo en LCG (°grados): ")
+    
+    
     
     """PANEL/STIFFENER DIMENSIONS"""
     
@@ -176,4 +209,19 @@ class Craft:
             return val_data(f"Longitud del alma longitudinal, rigidizadora, transversal o viga de la zona {zone} (mm): ", True, True, 0, s)
      
      
-     
+class Pressures:
+    
+    def __init__(self, craft) -> None:
+        self.craft = craft
+        self.kDC = self.calculate_kDC()
+
+    def calculate_kDC(self) -> float:
+        # Asegurarse de que la categoría de diseño ya está definida a través de la instancia de 'craft'
+        design_category = self.craft.get_design_category()
+        
+        # Mapeo de categoría de diseño a valores de kDC
+        kDC_values = {'A': 1.0, 'B': 0.8, 'C': 0.6, 'D': 0.4}
+        
+        # Retornar el valor correspondiente de kDC
+        return kDC_values[design_category]
+
