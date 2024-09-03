@@ -287,7 +287,7 @@ class Pressures:
         Retorna:
         float: El valor de kAR ajustado al material y limitado a un máximo de 1.
         """
-        
+        craft_type = self.craft.get_craft_type()
         mLDC = self.craft.get_mLDC()
         material = self.craft.get_material()
         
@@ -297,18 +297,46 @@ class Pressures:
         else:  # 'Stiffeners'
             AD = max((lu * s) * 1e-6, 0.33 * (lu**2) * 1e-6)
             
-        # Cálculo de kR dependiendo del contexto
-        kR = 1.5 - 3e-4 * b if context == 'Plating' else 1 - 2e-4 * lu
-        # Asegurar que kR no sea menor que el valor para el planeo
-        kR = max(kR, 1.0)
+        if craft_type == 'planning_craft':
+            kR = 1
+        else:
+            # Cálculo de kR dependiendo del contexto
+            kR = 1.5 - 3e-4 * b if context == 'Plating' else 1 - 2e-4 * lu
         
         # Calculo de kAR
         kAR = (kR * 0.1 * (mLDC**0.15)) / (AD**0.3)
         kAR = min(kAR, 1)  # kAR no debe ser mayor que 1 
         
         # Ajustes basados en el material
-        min_kAR = 0.4 if material == 'Fibra con nucleo (Sandwich)' else 0.25
+        if material == 'Fibra con nucleo (Sandwich)':
+            min_kAR = 0.4 
+        elif material == 'Fibra laminada':
+            min_kAR = 0.25
+        else:
+            min_kAR = 0
+        
         kAR = max(min_kAR, kAR)
         return kAR
+    
+    def hull_side_pressure_factor_kH(self, context) -> float: #Pedirlos desde craft
+        Z = val_data("Ingrese la altura de la cubierta, medida desde la linea de flotación (metros): ", True, True, 1, 0.0001)
+        if context == 'Plating':
+            h = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
+        else:
+            h = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
+        return (Z-h)/Z
+    
+    def superstructure_deckhouse_pressure_factor_kSUP(self) -> float:
+        # Devuelve un diccionario con todos los valores de kSUP
+        kSUP_values = {
+            'Frente': 1,
+            "Lateral (Área de Paso)": 0.67,
+            "Lateral (Área de No Paso)": 0.5,
+            'A Popa': 0.5,
+            "Superior <= 800 mm sobre cubierta": 0.5, # Área caminada
+            "Superior > 800 mm sobre cubierta": 0.35, # Área caminada
+            "Niveles Superiores": 0.5                  # Elementos no expuestos al clima ###REVISAR
+        }
+        return kSUP_values
     
     
