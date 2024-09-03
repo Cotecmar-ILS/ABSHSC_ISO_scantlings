@@ -137,6 +137,9 @@ class Craft:
             print(f"Advertencia: El ángulo de astilla muerta {B04}° está fuera del rango sugerido (10° a 30°).")
         return B04
     
+    def get_Z(self) -> float:
+        return self.get_value('Z', "Altura de francobordo (metros): ")
+    
     def get_craft_type(self) -> str:
         # Obtener la velocidad y eslora de flotación
         V = self.get_V()
@@ -318,8 +321,8 @@ class Pressures:
         kAR = max(min_kAR, kAR)
         return kAR
     
-    def hull_side_pressure_factor_kH(self, context) -> float: #Pedirlos desde craft
-        Z = val_data("Ingrese la altura de la cubierta, medida desde la linea de flotación (metros): ", True, True, 1, 0.0001)
+    def hull_side_pressure_factor_kH(self, context) -> float:
+        Z = self.craft.get_Z()
         if context == 'Plating':
             h = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
         else:
@@ -335,8 +338,39 @@ class Pressures:
             'A Popa': 0.5,
             "Superior <= 800 mm sobre cubierta": 0.5, # Área caminada
             "Superior > 800 mm sobre cubierta": 0.35, # Área caminada
-            "Niveles Superiores": 0.5                  # Elementos no expuestos al clima ###REVISAR
+            #"Niveles Superiores": 0 (REVISAR)                  # Elementos no expuestos al clima ###REVISAR
         }
         return kSUP_values
     
+    def bottom_pressure(self, context) -> float:
+        #craft_type = self.craft.get_craft_type()
+        LWL = self.craft.get_LWL()
+        BC = self.craft.get_BC()
+        mLDC = self.craft.get_mLDC()
+        l
+        b
+        lu
+        s
+        x
+        nCG = self.dynamic_load_factor_nCG()
+        kAR = self.area_pressure_factor_kAR(context, l, b, lu, s)
+        kDC = self.design_category_factor_kDC()
+        kL = self.longitudinal_pressure_factor_kL(x)
+        
+        PBMD_BASE = 2.4 * (mLDC**0.33) + 20
+        PBMP_BASE = ((0.1 * mLDC)/(LWL * BC))*((1 + kDC**0.5) * nCG)
+        PBM_MIN = 0.45 * (mLDC ** 0.33) + (0.9 * LWL * kDC)
+        
+        # Calcula la presión de fondo en modo de desplazamiento
+        PBMD = self.PBMD_BASE * kAR * kDC * kL
+        # Asegúrate de que la presión no sea inferior al mínimo
+        PBMD = max(self.PBM_MIN, PBMD)
+
+        # Calcula la presión de fondo en modo de planeo
+        PBMP = self.PBMP_BASE * kAR * kDC * kL
+        # Asegúrate de que la presión no sea inferior al mínimo
+        PBMP = max(self.PBM_MIN, PBMP)
+
+        # Siempre usa la mayor presión de fondo entre desplazamiento y planeo
+        return max(PBMD, PBMP)
     
