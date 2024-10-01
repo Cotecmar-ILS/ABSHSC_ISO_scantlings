@@ -205,7 +205,8 @@ class Craft:
         else:
             return val_data(f"Separación del alma o viga longitudinal, rigidizadora, transversal, etc. de la zona {zone} (metros): ")
     
-    def get_l(self, zone, context, s) -> float:
+    def get_l(self, zone, context) -> float:
+        s = self.get_s(zone, context)
         if context == 'Plating':
             return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
         else:
@@ -219,6 +220,40 @@ class Pressures:
         self.kDC = self.calculate_kDC()
         self.PBMD_BASE = 2.4 * (self.craft.get_mLDC()**0.33) + 20
         self.PDM_MIN = 5
+        
+    def calculate_pressure(self, context, zone):
+        if zone == 1:
+            pressure, index = self.bottom_pressure(context)
+            return pressure, index
+        elif zone == 2:
+            pressure, index = self.side_pressure(context)
+            return pressure, index
+        elif zone == 3:
+            pressure, index = self.deck_pressure(context)
+            return pressure, index
+        elif zone == 4:
+            pressure = self.superstructures_deckhouses_pressure(context)
+            return pressure, 0
+        elif zone == 5:
+            pressure = self.watertight_bulkheads_pressure(context)
+            return pressure, 0
+        elif zone == 6:
+            pressure = self.integral_tank_bulkheads_pressure(context)
+            return pressure, 0
+        elif zone == 7:
+            pressure = self.wash_plates_pressure(context)
+            return pressure, 0
+        elif zone == 8:
+            pressure = self.collision_bulkheads_pressure(context)
+            return pressure, 0
+        elif zone == 9:
+            pressure = self.nonwatertight_partial_bulkheads_pressure(context)
+            return pressure, 0
+        elif zone == 10:
+            pressure = self.transmission_pillar_loads_pressure(context)
+            return pressure, 0
+        else:
+            return "Zona no en la base de datos"
 
     def design_category_factor_kDC(self) -> float:
         # Asegurarse de que la categoría de diseño ya está definida a través de la instancia de 'craft'
@@ -342,13 +377,14 @@ class Pressures:
         }
         return kSUP_values
     
+    #Pressure Zones
     def bottom_pressure(self, context) -> float:
         #craft_type = self.craft.get_craft_type()
         LWL = self.craft.get_LWL()
         BC = self.craft.get_BC()
         mLDC = self.craft.get_mLDC()
-        l
-        b
+        """ l = self.craft.get_l("fondo", context)
+        b = self.craft.get_b("fondo", context) """
         lu
         s
         x
@@ -374,3 +410,24 @@ class Pressures:
         # Siempre usa la mayor presión de fondo entre desplazamiento y planeo
         return max(PBMD, PBMP)
     
+    
+
+#Definir flujo del controlador main primero
+    
+def main():
+    print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
+    craft = Craft()
+    zone_pressures = Pressures(craft)
+    
+    for zone in craft.selected_zones:
+        pressure_plating = zone_pressures.calculate_pressure(zone, "Plating")
+        pressure_stiffeners = zone_pressures.calculate_pressure(zone, "Stiffeners")
+        
+        print(f"La presión de fondo en la zona {zone} es: {pressure_plating:.2f} MPa")
+        print(f"La presión de stiffeners en la zona {zone} es: {pressure_stiffeners:.2f} MPa")
+        
+        thickness = plating.calculate_thickness(zone, pressure_plating, pressure_stiffeners)
+    
+        
+if __name__ == "__main__":
+    main()
