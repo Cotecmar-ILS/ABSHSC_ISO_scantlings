@@ -1,9 +1,35 @@
 """
     Main de la calculadora de ISO 12215-5
     
-    Intentar hacer una sola funcion que calcule el pressure y luego el thickeness de una pa cada zona,
-    es decir, funcion por zona en donde se valide la presion y luego el espesor tomando como parametro el material
-"""
+    Intentar hacer una sola funcion que calcule el pressure y luego el thickeness de una para cada zona,
+    es decir, funcion por zona en donde se calcule la presion y luego el espesor tomando como parametro el material y la zona
+    
+class Scantlings:
+
+    def init(self, craft):
+        self.craft = craft
+
+    def calcualte_scantling (material, zone):
+        if zone == bottom:
+            thickness = def bottom_Scantling (material):
+            return thickness
+            
+    def bottom_scantling (material): $VOY POR ESTA$
+        pressure = def calculate_pressure (material, zone):
+        
+        if material == acero_aluminio:
+            thickness = def acero_aluminio_plating (pressure, zone):
+            return thickness
+    
+def bottom_scantling (material):
+    planning =24 * mLDC + 4
+    slamming = 12 * mLDC + 4
+    pressure = max(planning, slamming)
+    
+    if material == acero_aluminio:
+        thickness = def acero_aluminio_plating (pressure, zone):
+        return thickness
+        """
 
 import numpy as np
 from validations import val_data
@@ -202,61 +228,104 @@ class Craft:
     def get_sigma_ub(self) -> float:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
-    def get_s(self, zone, context) -> float:
-        if context == 'Plating':
-            return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
-        else:
-            return val_data(f"Separación del alma o viga longitudinal, rigidizadora, transversal, etc. de la zona {zone} (metros): ")
+    def get_b(self, zone) -> float:
+        return val_data(f"Longitud mas corta de los paneles de la zona: {zone} (mm): ")
     
-    def get_l(self, zone, context) -> float:
-        s = self.get_s(zone, context)
-        if context == 'Plating':
-            return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0, s)
-        else:
-            return val_data(f"Longitud del alma longitudinal, rigidizadora, transversal o viga de la zona {zone} (mm): ", True, True, 0, s)
+    def get_l(self, zone) -> float:
+        b = self.get_b(zone)
+        return val_data(f"Longitud mas larga de los paneles de la zona: {zone} (mm): ", True, True, 0, b)
+    
+    def get_s(self, zone ) -> float:
+        return val_data(f"Separación del alma o viga longitudinal, rigidizador, transversal, etc. de la zona: {zone} (metros): ")
+    
+    def get_lu(self, zone) -> float:
+        s = self.get_s(zone)
+        return val_data(f"Luz o espacio entre refuerzos de la zona: {zone} (mm): ", True, True, 0, s) #Longitud del alma longitudinal, rigidizador, transversal o viga
+    
+    def get_x(self) -> float:
+        LH = self.get_LH()
+        return val_data("Distancia desde popa hasta el punto de analisis (metros): ", True, True, LH, 0)
      
-     
+class Scantlings:
+    
+    def __init__(self, craft, pressures, plating):
+        #Composisción de la clase Craft
+        self.craft = craft
+        self.pressure = pressures
+        self.plating = plating
+        
+        
+    def calcualte_scantling(self, material, zone):
+        if zone == 1:
+            thickness = self.bottom_scantling(material, zone)
+            return thickness
+        elif zone == 2:
+            thickness = self.side_scantling(material, zone)
+            return thickness
+        elif zone == 3:
+            thickness = self.deck_scantling(material, zone)
+            return thickness
+    
+    def bottom_scantling(self, material, zone):
+        #craft_type = self.craft.get_craft_type()
+        
+        LWL = self.craft.get_LWL()
+        BC = self.craft.get_BC()
+        mLDC = self.craft.get_mLDC()
+        
+        b = self.craft.get_b(zone)
+        l = self.craft.get_l(zone)
+        s = self.craft.get_s(zone)
+        lu = self.craft.get_lu(zone)
+        x = self.craft.get_x()
+        
+        bottom_pressure_plating, bottom_pressure_stiffeners = self.pressure.calculate_bottom_pressure(LWL, BC, mLDC, b, l, s, lu, x)
+        thickness = self.plating.calculate_thickness(material, zone, bottom_pressure_plating) #calcular el thickeness de esta manera con una funcion general o tener una funcion especifica para cada material
+        stiffeners = 
+        return thickness 
+
+    
 class Pressures:
     
-    def __init__(self, craft) -> None:
+    def __init__(self, craft):
         self.craft = craft
         self.kDC = self.calculate_kDC()
         self.PBMD_BASE = 2.4 * (self.craft.get_mLDC()**0.33) + 20
         self.PDM_MIN = 5
         
-    def calculate_pressure(self, context, zone):
+    def calculate_pressure(self, zone):
         if zone == 1:
-            pressure, index = self.bottom_pressure(context)
+            pressure, index = self.bottom_pressure()
             return pressure, index
         elif zone == 2:
-            pressure, index = self.side_pressure(context)
+            pressure, index = self.side_pressure()
             return pressure, index
         elif zone == 3:
-            pressure, index = self.deck_pressure(context)
+            pressure, index = self.deck_pressure()
             return pressure, index
         elif zone == 4:
-            pressure = self.superstructures_deckhouses_pressure(context)
+            pressure = self.superstructures_deckhouses_pressure()
             return pressure, 0
         elif zone == 5:
-            pressure = self.watertight_bulkheads_pressure(context)
+            pressure = self.watertight_bulkheads_pressure()
             return pressure, 0
         elif zone == 6:
-            pressure = self.integral_tank_bulkheads_pressure(context)
+            pressure = self.integral_tank_bulkheads_pressure()
             return pressure, 0
         elif zone == 7:
-            pressure = self.wash_plates_pressure(context)
+            pressure = self.wash_plates_pressure()
             return pressure, 0
         elif zone == 8:
-            pressure = self.collision_bulkheads_pressure(context)
+            pressure = self.collision_bulkheads_pressure()
             return pressure, 0
         elif zone == 9:
-            pressure = self.nonwatertight_partial_bulkheads_pressure(context)
+            pressure = self.nonwatertight_partial_bulkheads_pressure()
             return pressure, 0
         elif zone == 10:
-            pressure = self.transmission_pillar_loads_pressure(context)
+            pressure = self.transmission_pillar_loads_pressure()
             return pressure, 0
         else:
-            return "Zona no en la base de datos"
+            return "Zona no está en la base de datos"
 
     def design_category_factor_kDC(self) -> float:
         # Asegurarse de que la categoría de diseño ya está definida a través de la instancia de 'craft'
@@ -323,49 +392,58 @@ class Pressures:
         
         return kL
 
-    def area_pressure_factor_kAR(self, context, l, b, lu, s) -> float: #Revisar
+    def area_pressure_factor_kAR(self, l, b, lu, s) -> tuple:
         """
-        Retorna:
-        float: El valor de kAR ajustado al material y limitado a un máximo de 1.
+        Calcula el valor de kAR ajustado al material y limitado a un máximo de 1 para Plating y Stiffeners.
         """
-        craft_type = self.craft.get_craft_type()
-        mLDC = self.craft.get_mLDC()
-        material = self.craft.get_material()
+        craft_type = self.craft.get_craft_type()  # Tipo de embarcación
+        mLDC = self.craft.get_mLDC()  # Desplazamiento
+        material = self.craft.get_material()  # Material de la embarcación
         
-        # Cálculo de AD dependiendo del contexto
-        if context == 'Plating':
-            AD = min((l * b) * 1e-6, 2.5 * (b**2) * 1e-6)
-        else:  # 'Stiffeners'
-            AD = max((lu * s) * 1e-6, 0.33 * (lu**2) * 1e-6)
-            
+        # Cálculo de AD para Plating y Stiffeners
+        AD_plating = min((l * b) * 1e-6, 2.5 * (b**2) * 1e-6)
+        AD_stiffeners = max((lu * s) * 1e-6, 0.33 * (lu**2) * 1e-6)
+        
+        # Determinación de kR según el tipo de embarcación
         if craft_type == 'planning_craft':
-            kR = 1
+            kR_plating = 1
+            kR_stiffeners = 1
         else:
-            # Cálculo de kR dependiendo del contexto
-            kR = 1.5 - 3e-4 * b if context == 'Plating' else 1 - 2e-4 * lu
+            kR_plating = 1.5 - 3e-4 * b
+            kR_stiffeners = 1 - 2e-4 * lu
         
-        # Calculo de kAR
-        kAR = (kR * 0.1 * (mLDC**0.15)) / (AD**0.3)
-        kAR = min(kAR, 1)  # kAR no debe ser mayor que 1 
+        # Cálculo de kAR para Plating
+        kAR_plating = (kR_plating * 0.1 * (mLDC**0.15)) / (AD_plating**0.3)
+        kAR_plating = min(kAR_plating, 1)  # kAR no debe ser mayor que 1
+        
+        # Cálculo de kAR para Stiffeners
+        kAR_stiffeners = (kR_stiffeners * 0.1 * (mLDC**0.15)) / (AD_stiffeners**0.3)
+        kAR_stiffeners = min(kAR_stiffeners, 1)  # kAR no debe ser mayor que 1
         
         # Ajustes basados en el material
         if material == 'Fibra con nucleo (Sandwich)':
-            min_kAR = 0.4 
+            min_kAR = 0.4
         elif material == 'Fibra laminada':
             min_kAR = 0.25
         else:
             min_kAR = 0
         
-        kAR = max(min_kAR, kAR)
-        return kAR
-    
-    def hull_side_pressure_factor_kH(self, context) -> float:
+        # Aplicación de los mínimos ajustados según el material
+        kAR_plating = max(min_kAR, kAR_plating)
+        kAR_stiffeners = max(min_kAR, kAR_stiffeners)
+        
+        # Retornar ambos valores
+        return kAR_plating, kAR_stiffeners
+  
+    def hull_side_pressure_factor_kH(self) -> tuple:
         Z = self.craft.get_Z()
-        if context == 'Plating':
-            h = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
-        else:
-            h = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
-        return (Z-h)/Z
+        h_plating = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
+        h_stiffeners = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
+        
+        kH_platting = (Z-h_plating)/Z
+        kH_stiffeners = (Z-h_stiffeners)/Z
+        
+        return kH_platting, kH_stiffeners
     
     def superstructure_deckhouse_pressure_factor_kSUP(self) -> float:
         # Devuelve un diccionario con todos los valores de kSUP
@@ -381,18 +459,10 @@ class Pressures:
         return kSUP_values
     
     #Pressure Zones
-    def bottom_pressure(self, context) -> float:
-        #craft_type = self.craft.get_craft_type()
-        LWL = self.craft.get_LWL()
-        BC = self.craft.get_BC()
-        mLDC = self.craft.get_mLDC()
-        """ l = self.craft.get_l("fondo", context)
-        b = self.craft.get_b("fondo", context) """
-        lu
-        s
-        x
+    def bottom_pressure(self, LWL, BC, mLDC, b, l, s, lu, x) -> float:
+        
         nCG = self.dynamic_load_factor_nCG()
-        kAR = self.area_pressure_factor_kAR(context, l, b, lu, s)
+        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(l, b, lu, s)
         kDC = self.design_category_factor_kDC()
         kL = self.longitudinal_pressure_factor_kL(x)
         
@@ -401,17 +471,26 @@ class Pressures:
         PBM_MIN = 0.45 * (mLDC ** 0.33) + (0.9 * LWL * kDC)
         
         # Calcula la presión de fondo en modo de desplazamiento
-        PBMD = self.PBMD_BASE * kAR * kDC * kL
+        PBMD_plating = self.PBMD_BASE * kAR_plating * kDC * kL
+        PBMD_stiffeners = self.PBMD_BASE * kAR_stiffeners * kDC * kL
+        
         # Asegúrate de que la presión no sea inferior al mínimo
-        PBMD = max(self.PBM_MIN, PBMD)
+        PBMD_plating = max(self.PBM_MIN, PBMD_plating)
+        PBMD_stiffeners = max(self.PBM_MIN, PBMD_stiffeners)
 
         # Calcula la presión de fondo en modo de planeo
-        PBMP = self.PBMP_BASE * kAR * kDC * kL
+        PBMP_plating = self.PBMP_BASE * kAR_plating * kDC * kL
+        PBMP_stiffeners = self.PBMP_BASE * kAR_stiffeners * kDC * kL
+        
         # Asegúrate de que la presión no sea inferior al mínimo
-        PBMP = max(self.PBM_MIN, PBMP)
+        PBMP_plating = max(self.PBM_MIN, PBMP_plating)
+        PBMP_stiffeners = max(self.PBM_MIN, PBMP_stiffeners)
 
         # Siempre usa la mayor presión de fondo entre desplazamiento y planeo
-        return max(PBMD, PBMP)
+        pressure_plating= max(PBMD_plating, PBMP_plating)
+        pressure_stiffeners = max(PBMD_stiffeners, PBMP_stiffeners)
+        
+        return pressure_plating, pressure_stiffeners
     
     
 
@@ -420,17 +499,14 @@ class Pressures:
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
     craft = Craft()
-    zone_pressures = Pressures(craft)
+    scantling = Scantlings(craft)
+    values = {}
     
     for zone in craft.selected_zones:
-        pressure_plating = zone_pressures.calculate_pressure(zone, "Plating")
-        pressure_stiffeners = zone_pressures.calculate_pressure(zone, "Stiffeners")
-        
-        print(f"La presión de fondo en la zona {zone} es: {pressure_plating:.2f} MPa")
-        print(f"La presión de stiffeners en la zona {zone} es: {pressure_stiffeners:.2f} MPa")
-        
-        thickness = plating.calculate_thickness(zone, pressure_plating, pressure_stiffeners)
+        thickness = scantling.calculate_scantling(zone)
+        values[zone] = thickness 
     
+    print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
         
 if __name__ == "__main__":
     main()
