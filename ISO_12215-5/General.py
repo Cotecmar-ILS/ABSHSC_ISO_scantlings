@@ -9,7 +9,7 @@ class Scantlings:
     def init(self, craft):
         self.craft = craft
 
-    def calcualte_scantling (material, zone):
+    def calculate_scantling (material, zone):
         if zone == bottom:
             thickness = def bottom_Scantling (material):
             return thickness
@@ -86,23 +86,22 @@ class Craft:
     def get_zones(self) -> list:
         if 'selected_zones' not in self.values:
             zonas = {
-                1: 'Vagra Maestra',
-                2: 'Casco de Fondo',
-                3: 'Casco de Costado',
-                4: 'Espejo de Popa',
-                5: 'Cubierta de Principal',
-                6: 'Cubiertas Inferiores/Otras Cubiertas',
-                7: 'Cubiertas Humedas',
-                8: 'Cubiertas de Superestructura y Casetas de Cubierta',
-                9: 'Mamparos Estancos',
-                10: 'Mamparos de Tanques Profundos',
-                11: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-                12: 'Túneles de Waterjets',
-                13: 'Túneles de Bow Thrusters',
-                14: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+                1: 'Casco de Fondo',
+                2: 'Casco de Costado',
+                3: 'Espejo de Popa',
+                4: 'Cubierta de Principal',
+                5: 'Cubiertas Inferiores/Otras Cubiertas',
+                6: 'Cubiertas Humedas',
+                7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+                8: 'Mamparos Estancos',
+                9: 'Mamparos de Tanques Profundos',
+                10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+                11: 'Túneles de Waterjets',
+                12: 'Túneles de Bow Thrusters',
+                13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
             }
 
-            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if self.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if self.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
             print("\nSeleccione las zonas que desea escantillonar\n")
         
             # Mostrar las zonas disponibles desde una lista
@@ -195,6 +194,8 @@ class Craft:
     #     D = self.get_D()
     #     return self.get_value('d', "Calado (metros): ", True, True, 0, 0.04 * L, D)
     
+    def get_hB(self) -> float:
+        return val_data("Altura de la columna de agua (metros): ")
     
     
     """PANEL/STIFFENER DIMENSIONS"""
@@ -229,26 +230,27 @@ class Craft:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
     def get_b(self, zone) -> float:
-        return val_data(f"Longitud mas corta de los paneles de la zona: {zone} (mm): ")
+        return val_data(f"Longitud mas corta de los paneles de la zona {zone} (mm): ")
     
     def get_l(self, zone) -> float:
-        b = self.get_b(zone)
-        return val_data(f"Longitud mas larga de los paneles de la zona: {zone} (mm): ", True, True, 0, b)
+        #b = self.get_b(zone) #Revisar esto porque si no se guarda en diccionario se volveria a pedir b innecesariamente
+        return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0)
     
     def get_s(self, zone ) -> float:
         return val_data(f"Separación del alma o viga longitudinal, rigidizador, transversal, etc. de la zona: {zone} (metros): ")
     
     def get_lu(self, zone) -> float:
-        s = self.get_s(zone)
-        return val_data(f"Luz o espacio entre refuerzos de la zona: {zone} (mm): ", True, True, 0, s) #Longitud del alma longitudinal, rigidizador, transversal o viga
+        #s = self.get_s(zone)
+        return val_data(f"Luz o espacio entre refuerzos de la zona {zone} (mm): ", True, True, 0) #Longitud del alma longitudinal, rigidizador, transversal o viga
+    
+    def get_c(self, zone) -> float:
+        return val_data(f"Corona o curvatura del panel/refuerzo de la zona {zone} (mm): ")
     
     def get_x(self) -> float:
         LH = self.get_LH()
         return val_data("Distancia longitudinal desde popa hasta el punto de analisis (metros): ", True, True, LH, 0)
     
-    def get_hB(self) -> float:
-        return val_data("Altura de la columna de agua (metros): ")
-     
+
 class Scantlings:
     
     def __init__(self, craft, pressures, plating):
@@ -258,7 +260,7 @@ class Scantlings:
         self.plating = plating
         
         
-    def calcualte_scantling(self, material, zone):
+    def calculate_scantling(self, material, zone):
         if zone == 1:
             thickness = self.bottom_scantling(material, zone)
             return thickness
@@ -278,17 +280,17 @@ class Scantlings:
         V = self.craft.get_V()
         B04 = self.craft.get_B04()
         
-        
         b = self.craft.get_b(zone)
         l = self.craft.get_l(zone)
         s = self.craft.get_s(zone)
         lu = self.craft.get_lu(zone)
+        c = self.craft.get_c(zone)
         x = self.craft.get_x()
         
-        bottom_pressure_plating, bottom_pressure_stiffeners = self.pressure.calculate_bottom_pressure(LWL, BC, mLDC, V, B04, b, l, s, lu, x)
-        thickness = self.plating.calculate_thickness(material, zone, bottom_pressure_plating) #calcular el thickeness de esta manera con una funcion general o tener una funcion especifica para cada material como pressures
+        bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.pressure.calculate_pressure(material, zone, LWL, BC, mLDC, V, B04, b, l, s, lu, x)
+        thickness = self.plating.calculate_plating(material, zone, bottom_pressure_plating, b, l, c) #calcular el thickeness de esta manera con una funcion general o tener una funcion especifica para cada material como pressures
         #stiffeners = self.stiffeners.calculate_stiffeners(zone)
-        return thickness    
+        return thickness
 
     def side_scantling(self, material, zone):
         LWL = self.craft.get_LWL()
@@ -312,10 +314,10 @@ class Pressures:
         self.craft = craft
         
         
-    def calculate_pressure(self, zone):
+    def calculate_pressure(self, material, zone, LWL, BC, mLDC, V, B04, b, l, s, lu, x):
         if zone == 1:
-            pressure, index = self.bottom_pressure()
-            return pressure, index
+            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure(material, zone, LWL, BC, mLDC, V, B04, b, l, s, lu, x)
+            return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
         elif zone == 2:
             pressure, index = self.side_pressure()
             return pressure, index
@@ -384,7 +386,7 @@ class Pressures:
         
         return nCG
 
-    def longitudinal_pressure_factor_kL(self, LWL, x) -> float:
+    def longitudinal_pressure_factor_kL(self, LWL, BC, mLDC, V, B04, x) -> float:
         """
         Parámetros:
             x (float): Posición longitudinal a lo largo de la longitud de la línea de flotación (LWL),
@@ -395,7 +397,7 @@ class Pressures:
         if xLWL > 0.6:
             kL = 1.0  # Si x/LWL es mayor que 0.6, kL es 1.0
         else:
-            nCG = self.dynamic_load_nCG()  # Calcular nCG
+            nCG = self.dynamic_load_factor_nCG(LWL, BC, mLDC, V, B04)  # Calcular nCG
             nCG_clamped = min(max(nCG, 3.0), 6.0)  # Limitar nCG entre 3 y 6
             
             # Aplica la ecuación para valores de x/LWL <= 0.6
@@ -469,7 +471,7 @@ class Pressures:
         return kSUP_values
     
     #Pressure Zones
-    def bottom_pressure(self, LWL, BC, mLDC, b, l, s, lu, x) -> tuple:
+    def bottom_pressure(self, material, zone, LWL, BC, mLDC, V, B04, b, l, s, lu, x) -> tuple:
         """
         Calcula la presión de fondo para Plating y Stiffeners, e indica si fue tomada en modo de planeo o desplazamiento.
         
@@ -477,10 +479,10 @@ class Pressures:
             tuple: Presión de fondo para Plating, Presión de fondo para Stiffeners, Estado de Plating (Desplazamiento/Planeo), Estado de Stiffeners (Desplazamiento/Planeo)
         """
         # Declaramos los factores necesarios para la presión de fondo
-        nCG = self.dynamic_load_factor_nCG()
-        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(b, l, s, lu)
+        nCG = self.dynamic_load_factor_nCG(LWL, BC, mLDC, V, B04)
+        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(material, mLDC, b, l, s, lu)
         kDC = self.design_category_factor_kDC()
-        kL = self.longitudinal_pressure_factor_kL(x)
+        kL = self.longitudinal_pressure_factor_kL(LWL, BC, mLDC, V, B04, x)
         
         # Se calculan valores base y minimos de la presión de fondo en modo de desplazamiento y planeo
         PBMD_BASE = 2.4 * (mLDC**0.33) + 20
@@ -642,18 +644,88 @@ class Pressures:
         PTB = 10 * hB
         return PTB
 
+class Plating:
+    def __init__(self, craft):
+        self.craft = craft
+        self.k1 = 0.017        
+
+    def calculate_plating(self, material, zone, pressure, b, l, c):
+        if material == 1:
+            return self.steel_thickness(zone, pressure, b, l, c)
+        elif material == 2:
+            return self.aluminum_thickness(zone, pressure, b, l, c)
+        elif material == 3:
+            thickness = self.single_skin_plating(zone, pressure, b, l, c)
+            return thickness
+        elif material == 4:
+            return self.fiber_core_plating(zone, pressure)
+        
+    def curvature_correction_kC(self, b, c):
+        cb = c / b
+        if cb <= 0.03:
+            kC = 1.0
+        elif cb <= 0.18 and cb > 0.03: #Ajustado
+            kC = 1.1 - (3.33 * c) / b
+        else:  # cb > 0.18
+            kC = 0.5
+        # Aplica las restricciones de que kC no debe ser menor a 0.5 ni mayor a 1.0
+        kC = max(min(kC, 1.0), 0.5)
+        return kC
+    
+    def steel_thickness(self, zone, pressure, b, l, c):
+        kC = self.curvature_correction_kC(b, c)
+        ar = l / b
+        #Panel aspect ratio factor for strength k2
+        k2 = min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+        sigma_u = self.craft.get_sigma_u()
+        sigma_y = self.craft.get_sigma_y() #Voy po raqui definir sigma
+        sigma_d = 0.5 * self.craft.get_sigma_uf()
+        thickness = b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
+        return thickness
+    
+    def aluminum_thickness(self, zone, pressure, b, l, c):
+        pass
+    
+    def single_skin_plating(self, zone, pressure, b, l, c):
+        kC = self.curvature_correction_kC(b, c)
+        ar = l / b
+        #Panel aspect ratio factor for strength k2
+        k2 = min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+        sigma_d = 0.5 * self.craft.get_sigma_uf()
+        thickness = b * kC * np.sqrt((pressure * k2)/(1000 * sigma_d))
+        return thickness
+    
+    def fiber_core_plating(self,zone, pressure):
+        pass
+    
+    def wash_plates_plating(self):
+        return self.craft.superstructure_deckhouses_pressure()[1]
+    
+    def watertight_bulkheads_plating(self):
+        return self.craft.watertight_bulkheads_pressure()
+
 
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
     craft = Craft()
-    scantling = Scantlings(craft)
+    pressures = Pressures(craft)
+    plating = Plating(craft)
+    scantling = Scantlings(craft, pressures, plating)
     values = {}
-    
+
+    # Calcular el espesor para cada zona
     for zone in craft.selected_zones:
-        thickness = scantling.calculate_scantling(zone)
-        values[zone] = thickness 
-    
-    print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
+        thickness = scantling.calculate_scantling(craft.material, zone)
         
+        # Almacenar el espesor calculado para cada zona en el diccionario
+        if thickness is not None:
+            values[zone] = thickness
+        else:
+            print(f"Error: No se pudo calcular el espesor para la zona {zone}")
+
+    # Imprimir los espesores de todas las zonas calculadas
+    for zone, thickness in values.items():
+        print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
+
 if __name__ == "__main__":
     main()
