@@ -647,7 +647,9 @@ class Pressures:
 class Plating:
     def __init__(self, craft):
         self.craft = craft
-        self.k1 = 0.017   
+        self.k1 = 0.017
+        # Ver como puedo extraer b y l o no
+        self.k2 = self.panel_strength_k2(b, l) 
 
     def calculate_plating(self, material, zone, pressure, b, l, c):
         k2 = self.panel_strength_k2(b, l)
@@ -661,14 +663,17 @@ class Plating:
             thickness = self.single_skin_plating(zone, pressure, b, l, c, k2, kC)
             return thickness
         elif material == 4:
-            return self.wood_plating(zone, pressure, b, l, c, k2, kC)
+            return self.wood_plating(zone, pressure, b, l, c, k2)
         elif material == 5:
             k3 = self.panel_stiffness_k3(b, l)
             return self.fiber_core_plating(zone, pressure, b, l, c, k2, k3, kC)
             
-    def panel_strength_k2(self, b, l):
-        ar = l / b
-        return min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+    def panel_strength_k2(self, material, b, l):
+        if material == 4:
+            return 0.5
+        else:
+            ar = l / b
+            return min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
     
     def panel_stiffness_k3(self, b, l):
         ar = l / b
@@ -686,41 +691,26 @@ class Plating:
         kC = max(min(kC, 1.0), 0.5)
         return kC
     
-    def steel_thickness(self, zone, pressure, b, l, c):
-        kC = self.curvature_correction_kC(b, c)
-        #Panel aspect ratio factor for strength k2
-        
+    def steel_thickness(self, zone, pressure, b, l, c, k2, kC):
         sigma_u = self.craft.get_sigma_u()
         sigma_y = self.craft.get_sigma_y()
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
         thickness = b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def aluminum_thickness(self, zone, pressure, b, l, c):
-        kC = self.curvature_correction_kC(b, c)
-        ar = l / b
-        #Panel aspect ratio factor for strength k2
-        k2 = min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+    def aluminum_thickness(self, zone, pressure, b, l, c, k2, kC):
         sigma_u = self.craft.get_sigma_u()
         sigma_y = self.craft.get_sigma_y()
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
         thickness = b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def single_skin_plating(self, zone, pressure, b, l, c):
-        kC = self.curvature_correction_kC(b, c)
-        ar = l / b
-        #Panel aspect ratio factor for strength k2
-        k2 = min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+    def single_skin_plating(self, zone, pressure, b, l, c, k2, kC):
         sigma_d = 0.5 * self.craft.get_sigma_uf()
         thickness = b * kC * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def wood_plating(self, zone, pressure, b, l, c):
-        kC = self.curvature_correction_kC(b, c)
-        ar = l / b
-        #Panel aspect ratio factor for strength k2
-        k2 = min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
+    def wood_plating(self, zone, pressure, b, l, c, k2):
         sigma_d = 0.5 * self.craft.get_sigma_uf()
         thickness = b * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
@@ -745,6 +735,7 @@ def main():
 
     # Calcular el espesor para cada zona
     for zone in craft.selected_zones:
+        # Podria pedir aqui los valores de b, l, c, s, lu, x necesarios de cada zona y pasarlos como argumentos o no
         thickness = scantling.calculate_scantling(craft.material, zone)
         
         # Almacenar el espesor calculado para cada zona en el diccionario
