@@ -236,7 +236,7 @@ class Craft:
         #b = self.get_b(zone) #Revisar esto porque si no se guarda en diccionario se volveria a pedir b innecesariamente
         return val_data(f"Longitud mas larga de los paneles de la zona {zone} (mm): ", True, True, 0)
     
-    def get_s(self, zone ) -> float:
+    def get_s(self, zone) -> float:
         return val_data(f"Separación del alma o viga longitudinal, rigidizador, transversal, etc. de la zona: {zone} (metros): ")
     
     def get_lu(self, zone) -> float:
@@ -246,9 +246,9 @@ class Craft:
     def get_c(self, zone) -> float:
         return val_data(f"Corona o curvatura del panel/refuerzo de la zona {zone} (mm): ")
     
-    def get_x(self) -> float:
+    def get_x(self, zone) -> float:
         LH = self.get_LH()
-        return val_data("Distancia longitudinal desde popa hasta el punto de analisis (metros): ", True, True, LH, 0)
+        return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {zone} (metros): ", True, True, LH, 0)
     
 
 class Scantlings:
@@ -649,7 +649,19 @@ class Plating:
         self.craft = craft
         self.k1 = 0.017
         # Ver como puedo extraer b y l o no
-        self.k2 = self.panel_strength_k2(b, l) 
+        self.k2 = self.panel_strength_k2(b, l)
+        self.kC = self.curvature_correction_kC(b, c)
+        
+    def calculate_plating(self, material, zone):
+        if zone in [1, 2, 3]:
+            thickness = self.bottom_scantling(material, zone)
+            return thickness
+        elif zone == 4:
+            thickness = self.bulkhead_scantling(material, zone)
+            return thickness
+        elif zone == 5:
+            thickness = self.tank_scantling(material, zone)
+            return thickness
 
     def calculate_plating(self, material, zone, pressure, b, l, c):
         k2 = self.panel_strength_k2(b, l)
@@ -728,25 +740,92 @@ class Plating:
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
     craft = Craft()
-    pressures = Pressures(craft)
-    plating = Plating(craft)
-    scantling = Scantlings(craft, pressures, plating)
     values = {}
+    
+    # Definir los atributos requeridos para cada tipo de zona
+    zone_attributes = {
+        'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
+        'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
+        'Espejo de Popa': ['b', 'l', 's', 'lu'],
+        'Cubierta de Principal': ['b', 'l', 'c'],
+        'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
+        'Cubiertas Humedas': ['b', 'l', 'c'],
+        'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
+        'Mamparos Estancos': ['b', 'l'],
+        'Mamparos de Tanques Profundos': ['b', 'l'],
+        'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
+        'Túneles de Waterjets': ['b', 'l'],
+        'Túneles de Bow Thrusters': ['b', 'l'],
+        'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
+    }
+    
+    # Definir las zonas disponibles para el material seleccionado
+    zones = {
+        1: 'Casco de Fondo',
+        2: 'Casco de Costado',
+        3: 'Espejo de Popa',
+        4: 'Cubierta de Principal',
+        5: 'Cubiertas Inferiores/Otras Cubiertas',
+        6: 'Cubiertas Humedas',
+        7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+        8: 'Mamparos Estancos',
+        9: 'Mamparos de Tanques Profundos',
+        10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+        11: 'Túneles de Waterjets',
+        12: 'Túneles de Bow Thrusters',
+        13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+    }
 
-    # Calcular el espesor para cada zona
-    for zone in craft.selected_zones:
-        # Podria pedir aqui los valores de b, l, c, s, lu, x necesarios de cada zona y pasarlos como argumentos o no
-        thickness = scantling.calculate_scantling(craft.material, zone)
-        
-        # Almacenar el espesor calculado para cada zona en el diccionario
-        if thickness is not None:
-            values[zone] = thickness
-        else:
-            print(f"Error: No se pudo calcular el espesor para la zona {zone}")
+    available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if craft.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 
-    # Imprimir los espesores de todas las zonas calculadas
-    for zone, thickness in values.items():
-        print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
+    # Definir zonas para la embarcación
+    while True:
+        print("\nSeleccione la zona que desea escantillonar\n")
+        for number in available_zones:
+            print(f"{number}. {zones[number]}")
+        try:
+            choice = int(input("\nIngrese el número correspondiente y presione Enter\n(ingrese '0' para finalizar el programa)\n->: "))
+            if choice == 0:
+                break
+            elif choice in available_zones:
+                zone = zones[choice]
+                
+                # Pidiendo atributos específicos de la zona
+                zone_attributes = {}
+                for attribute in zone_attributes[zone]:
+                    if attribute == 'b':
+                        zone_attributes['b'] = craft.get_b(zone)
+                    elif attribute == 'l':
+                        zone_attributes['l'] = craft.get_l(zone)
+                    elif attribute == 's':
+                        zone_attributes['s'] = craft.get_s(zone)
+                    elif attribute == 'lu':
+                        zone_attributes['lu'] = craft.get_lu(zone)
+                    elif attribute == 'c':
+                        zone_attributes['c'] = craft.get_c(zone)
+                    elif attribute == 'x':
+                        zone_attributes['x'] = craft.get_x(zone)
+
+                # # Crear nueva zona y añadirla a la embarcación
+                # zona = craft.agregar_zona(zone, zone_attributes)
+                
+                pressures = Pressures(craft, zone_attributes)
+                plating = Plating(craft, zone_attributes)
+                scantling = Scantlings(craft, pressures, plating)
+
+                # Calcular espesor de la zona usando los atributos proporcionados
+                thickness = scantling.calculate_scantling(craft.material, zone)
+                
+                # Almacenar el espesor calculado para cada zona en el diccionario
+                if thickness is not None:
+                    values[zone] = thickness
+                    print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
+                else:
+                    print(f"Error: No se pudo calcular el espesor para la zona {zone}")
+            else:
+                print("Selección no válida, intente de nuevo.")
+        except ValueError as e:
+            print(e)
 
 if __name__ == "__main__":
     main()
