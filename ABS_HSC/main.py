@@ -43,6 +43,81 @@ ZONAS
         13. Túneles de Bow Thrusters
         14. Cubiertas de Operación o Almacenamiento de Vehículos
         
+            def get_material(self) -> int:
+        if 'material' not in self.values:
+            print("\nLista de materiales disponibles")
+            materiales = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
+            self.display_menu(materiales)
+            choice = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
+            self.values['material'] = choice
+        return self.values['material']
+        
+    # self.material = self.get_material()
+    # self.selected_zones = self.get_zones()
+    
+    
+        def display_menu(self, items) -> None:
+        "Muestra un menú basado en una lista de items."
+        for idx, item in enumerate(items, 1):
+            print(f"{idx}. {item}")
+
+    def get_design_category(self) -> str:
+        if 'categoria_diseño' not in self.values:
+            print("\nSeleccione la categoría de diseño de la embarcación")
+            categoria_diseño = ('Oceano', 'Offshore', 'Costera', 'Aguas calmadas')
+            self.display_menu(categoria_diseño)
+            choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(categoria_diseño))
+            
+            # Mapeo de la selección a la categoría de diseño
+            categorias = {1: 'A', 2: 'B', 3: 'C', 4: 'D'}
+            self.values['categoria_diseño'] = categorias[choice]
+            
+        return self.values['categoria_diseño']
+    
+    # def get_zones(self) -> list:
+    #     if 'selected_zones' not in self.values:
+    #         zonas = {
+    #             1: 'Casco de Fondo',
+    #             2: 'Casco de Costado',
+    #             3: 'Espejo de Popa',
+    #             4: 'Cubierta de Principal',
+    #             5: 'Cubiertas Inferiores/Otras Cubiertas',
+    #             6: 'Cubiertas Humedas',
+    #             7: 'Cubiertas de Superestructura y Casetas de Cubierta',
+    #             8: 'Mamparos Estancos',
+    #             9: 'Mamparos de Tanques Profundos',
+    #             10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
+    #             11: 'Túneles de Waterjets',
+    #             12: 'Túneles de Bow Thrusters',
+    #             13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+    #         }
+
+    #         available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if self.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+    #         print("\nSeleccione las zonas que desea escantillonar\n")
+        
+    #         # Mostrar las zonas disponibles desde una lista
+    #         for number in available_zones:
+    #             print(f"{number}. {zonas[number]}")
+    #         selected_zones = []
+    #         while True:
+    #             try:
+    #                 choice = int(input("\nIngrese el número correspondiente y presione Enter\n(ingrese '0' para finalizar)\n-> "))
+    #                 if choice == 0:
+    #                     if not selected_zones:
+    #                         raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
+    #                     break
+    #                 elif choice in available_zones:
+    #                     if choice in selected_zones:
+    #                         raise ValueError("Zona ya seleccionada, elija otra.")
+    #                     selected_zones.append(choice)
+    #                     print(f"Añadida: {zonas[choice]}")
+    #                 else:
+    #                     print("Selección no válida, intente de nuevo.")
+    #             except ValueError as e:
+    #                 print(e)
+    #         self.values['selected_zones'] = selected_zones
+    #     return self.values['selected_zones']
+        
 --------------------------------------------------------------------------
 """
 

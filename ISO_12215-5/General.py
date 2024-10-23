@@ -37,96 +37,21 @@ from validations import val_data
 class Craft:
     
     
-    def __init__(self):
-        self.designer_name = input("Diseñador: ")
-        self.boat_name = input("Embarcación: ")
-        self.company_name = input("Empresa: ")
-        self.management_name = input("Gerencia: ")
-        self.division_name = input("División: ")
+    def __init__(self, designer, boat, company, management, division, design_cat, material):
         self.values = {}
-        self.design_category = self.get_design_category()
-        self.material = self.get_material()
-        self.selected_zones = self.get_zones()
+        self.designer = designer
+        self.boat = boat
+        self.company = company
+        self.management = management
+        self.division = division
+        self.design_cat = design_cat
+        self.material = material
         
-
     #Metodo para pedir datos y validar si ya existe
     def get_value(self, key, prompt, *args) -> float:
         if key not in self.values:
             self.values[key] = val_data(prompt, *args)
         return self.values[key]
-
-    #Metodo para mostrar info solo para consola
-    def display_menu(self, items) -> None:
-        """Muestra un menú basado en una lista de items."""
-        for idx, item in enumerate(items, 1):
-            print(f"{idx}. {item}")
-
-    def get_design_category(self) -> str:
-        if 'categoria_diseño' not in self.values:
-            print("\nSeleccione la categoría de diseño de la embarcación")
-            categoria_diseño = ('Oceano', 'Offshore', 'Costera', 'Aguas calmadas')
-            self.display_menu(categoria_diseño)
-            choice = val_data("Ingrese el número correspondiente: ", False, True, -1, 1, len(categoria_diseño))
-            
-            # Mapeo de la selección a la categoría de diseño
-            categorias = {1: 'A', 2: 'B', 3: 'C', 4: 'D'}
-            self.values['categoria_diseño'] = categorias[choice]
-            
-        return self.values['categoria_diseño']
-    
-    def get_material(self) -> int:
-        if 'material' not in self.values:
-            print("\nLista de materiales disponibles")
-            materiales = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
-            self.display_menu(materiales)
-            choice = val_data("Ingrese el número correspondiente -> ", False, True, -1, 1, len(materiales))
-            self.values['material'] = choice
-        return self.values['material']
-    
-    def get_zones(self) -> list:
-        if 'selected_zones' not in self.values:
-            zonas = {
-                1: 'Casco de Fondo',
-                2: 'Casco de Costado',
-                3: 'Espejo de Popa',
-                4: 'Cubierta de Principal',
-                5: 'Cubiertas Inferiores/Otras Cubiertas',
-                6: 'Cubiertas Humedas',
-                7: 'Cubiertas de Superestructura y Casetas de Cubierta',
-                8: 'Mamparos Estancos',
-                9: 'Mamparos de Tanques Profundos',
-                10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-                11: 'Túneles de Waterjets',
-                12: 'Túneles de Bow Thrusters',
-                13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
-            }
-
-            available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if self.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-            print("\nSeleccione las zonas que desea escantillonar\n")
-        
-            # Mostrar las zonas disponibles desde una lista
-            for number in available_zones:
-                print(f"{number}. {zonas[number]}")
-            selected_zones = []
-            while True:
-                try:
-                    choice = int(input("\nIngrese el número correspondiente y presione Enter\n(ingrese '0' para finalizar)\n-> "))
-                    if choice == 0:
-                        if not selected_zones:
-                            raise ValueError("Debe seleccionar al menos una zona antes de finalizar.")
-                        break
-                    elif choice in available_zones:
-                        if choice in selected_zones:
-                            raise ValueError("Zona ya seleccionada, elija otra.")
-                        selected_zones.append(choice)
-                        print(f"Añadida: {zonas[choice]}")
-                    else:
-                        print("Selección no válida, intente de nuevo.")
-                except ValueError as e:
-                    print(e)
-            self.values['selected_zones'] = selected_zones
-        return self.values['selected_zones']
-    
     
     """PRINCIPAL CRAFT DATA"""
     def get_BC(self) -> float:
@@ -257,8 +182,7 @@ class Scantlings:
         #Composisción de la clase Craft
         self.craft = craft
         self.pressure = pressures
-        self.plating = plating
-        
+        self.plating = plating        
         
     def calculate_scantling(self, material, zone):
         if zone == 1:
@@ -739,56 +663,53 @@ class Plating:
 
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
-    craft = Craft()
+    designer = input("Diseñador: ")
+    boat = input("Embarcación: ")
+    company = input("Empresa: ")
+    management = input("Gerencia: ")
+    division = input("División: ")
     values = {}
     
-    # Definir los atributos requeridos para cada tipo de zona
-    zone_attributes = {
-        'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
-        'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
-        'Espejo de Popa': ['b', 'l', 's', 'lu'],
-        'Cubierta de Principal': ['b', 'l', 'c'],
-        'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
-        'Cubiertas Humedas': ['b', 'l', 'c'],
-        'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
-        'Mamparos Estancos': ['b', 'l'],
-        'Mamparos de Tanques Profundos': ['b', 'l'],
-        'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
-        'Túneles de Waterjets': ['b', 'l'],
-        'Túneles de Bow Thrusters': ['b', 'l'],
-        'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
-    }
+    print("\nSeleccione la categoría de diseño de su embarcación")
+    categories = ('Oceano', 'Offshore', 'Costera', 'Aguas calmadas')
+    design_cat = display_menu(categories)
     
-    # Definir las zonas disponibles para el material seleccionado
-    zones = {
-        1: 'Casco de Fondo',
-        2: 'Casco de Costado',
-        3: 'Espejo de Popa',
-        4: 'Cubierta de Principal',
-        5: 'Cubiertas Inferiores/Otras Cubiertas',
-        6: 'Cubiertas Humedas',
-        7: 'Cubiertas de Superestructura y Casetas de Cubierta',
-        8: 'Mamparos Estancos',
-        9: 'Mamparos de Tanques Profundos',
-        10: 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos',
-        11: 'Túneles de Waterjets',
-        12: 'Túneles de Bow Thrusters',
-        13: 'Cubiertas de Operación o Almacenamiento de Vehículos'
+    # Selección de material
+    print("\nSeleccione el material de su embarcación")
+    materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
+    material = display_menu(materials)
+    
+    craft = Craft(designer, boat, company, management, division, design_cat, material)
+    
+    # Definir las zonas disponibles y sus atributos requeridos
+    zones_data = {
+        1: ['Casco de Fondo', ['b', 'l', 's', 'lu', 'c', 'x']],
+        2: ['Casco de Costado', ['b', 'l', 's', 'lu', 'c']],
+        3: ['Espejo de Popa', ['b', 'l', 's', 'lu']],
+        4: ['Cubierta de Principal', ['b', 'l', 'c']],
+        5: ['Cubiertas Inferiores/Otras Cubiertas', ['b', 'l', 'c']],
+        6: ['Cubiertas Humedas', ['b', 'l', 'c']],
+        7: ['Cubiertas de Superestructura y Casetas de Cubierta', ['b', 'l']],
+        8: ['Mamparos Estancos', ['b', 'l']],
+        9: ['Mamparos de Tanques Profundos', ['b', 'l']],
+        10: ['Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos', ['b', 'l']],
+        11: ['Túneles de Waterjets', ['b', 'l']],
+        12: ['Túneles de Bow Thrusters', ['b', 'l']],
+        13: ['Cubiertas de Operación o Almacenamiento de Vehículos', ['b', 'l', 'c']]
     }
+    # Definir las zonas disponibles según el material seleccionado
+    available_zones = list(zones_data.keys()) if material not in [1, 2] else list(zones_data.keys())
+    print(f"\nZonas disponibles: {available_zones}")
 
-    available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if craft.material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-
-    # Definir zonas para la embarcación
+    # Mostrar el menú y permitir al usuario seleccionar zonas
     while True:
-        print("\nSeleccione la zona que desea escantillonar\n")
-        for number in available_zones:
-            print(f"{number}. {zones[number]}")
+        print("\nSeleccione las zonas que desea escantillonar\n(Ingrese 0 para finalizar el programa)")
+        zone = display_menu([zones_data[number][0] for number in available_zones])
         try:
-            choice = int(input("\nIngrese el número correspondiente y presione Enter\n(ingrese '0' para finalizar el programa)\n->: "))
-            if choice == 0:
+            if zone == 0:
                 break
-            elif choice in available_zones:
-                zone = zones[choice]
+            elif zone in available_zones:
+                zone = available_zones[zone - 1]
                 
                 # Pidiendo atributos específicos de la zona
                 zone_attributes = {}
@@ -814,7 +735,7 @@ def main():
                 scantling = Scantlings(craft, pressures, plating)
 
                 # Calcular espesor de la zona usando los atributos proporcionados
-                thickness = scantling.calculate_scantling(craft.material, zone)
+                thickness = scantling.calculate_scantling(material, zone)
                 
                 # Almacenar el espesor calculado para cada zona en el diccionario
                 if thickness is not None:
@@ -826,6 +747,21 @@ def main():
                 print("Selección no válida, intente de nuevo.")
         except ValueError as e:
             print(e)
-
+            
+def display_menu(items) -> int:
+    """Muestra un menú basado en una lista de items y retorna la opción escogida."""
+    for idx, item in enumerate(items, 1):
+        print(f"{idx}. {item}")
+    while True:
+        try:
+            choice = int(input("Ingrese el número correspondiente -> "))
+            if 0 <= choice <= len(items):
+                return choice
+            else:
+                print("Selección no válida, intente de nuevo.")
+        except ValueError:
+            print("Entrada no válida, por favor ingrese un número.")
+            
 if __name__ == "__main__":
     main()
+0
