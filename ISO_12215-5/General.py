@@ -234,8 +234,15 @@ class Scantlings:
     
 class Pressures:
     
-    def __init__(self, craft):
+    def __init__(self, craft, zone_attributes):
         self.craft = craft
+        # Extraer los valores del diccionario de forma segura
+        self.b = zone_attributes.get('b', None)
+        self.l = zone_attributes.get('l', None)
+        self.s = zone_attributes.get('s', None)
+        self.lu = zone_attributes.get('lu', None)
+        self.c = zone_attributes.get('c', None)
+        self.x = zone_attributes.get('x', None)
         
         
     def calculate_pressure(self, material, zone, LWL, BC, mLDC, V, B04, b, l, s, lu, x):
@@ -569,12 +576,19 @@ class Pressures:
         return PTB
 
 class Plating:
-    def __init__(self, craft):
+    def __init__(self, craft, zone_attributes):
         self.craft = craft
         self.k1 = 0.017
+        # Extraer los valores del diccionario de forma segura
+        self.b = zone_attributes.get('b', None)
+        self.l = zone_attributes.get('l', None)
+        self.s = zone_attributes.get('s', None)
+        self.lu = zone_attributes.get('lu', None)
+        self.c = zone_attributes.get('c', None)
+        self.x = zone_attributes.get('x', None)
         # Ver como puedo extraer b y l o no
-        self.k2 = self.panel_strength_k2(b, l)
-        self.kC = self.curvature_correction_kC(b, c)
+        self.k2 = self.panel_strength_k2()
+        self.kC = self.curvature_correction_kC()
         
     def calculate_plating(self, material, zone):
         if zone in [1, 2, 3]:
@@ -604,11 +618,11 @@ class Plating:
             k3 = self.panel_stiffness_k3(b, l)
             return self.fiber_core_plating(zone, pressure, b, l, c, k2, k3, kC)
             
-    def panel_strength_k2(self, material, b, l):
+    def panel_strength_k2(self, material):
         if material == 4:
             return 0.5
         else:
-            ar = l / b
+            ar = self.l / self.b
             return min(max((0.271 * (ar**2) + 0.910 * ar - 0.554) / ((ar**2) - 0.313 * ar + 1.351), 0.308), 0.5)
     
     def panel_stiffness_k3(self, b, l):
@@ -709,11 +723,13 @@ def main():
             if zone == 0:
                 break
             elif zone in available_zones:
-                zone = available_zones[zone - 1]
+                # zone = available_zones[zone - 1]
+                # print("Zona escogida:", zone)
+                required_attributes = zones_data[zone][1]
                 
                 # Pidiendo atributos específicos de la zona
                 zone_attributes = {}
-                for attribute in zone_attributes[zone]:
+                for attribute in required_attributes:
                     if attribute == 'b':
                         zone_attributes['b'] = craft.get_b(zone)
                     elif attribute == 'l':
@@ -764,4 +780,3 @@ def display_menu(items) -> int:
             
 if __name__ == "__main__":
     main()
-0
