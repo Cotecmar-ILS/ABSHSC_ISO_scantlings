@@ -173,7 +173,6 @@ class Craft:
         LH = self.get_LH()
         return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {self.zone} (metros): ", True, True, LH, 0)
     
-
 class Scantlings:
     def __init__(self, craft, pressures, plating):
         #Composisción de la clase Craft
