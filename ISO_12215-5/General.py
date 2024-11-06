@@ -171,7 +171,7 @@ class Craft:
     
     def get_x(self) -> float:
         LH = self.get_LH()
-        return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {zone} (metros): ", True, True, LH, 0)
+        return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {self.zone} (metros): ", True, True, LH, 0)
     
 class Scantlings:
     def __init__(self, craft, pressures, plating):
@@ -387,7 +387,7 @@ class Pressures:
         kL = self.longitudinal_pressure_factor_kL(LWL, BC, mLDC, V, B04)
         
         # Se calculan valores base y minimos de la presión de fondo en modo de desplazamiento y planeo
-        PBMD_BASE = 2.4 * (self.craft.craft.get_mLDC()**0.33) + 20
+        PBMD_BASE = 2.4 * (self.craft.get_mLDC()**0.33) + 20
         PBMP_BASE = ((0.1 * self.craft.get_mLDC())/(self.craft.get_LWL() * self.craft.get_BC()))*((1 + kDC**0.5) * nCG)
         PBM_MIN = 0.45 * (self.craft.get_mLDC() ** 0.33) + (0.9 * self.craft.get_LWL() * kDC)
         
@@ -696,13 +696,13 @@ def main():
 
     # Mostrar el menú y permitir al usuario seleccionar zonas
     while True:
-        print("\nSeleccione las zonas que desea escantillonar\n(Ingrese 0 para finalizar el programa)")
+        print("\nSeleccione la zona que desea escantillonar:\n(Ingrese 0 para finalizar el programa)")
         zone = display_menu(list(zones_data.keys()))
-        craft.zone = zone
         try:
             if zone == 0:
                 break
             elif zone in available_zones:
+                craft.zone = zone
                 # zone = available_zones[zone - 1]
                 # print("Zona escogida:", zone)
                 required_attributes = zones_data[zone][1]
@@ -735,13 +735,10 @@ def main():
                 thickness = scantling.calculate_scantling(material, zone)
                 
                 # Almacenar el espesor calculado para cada zona en el diccionario
-                if thickness is not None:
-                    values[zone] = thickness
-                    print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
-                else:
-                    print(f"Error: No se pudo calcular el espesor para la zona {zone}")
+                values[zone] = thickness
+                print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
             else:
-                print("Selección no válida, intente de nuevo.")
+                print("Selección no válida, intente de nuevo.\n")
         except ValueError as e:
             print(e)
             
