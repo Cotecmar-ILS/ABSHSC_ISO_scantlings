@@ -216,49 +216,46 @@ class Pressures:
         self.x = zone_attributes.get('x', None)
         
         
-    def calculate_pressure(self, material, zone, LWL, BC, mLDC, V, B04):
-        if zone == 1:
-            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure(material, zone, LWL, BC, mLDC, V, B04)
+    def calculate_pressure(self, LWL, BC, mLDC, V, B04):
+        if self.craft.zone == 1:
+            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure(LWL, BC, mLDC, V, B04)
             return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
-        elif self.zone == 2:
+        elif self.craft.zone == 2:
             pressure, index = self.side_pressure()
             return pressure, index
-        elif self.zone == 3:
+        elif self.craft.zone == 3:
             pressure, index = self.deck_pressure()
             return pressure, index
-        elif self.zone == 4:
+        elif self.craft.zone == 4:
             pressure = self.superstructures_deckhouses_pressure()
             return pressure, 0
-        elif self.zone == 5:
+        elif self.craft.zone == 5:
             pressure = self.watertight_bulkheads_pressure()
             return pressure, 0
-        elif self.zone == 6:
+        elif self.craft.zone == 6:
             pressure = self.integral_tank_bulkheads_pressure()
             return pressure, 0
-        elif self.zone == 7:
+        elif self.craft.zone == 7:
             pressure = self.wash_plates_pressure()
             return pressure, 0
-        elif self.zone == 8:
+        elif self.craft.zone == 8:
             pressure = self.collision_bulkheads_pressure()
             return pressure, 0
-        elif self.zone == 9:
+        elif self.craft.zone == 9:
             pressure = self.nonwatertight_partial_bulkheads_pressure()
             return pressure, 0
-        elif self.zone == 10:
+        elif self.craft.zone == 10:
             pressure = self.transmission_pillar_loads_pressure()
             return pressure, 0
         else:
             return "Zona no está en la base de datos"
 
-    def design_category_factor_kDC(self) -> float:
-        # Asegurarse de que la categoría de diseño ya está definida a través de la instancia de 'craft'
-        design_category = self.craft.get_design_category()
-        
+    def design_category_factor_kDC(self) -> float:        
         # Mapeo de categoría de diseño a valores de kDC
         kDC_values = {'A': 1.0, 'B': 0.8, 'C': 0.6, 'D': 0.4}
         
         # Retornar el valor correspondiente de kDC
-        return kDC_values[design_category]
+        return kDC_values[self.craft.design_cat]
     
     def dynamic_load_factor_nCG(self) -> float:
         """
@@ -673,7 +670,11 @@ def main():
     materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
     material = display_menu(materials)
     
-    craft = Craft(designer, boat, company, management, division, design_cat, material, None)
+    craft = Craft(designer, boat, company, management, division, design_cat, material, zone = None)
+    pressure = Pressures(craft, None)
+    plating = Plating(craft, pressure, None)
+    #scantling = Scantlings(craft, material, pressure = pressure, plating = plating)
+
     
     # Definir las zonas disponibles y sus atributos requeridos
     zones_data = {
@@ -724,15 +725,12 @@ def main():
                     elif attribute == 'x':
                         zone_attributes['x'] = craft.get_x()
 
-                # # Crear nueva zona y añadirla a la embarcación
-                # zona = craft.agregar_zona(zone, zone_attributes)
+                pressure.zone_attributes = zone_attributes
+                plating.zone_attributes = zone_attributes
                 
-                pressure = Pressures(craft, design_cat, material, zone, zone_attributes)
-                plating = Plating(craft, design_cat, material, zone, zone_attributes, pressure)
-                scantling = Scantlings(craft, material, pressure, plating)#
-
+                
                 # Calcular espesor de la zona usando los atributos proporcionados
-                thickness = scantling.calculate_scantling(material, zone)
+                thickness = plating.calculate_plating(material, zone)
                 
                 # Almacenar el espesor calculado para cada zona en el diccionario
                 values[zone] = thickness
