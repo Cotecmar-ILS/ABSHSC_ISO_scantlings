@@ -544,11 +544,8 @@ class Pressures:
         return PTB
 
 class Plating:
-    def __init__(self, craft, zone_attributes):
+    def __init__(self, craft, pressure, zone_attributes):
         self.craft = craft
-        self.design_cat = design_cat
-        self.material = material
-        self.zone = zone
         self.pressure = presssure
         self.b = zone_attributes.get('b', None)
         self.l = zone_attributes.get('l', None)
@@ -557,44 +554,47 @@ class Plating:
         self.c = zone_attributes.get('c', None)
         self.x = zone_attributes.get('x', None)
         self.k1 = 0.017
-        # Extraer los valores del diccionario de forma segura
-        self.b = zone_attributes.get('b', None)
-        self.l = zone_attributes.get('l', None)
-        self.s = zone_attributes.get('s', None)
-        self.lu = zone_attributes.get('lu', None)
-        self.c = zone_attributes.get('c', None)
-        self.x = zone_attributes.get('x', None)
         # Ver como puedo extraer b y l o no
         self.k2 = self.panel_strength_k2()
         self.kC = self.curvature_correction_kC()
-        
-    def calculate_plating(self):
-        if self.zone in [1, 2, 3]:
-            thickness = self.bottom_scantling()
-            return thickness
-        elif self.zone == 4:
-            thickness = self.bulkhead_scantling()
-            return thickness
-        elif self.zone == 5:
-            thickness = self.tank_scantling()
-            return thickness
 
     def calculate_plating(self, material, zone, pressure):
         k2 = self.panel_strength_k2()
         kC = self.curvature_correction_kC()
-            
-        if material == 1:
-            return self.steel_thickness(zone, pressure, k2, kC)
-        elif material == 2:
-            return self.aluminum_thickness(zone, pressure, k2, kC)
-        elif material == 3:
-            thickness = self.single_skin_plating(zone, pressure, k2, kC)
-            return thickness
-        elif material == 4:
-            return self.wood_plating(zone, pressure, k2)
-        elif material == 5:
-            k3 = self.panel_stiffness_k3()
-            return self.fiber_core_plating(zone, pressure, k2, k3, kC)
+        
+        if self.craft.zone in [1, 2, 3]:
+            if material == 1:
+                return self.steel_thickness(zone, pressure, k2, kC)
+            elif material == 2:
+                return self.aluminum_thickness(zone, pressure, k2, kC)
+            elif material == 3:
+                thickness = self.single_skin_plating(zone, pressure, k2, kC)
+                return thickness
+            elif material == 4:
+                return self.wood_plating(zone, pressure, k2)
+            elif material == 5:
+                k3 = self.panel_stiffness_k3()
+                return self.fiber_core_plating(zone, pressure, k2, k3, kC)
+        else:
+            # 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
+            # 'Túneles de Waterjets': ['b', 'l'],
+            # 'Túneles de Bow Thrusters': ['b', 'l'],
+            # 'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
+            if self.craft.zone == 8:
+                thickness = self.bulkhead_scantling()
+                return thickness
+            elif self.craft.zone == 9:
+                thickness = self.tank_scantling()
+                return thickness
+            elif self.craft.zone == 10:
+                thickness = 0
+                return thickness
+            elif self.craft.zone == 11:
+                thickness = 0
+                return thickness
+            elif self.craft.zone == 12:
+                thickness = 0
+                return thickness
             
     def panel_strength_k2(self, material):
         if material == 4:
@@ -667,14 +667,13 @@ def main():
     design_cat = display_menu(categories)
     
     print("\nSeleccione el material de su embarcación")
-    materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
-    material = display_menu(materials)
+    avaliable_materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
+    material = display_menu(avaliable_materials)
     
     craft = Craft(designer, boat, company, management, division, design_cat, material, zone = None)
-    pressure = Pressures(craft, None)
-    plating = Plating(craft, pressure, None)
+    pressure = Pressures(craft, {})
+    plating = Plating(craft, pressure, {})
     #scantling = Scantlings(craft, material, pressure = pressure, plating = plating)
-
     
     # Definir las zonas disponibles y sus atributos requeridos
     zones_data = {
@@ -697,7 +696,8 @@ def main():
 
     # Mostrar el menú y permitir al usuario seleccionar zonas
     while True:
-        print("\nSeleccione la zona que desea escantillonar:\n(Ingrese 0 para finalizar el programa)")
+        print("\nSeleccione la zona que desea escantillonar:\
+            \n(Ingrese 0 para finalizar el programa)")
         zone = display_menu(list(zones_data.keys()))
         try:
             if zone == 0:
@@ -724,17 +724,18 @@ def main():
                         zone_attributes['c'] = craft.get_c()
                     elif attribute == 'x':
                         zone_attributes['x'] = craft.get_x()
+                    else:
+                        raise ValueError("Atributo no reconocido")
 
                 pressure.zone_attributes = zone_attributes
                 plating.zone_attributes = zone_attributes
-                
                 
                 # Calcular espesor de la zona usando los atributos proporcionados
                 thickness = plating.calculate_plating(material, zone)
                 
                 # Almacenar el espesor calculado para cada zona en el diccionario
                 values[zone] = thickness
-                print(f"El espesor requerido en la zona {zone} es de: {thickness:.3f} mm")
+                print(f"El espesor mínimo requerido en la zona '{zone}' es de: {thickness:.3f} mm")
             else:
                 print("Selección no válida, intente de nuevo.\n")
         except ValueError as e:
