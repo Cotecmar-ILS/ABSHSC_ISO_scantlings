@@ -667,15 +667,10 @@ def main():
     design_cat = display_menu(categories)
     
     print("\nSeleccione el material de su embarcación")
-    avaliable_materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
-    material = display_menu(avaliable_materials)
+    available_materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
+    material = display_menu(available_materials)
     
-    craft = Craft(designer, boat, company, management, division, design_cat, material, zone = None)
-    pressure = Pressures(craft, {})
-    plating = Plating(craft, pressure, {})
-    #scantling = Scantlings(craft, material, pressure = pressure, plating = plating)
-    
-    # Definir las zonas disponibles y sus atributos requeridos
+    # Definir las zonas y sus atributos dependientes
     zones_data = {
         'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
         'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
@@ -691,56 +686,38 @@ def main():
         'Túneles de Bow Thrusters': ['b', 'l'],
         'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
     }
-    # Definir las zonas disponibles según el material seleccionado
-    available_zones = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] if material not in [1, 2] else [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-
-    # Mostrar el menú y permitir al usuario seleccionar zonas
+    
+    craft = Craft(designer, boat, company, management, division, design_cat, material, zone=None)
+    pressure = Pressures(craft, {})
+    plating = Plating(craft, pressure, {})
+    scantling = Scantlings(craft, material, pressure=pressure, plating=plating)
+    
     while True:
-        print("\nSeleccione la zona que desea escantillonar:\
-            \n(Ingrese 0 para finalizar el programa)")
-        zone = display_menu(list(zones_data.keys()))
-        try:
-            if zone == 0:
-                break
-            elif zone in available_zones:
-                craft.zone = zone
-                # zone = available_zones[zone - 1]
-                # print("Zona escogida:", zone)
-                required_attributes = zones_data[zone][1]
-                
-                # Pidiendo atributos específicos de la zona
-                """PANEL/STIFFENER DIMENSIONS"""
-                zone_attributes = {}
-                for attribute in required_attributes:
-                    if attribute == 'b':
-                        zone_attributes['b'] = craft.get_b()
-                    elif attribute == 'l':
-                        zone_attributes['l'] = craft.get_l()
-                    elif attribute == 's':
-                        zone_attributes['s'] = craft.get_s()
-                    elif attribute == 'lu':
-                        zone_attributes['lu'] = craft.get_lu()
-                    elif attribute == 'c':
-                        zone_attributes['c'] = craft.get_c()
-                    elif attribute == 'x':
-                        zone_attributes['x'] = craft.get_x()
-                    else:
-                        raise ValueError("Atributo no reconocido")
+        zone_name, zone = get_selected_zone(material, zones_data)
+        if zone is None:
+            print("Programa finalizado.")
+            break
 
-                pressure.zone_attributes = zone_attributes
-                plating.zone_attributes = zone_attributes
-                
-                # Calcular espesor de la zona usando los atributos proporcionados
-                thickness = plating.calculate_plating(material, zone)
-                
-                # Almacenar el espesor calculado para cada zona en el diccionario
-                values[zone] = thickness
-                print(f"El espesor mínimo requerido en la zona '{zone}' es de: {thickness:.3f} mm")
-            else:
-                print("Selección no válida, intente de nuevo.\n")
+        try:
+            craft.zone = zone
+            required_attributes = zones_data[zone_name]
+
+            zone_attributes = {}
+            for attribute in required_attributes:
+                getter_method = getattr(craft, f"get_{attribute}", None)
+                if getter_method:
+                    zone_attributes[attribute] = getter_method()
+                else:
+                    raise ValueError(f"Atributo '{attribute}' no reconocido")
+
+            pressure.zone_attributes = zone_attributes
+            plating.zone_attributes = zone_attributes
+            thickness = plating.calculate_plating(material, zone)
+            values[zone_name] = thickness
+            print(f"El espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
         except ValueError as e:
             print(e)
-            
+
 def display_menu(items) -> int:
     """Muestra un menú basado en una lista de items y retorna la opción escogida."""
     for idx, item in enumerate(items, 1):
@@ -748,12 +725,39 @@ def display_menu(items) -> int:
     while True:
         try:
             choice = int(input("Ingrese el número correspondiente -> "))
-            if 0 <= choice <= len(items):
+            if 0 <= choice <= len(items):  # Rango válido
                 return choice
             else:
                 print("Selección no válida, intente de nuevo.")
         except ValueError:
             print("Entrada no válida, por favor ingrese un número.")
             
+def get_selected_zone(material, zones_data):
+    """
+    Gestiona las zonas según el material seleccionado, muestra al usuario un menú con las zonas
+    disponibles y devuelve tanto el nombre de la zona seleccionada como el número correspondiente.
+    """
+
+    # Determinar las zonas disponibles según el material
+    available_zones = list(range(1, 12)) if material not in [1, 2] else list(range(1, 14))
+
+    # Crear la lista de nombres de zonas disponibles
+    filtered_zone_names = [list(zones_data.keys())[i - 1] for i in available_zones]
+
+    # Mostrar el menú y permitir la selección del usuario
+    print("\nSeleccione la zona que desea escantillonar:\
+          \n(Ingrese 0 para finalizar el programa)")
+    selected_zone_index = display_menu(filtered_zone_names)  # Obtener selección del usuario
+
+    # Verificar si el usuario desea salir
+    if selected_zone_index == 0:
+        return None, None
+
+    # Mapear el índice seleccionado al nombre de la zona
+    zone_name = filtered_zone_names[selected_zone_index - 1]
+
+    # Retornar el nombre de la zona y el número correspondiente
+    return zone_name, selected_zone_index
+
 if __name__ == "__main__":
     main()
