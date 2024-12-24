@@ -205,7 +205,7 @@ class Scantlings:
     
 class Pressures:
     
-    def __init__(self, craft, zone_attributes):
+    def __init__(self, craft: object, zone_attributes: dict):
         self.craft = craft
         # Extraer los valores del diccionario de forma segura
         self.b = zone_attributes.get('b', None)
@@ -215,7 +215,7 @@ class Pressures:
         self.c = zone_attributes.get('c', None)
         self.x = zone_attributes.get('x', None)
         
-        
+    
     def calculate_pressure(self, LWL, BC, mLDC, V, B04):
         if self.craft.zone == 1:
             bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure(LWL, BC, mLDC, V, B04)
@@ -544,7 +544,7 @@ class Pressures:
         return PTB
 
 class Plating:
-    def __init__(self, craft, pressure, zone_attributes):
+    def __init__(self, craft: object, pressure: object, zone_attributes: dict):
         self.craft = craft
         self.pressure = presssure
         self.b = zone_attributes.get('b', None)
@@ -695,26 +695,20 @@ def main():
     while True:
         zone_name, zone = get_selected_zone(material, zones_data)
         if zone is None:
-            print("Programa finalizado.")
+            print("\nPrograma finalizado.")
             break
-
         try:
             craft.zone = zone
             required_attributes = zones_data[zone_name]
-
             zone_attributes = {}
             for attribute in required_attributes:
-                getter_method = getattr(craft, f"get_{attribute}", None)
-                if getter_method:
-                    zone_attributes[attribute] = getter_method()
-                else:
-                    raise ValueError(f"Atributo '{attribute}' no reconocido")
-
+                zone_attributes[attribute] = getattr(craft, f"get_{attribute}", None)
             pressure.zone_attributes = zone_attributes
             plating.zone_attributes = zone_attributes
+            
             thickness = plating.calculate_plating(material, zone)
             values[zone_name] = thickness
-            print(f"El espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
+            print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
         except ValueError as e:
             print(e)
 
