@@ -696,7 +696,6 @@ def main():
             print("\nPrograma finalizado.")
             break
         try:
-            craft.zone = zone
             required_attributes = zones_data[zone_name]
             zone_attributes = {}
             for attribute in required_attributes:
@@ -704,7 +703,7 @@ def main():
             pressure.zone_attributes = zone_attributes
             plating.zone_attributes = zone_attributes
             
-            thickness = plating.calculate_plating()
+            thickness = plating.calculate_plating(zone)
             values[zone_name] = thickness
             print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
         except ValueError as e:
