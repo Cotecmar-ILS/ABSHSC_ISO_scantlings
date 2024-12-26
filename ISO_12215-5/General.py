@@ -214,6 +214,7 @@ class Pressures:
         self.lu = zone_attributes.get('lu', None)
         self.c = zone_attributes.get('c', None)
         self.x = zone_attributes.get('x', None)
+        self.hB = zone_attributes.get('hB', None)
         
     
     def calculate_pressure(self, LWL, BC, mLDC, V, B04):
@@ -248,7 +249,7 @@ class Pressures:
             pressure = self.transmission_pillar_loads_pressure()
             return pressure, 0
         else:
-            return "Zona no está en la base de datos"
+            return "La zona escogida no se encuentra disponible"
 
     def design_category_factor_kDC(self) -> float:        
         # Mapeo de categoría de diseño a valores de kDC
@@ -285,7 +286,7 @@ class Pressures:
         
         return nCG
 
-    def longitudinal_pressure_factor_kL(self, LWL, BC, mLDC, V, B04) -> float:
+    def longitudinal_pressure_factor_kL(self, LWL) -> float:
         """
         Parámetros:
             x (float): Posición longitudinal a lo largo de la longitud de la línea de flotación (LWL),
@@ -305,7 +306,7 @@ class Pressures:
         
         return kL
 
-    def area_pressure_factor_kAR(self, material, mLDC) -> tuple:
+    def area_pressure_factor_kAR(self) -> tuple:
         """
         Calcula el valor de kAR ajustado al material y limitado a un máximo de 1 para Plating y Stiffeners.
         """
@@ -370,7 +371,7 @@ class Pressures:
         return kSUP_values
     
     #Pressure Zones
-    def bottom_pressure(self, material, zone, LWL, BC, mLDC, V, B04) -> tuple:
+    def bottom_pressure(self, material, LWL, BC, mLDC, V, B04) -> tuple:
         """
         Calcula la presión de fondo para Plating y Stiffeners, e indica si fue tomada en modo de planeo o desplazamiento.
         
@@ -483,7 +484,7 @@ class Pressures:
         
         return side_pressure_plating, side_pressure_stiffeners
     
-    def deck_pressure(self, LWL):
+    def deck_pressure(self):
         """
         Calcula la presión sobre la cubierta para Plating y Stiffeners.
         Retorna:
@@ -508,7 +509,7 @@ class Pressures:
         
         return deck_pressure_plating, deck_pressure_stiffeners
 
-    def superstructure_deckhouses_pressure(self, LWL):
+    def superstructure_deckhouses_pressure(self):
         """
         Calcula la presión sobre las superestructuras y casetas de cubierta para Plating y Stiffeners.
         Retorna:
@@ -546,35 +547,32 @@ class Pressures:
 class Plating:
     def __init__(self, craft: object, pressure: object, zone_attributes: dict):
         self.craft = craft
-        self.pressure = presssure
+        self.pressure = pressure
         self.b = zone_attributes.get('b', None)
         self.l = zone_attributes.get('l', None)
         self.s = zone_attributes.get('s', None)
         self.lu = zone_attributes.get('lu', None)
         self.c = zone_attributes.get('c', None)
         self.x = zone_attributes.get('x', None)
-        self.k1 = 0.017
-        # Ver como puedo extraer b y l o no
-        self.k2 = self.panel_strength_k2()
-        self.kC = self.curvature_correction_kC()
 
-    def calculate_plating(self, material, zone, pressure):
+    def calculate_plating(self):
+        k1 = 0.017
         k2 = self.panel_strength_k2()
         kC = self.curvature_correction_kC()
         
-        if self.craft.zone in [1, 2, 3]:
-            if material == 1:
-                return self.steel_thickness(zone, pressure, k2, kC)
-            elif material == 2:
-                return self.aluminum_thickness(zone, pressure, k2, kC)
-            elif material == 3:
-                thickness = self.single_skin_plating(zone, pressure, k2, kC)
+        if self.craft.zone in [1, 2, 3, 4, 5]:
+            if self.craft.material == 1:
+                return self.steel_thickness(k2, kC)
+            elif self.craft.material == 2:
+                return self.aluminum_thickness(k2, kC)
+            elif self.craft.material == 3:
+                thickness = self.single_skin_plating(k2, kC)
                 return thickness
-            elif material == 4:
-                return self.wood_plating(zone, pressure, k2)
-            elif material == 5:
+            elif self.craft.material == 4:
+                return self.wood_plating(k2)
+            elif self.craft.material == 5:
                 k3 = self.panel_stiffness_k3()
-                return self.fiber_core_plating(zone, pressure, k2, k3, kC)
+                return self.fiber_core_plating(k2, k3, kC)
         else:
             # 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
             # 'Túneles de Waterjets': ['b', 'l'],
@@ -596,8 +594,8 @@ class Plating:
                 thickness = 0
                 return thickness
             
-    def panel_strength_k2(self, material):
-        if material == 4:
+    def panel_strength_k2(self):
+        if self.craft.material == 4:
             return 0.5
         else:
             ar = self.l / self.b
@@ -619,26 +617,26 @@ class Plating:
         kC = max(min(kC, 1.0), 0.5)
         return kC
     
-    def steel_thickness(self, zone, pressure, k2, kC):
+    def steel_thickness(self, pressure, k2, kC):
         sigma_u = self.craft.get_sigma_u()
         sigma_y = self.craft.get_sigma_y()
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
         thickness = self.b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def aluminum_thickness(self, zone, pressure, k2, kC):
+    def aluminum_thickness(self, pressure, k2, kC):
         sigma_u = self.craft.get_sigma_u()
         sigma_y = self.craft.get_sigma_y()
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
         thickness = self.b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def single_skin_plating(self, zone, pressure, k2, kC):
+    def single_skin_plating(self, pressure, k2, kC):
         sigma_d = 0.5 * self.craft.get_sigma_uf()
         thickness = self.b * kC * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def wood_plating(self, zone, pressure, k2):
+    def wood_plating(self, pressure, k2):
         sigma_d = 0.5 * self.craft.get_sigma_uf()
         thickness = self.b * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
@@ -679,8 +677,8 @@ def main():
         'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
         'Cubiertas Humedas': ['b', 'l', 'c'],
         'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
-        'Mamparos Estancos': ['b', 'l'],
-        'Mamparos de Tanques Profundos': ['b', 'l'],
+        'Mamparos Estancos': ['b', 'l', 'hB'],
+        'Mamparos de Tanques Profundos': ['b', 'l', 'hB'],
         'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
         'Túneles de Waterjets': ['b', 'l'],
         'Túneles de Bow Thrusters': ['b', 'l'],
@@ -690,7 +688,7 @@ def main():
     craft = Craft(designer, boat, company, management, division, design_cat, material, zone=None)
     pressure = Pressures(craft, {})
     plating = Plating(craft, pressure, {})
-    scantling = Scantlings(craft, material, pressure=pressure, plating=plating)
+    #scantling = Scantlings(craft, material, pressure=pressure, plating=plating)
     
     while True:
         zone_name, zone = get_selected_zone(material, zones_data)
@@ -706,7 +704,7 @@ def main():
             pressure.zone_attributes = zone_attributes
             plating.zone_attributes = zone_attributes
             
-            thickness = plating.calculate_plating(material, zone)
+            thickness = plating.calculate_plating()
             values[zone_name] = thickness
             print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
         except ValueError as e:
@@ -726,7 +724,7 @@ def display_menu(items) -> int:
         except ValueError:
             print("Entrada no válida, por favor ingrese un número.")
             
-def get_selected_zone(material, zones_data):
+def get_selected_zone(material, zones_data) -> tuple:
     """
     Gestiona las zonas según el material seleccionado, muestra al usuario un menú con las zonas
     disponibles y devuelve tanto el nombre de la zona seleccionada como el número correspondiente.
