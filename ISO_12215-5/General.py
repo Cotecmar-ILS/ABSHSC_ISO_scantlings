@@ -1,41 +1,12 @@
 """
     Main de la calculadora de ISO 12215-5
-    
-    Intentar hacer una sola funcion que calcule el pressure y luego el thickeness de una para cada zona,
-    es decir, funcion por zona en donde se calcule la presion y luego el espesor tomando como parametro el material y la zona
-    
-class Scantlings:
-
-    def init(self, craft):
-        self.craft = craft
-
-    def calculate_scantling (material, zone):
-        if zone == bottom:
-            thickness = def bottom_Scantling (material):
-            return thickness
-            
-    def bottom_scantling (material): $VOY POR ESTA$
-        pressure = def calculate_pressure (material, zone):
-        
-        if material == acero_aluminio:
-            thickness = def acero_aluminio_plating (pressure, zone):
-            return thickness
-    
-def bottom_scantling (material):
-    planning =24 * mLDC + 4
-    slamming = 12 * mLDC + 4
-    pressure = max(planning, slamming)
-    
-    if material == acero_aluminio:
-        thickness = def acero_aluminio_plating (pressure, zone):
-        return thickness
 """
 
 import numpy as np
 from validations import val_data
 
 class Craft:
-    def __init__(self, designer, boat, company, management, division, design_cat, material, zone):
+    def __init__(self, designer, boat, company, management, division, design_cat, material, zone_name, zone):
         self.values = {}
         self.designer = designer
         self.boat = boat
@@ -44,6 +15,7 @@ class Craft:
         self.division = division
         self.design_cat = design_cat
         self.material = material
+        self.zone_name = zone_name
         self.zone = zone
         
     #Metodo para pedir datos y validar si ya existe
@@ -172,36 +144,6 @@ class Craft:
     def get_x(self) -> float:
         LH = self.get_LH()
         return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {self.zone} (metros): ", True, True, LH, 0)
-    
-class Scantlings:
-    def __init__(self, craft, pressures, plating):
-        #Composisción de la clase Craft
-        self.craft = craft
-        self.pressure = pressures
-        self.plating = plating        
-        
-    def calculate_scantling(self, material, zone):
-        if zone == 1:
-            thickness = self.bottom_scantling(material, zone)
-            return thickness
-        elif zone == 2:
-            thickness = self.side_scantling(material, zone)
-            return thickness
-        elif zone == 3:
-            thickness = self.deck_scantling(material, zone)
-            return thickness
-    
-    def bottom_scantling(self, material, zone):        
-        bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.pressure.calculate_pressure()
-        thickness = self.plating.calculate_plating(bottom_pressure_plating) #calcular el thickeness de esta manera con una funcion general o tener una funcion especifica para cada material como pressures
-        #stiffeners = self.stiffeners.calculate_stiffeners(zone)
-        return thickness
-
-    def side_scantling(self, material, zone):
-        side_pressure_plating, side_pressure_stiffeners = self.pressure.calculate_side_pressure()
-        thickness = self.plating.calculate_thickness(side_pressure_plating)
-        #stiffeners = self.stiffeners.calculate_stiffeners(zone)
-        return thickness
     
 class Pressures:
     
@@ -545,9 +487,8 @@ class Pressures:
         return PTB
 
 class Plating:
-    def __init__(self, craft: object, pressure: object, zone_attributes: dict):
+    def __init__(self, craft: object, zone_attributes: dict):
         self.craft = craft
-        self.pressure = pressure
         self.b = zone_attributes.get('b', None)
         self.l = zone_attributes.get('l', None)
         self.s = zone_attributes.get('s', None)
@@ -555,24 +496,24 @@ class Plating:
         self.c = zone_attributes.get('c', None)
         self.x = zone_attributes.get('x', None)
 
-    def calculate_plating(self):
+    def calculate_plating(self, pressure):
         k1 = 0.017
         k2 = self.panel_strength_k2()
         kC = self.curvature_correction_kC()
         
         if self.craft.zone in [1, 2, 3, 4, 5]:
             if self.craft.material == 1:
-                return self.steel_thickness(k2, kC)
+                return self.steel_thickness(pressure, k2, kC)
             elif self.craft.material == 2:
-                return self.aluminum_thickness(k2, kC)
+                return self.aluminum_thickness(pressure, k2, kC)
             elif self.craft.material == 3:
-                thickness = self.single_skin_plating(k2, kC)
+                thickness = self.single_skin_plating(pressure, k2, kC)
                 return thickness
             elif self.craft.material == 4:
-                return self.wood_plating(k2)
+                return self.wood_plating(pressure, k2)
             elif self.craft.material == 5:
                 k3 = self.panel_stiffness_k3()
-                return self.fiber_core_plating(k2, k3, kC)
+                return self.fiber_core_plating(pressure, k2, k3, kC)
         else:
             # 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
             # 'Túneles de Waterjets': ['b', 'l'],
@@ -685,13 +626,14 @@ def main():
         'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
     }
     
-    craft = Craft(designer, boat, company, management, division, design_cat, material, zone=None)
+    craft = Craft(designer, boat, company, management, division, design_cat, material, zone_name=None, zone=None)
     pressure = Pressures(craft, {})
-    plating = Plating(craft, pressure, {})
+    plating = Plating(craft, {})
     #scantling = Scantlings(craft, material, pressure=pressure, plating=plating)
     
     while True:
         zone_name, zone = get_selected_zone(material, zones_data)
+        craft.zone = zone_name, zone
         if zone is None:
             print("\nPrograma finalizado.")
             break
@@ -700,10 +642,12 @@ def main():
             zone_attributes = {}
             for attribute in required_attributes:
                 zone_attributes[attribute] = getattr(craft, f"get_{attribute}", None)
-            pressure.zone_attributes = zone_attributes
-            plating.zone_attributes = zone_attributes
-            
-            thickness = plating.calculate_plating(zone)
+            pressure.zone_attributes, plating.zone_attributes = zone_attributes
+            """Sin embargo, ambos atributos (pressure.zone_attributes y plating.zone_attributes) 
+            compartirán la misma referencia en memoria. Si luego modificas pressure.zone_attributes, 
+            también se reflejará en plating.zone_attributes."""
+            zone_pressure = pressure.calculate_pressure(zone)
+            thickness = plating.calculate_plating(zone, zone_pressure)
             values[zone_name] = thickness
             print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
         except ValueError as e:
@@ -726,7 +670,7 @@ def display_menu(items) -> int:
 def get_selected_zone(material, zones_data) -> tuple:
     """
     Gestiona las zonas según el material seleccionado, muestra al usuario un menú con las zonas
-    disponibles y devuelve tanto el nombre de la zona seleccionada como el número correspondiente.
+    disponibles y devuelve tanto el nombre de la zona seleccionada como el indice correspondiente.
     """
 
     # Determinar las zonas disponibles según el material
