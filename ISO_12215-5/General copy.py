@@ -1,13 +1,8 @@
-"""
-    Main de la calculadora de ISO 12215-5
-"""
-
 import numpy as np
 from validations import val_data
 
 class Craft:
     def __init__(self, designer, boat, company, management, division, design_cat, material, zone_name, zone):
-        self.values = {}
         self.designer = designer
         self.boat = boat
         self.company = company
@@ -18,81 +13,42 @@ class Craft:
         self.zone_name = zone_name
         self.zone = zone
         
-    #Metodo para pedir datos y validar si ya existe
-    def get_value(self, key, prompt, *args) -> float:
-        if key not in self.values:
-            self.values[key] = val_data(prompt, *args)
-        return self.values[key]
-    
-    """PRINCIPAL CRAFT DATA"""
-    def get_BC(self) -> float:
-        LWL = self.get_LWL()
-        return self.get_value('BC', f"Manga entre pantoques ó 'Chine beam' a {0.4 * LWL} metros de la popa (metros): ")
-    
-    def get_BH(self) -> float:
-        return self.get_value('BH', "Manga del casco (metros): ")
-    
-    def get_BWL(self) -> float:
-        return self.get_value('BWL', "Manga de flotación (metros): ")
-     
-    def get_Db(self) -> float:
-        return self.get_value('Db', "Profundidad del mamparo (metros): ")
-    
-    def get_LH(self) -> float:
-        return self.get_value('LH', "Eslora del casco (metros): ", True, True, -1, 2.5, 24)
-
-    def get_LWL(self) -> float:
-        LH = self.get_LH()
-        return self.get_value('LWL', "Eslora de flotación (metros): ", True, True, -1, 0, LH)
-
+        # Principal Craft Data
+        self.LH = val_data("Eslora del casco (metros): ", True, True, -1, 2.5, 24)
+        self.LWL = val_data("Eslora de flotación (metros): ", True, True, -1, 0, self.LH)
+        self.BH = val_data("Manga del casco (metros): ")
+        self.BWL = val_data("Manga de flotación (metros): ", True, True, -1, 0, self.BH)
+        self.BC = val_data(f"Manga entre pantoques ('Chine beam') a {0.4 * self.LWL} metros de la popa (metros): ", True, True, -1, 0, self.BH)
+        self.mLDC = val_data("Desplazamiento de la embarcación (toneladas): ") / 1000
+        self.V = self.get_V()
+        self.B04 = self.get_B04()
+        self.Z = val_data("Altura de francobordo (metros): ")
+        self.type = self.get_craft_type()
+      
     def get_V(self) -> float:
-        LWL = self.get_LWL()
-        min_speed = 2.26 * np.sqrt(LWL)
-        return self.get_value('V', f"Velocidad máxima (nudos, debe ser >= {min_speed:.2f}): ", True, True, -1, min_speed)
-
-    def get_mLDC(self) -> float:
-        return self.get_value('mLDC', "Desplazamiento de la embarcación (kg): ")
+        min_speed = 2.26 * np.sqrt(self.LWL)
+        return val_data(f"Velocidad máxima (nudos, debe ser >= {min_speed:.2f}): ", True, True, -1, min_speed)
 
     def get_B04(self) -> float:
-        LWL = self.get_LWL()
-        B04 = self.get_value('B04', f"Ángulo de astilla muerta fondo a {0.4 * LWL:.2f} metros de la popa (°grados): ")
-        
+        B04 = val_data(f"Ángulo de astilla muerta de fondo a {0.4 * self.LWL:.2f} metros de la popa (°grados): ")
         if B04 < 10 or B04 > 30:
             print(f"Advertencia: El ángulo de astilla muerta {B04}° está fuera del rango sugerido (10° a 30°).")
         return B04
     
-    def get_Z(self) -> float:
-        return self.get_value('Z', "Altura de francobordo (metros): ")
-    
     def get_craft_type(self) -> str:
-        # Obtener la velocidad y eslora de flotación
-        V = self.get_V()
-        LWL = self.get_LWL()
-
         # Determinar el tipo de embarcación basado en la relación V/LWL
-        if V / np.sqrt(LWL) >= 5:
-            craft_type = "planning_craft"
+        if self.V / np.sqrt(self.LWL) >= 5:
+            return "planning_craft"
         else: # V / LWL < 5
-            craft_type = "displacement_craft"
-
-        # Si no está almacenado, lo añadimos a values
-        if 'craft_type' not in self.values:
-            self.values['craft_type'] = craft_type
-
-        # Devolvemos el tipo de embarcación
-        return self.values['craft_type']
+            return "displacement_craft"
+        
+    @property
+    def get_Db(self) -> float:
+        return val_data("Profundidad del mamparo (metros): ")
     
-    # def get_D(self) -> float:
-    #     return self.get_value('D', "Puntal (metros): ")
-
-    # def get_d(self) -> float:
-    #     L = self.get_L()
-    #     D = self.get_D()
-    #     return self.get_value('d', "Calado (metros): ", True, True, 0, 0.04 * L, D)
-    
+    @property
     def get_hB(self) -> float:
         return val_data("Altura de la columna de agua (metros): ")
-    
     
     """PANEL/STIFFENER DIMENSIONS"""
     
@@ -208,10 +164,10 @@ class Pressures:
         """
 
         # Calcular nCG usando la ecuación (1)
-        nCG_1 = 0.32 * ((self.craft.get_LWL() / (10 * self.craft.get_BC())) + 0.084) * (50 - self.craft.get_B04()) * ((self.craft.get_V()**2 * self.craft.get_BC()**2) / self.craft.get_mLDC())
+        nCG_1 = 0.32 * ((self.craft.LWL() / (10 * self.craft.BC())) + 0.084) * (50 - self.craft.B04()) * ((self.craft.V()**2 * self.craft.BC()**2) / self.craft.mLDC())
         
         # Calcular nCG usando la ecuación (2)
-        nCG_2 = (0.5 * self.craft.get_V()) / (self.craft.get_mLDC()**0.17)
+        nCG_2 = (0.5 * self.craft.V()) / (self.craft.mLDC()**0.17)
         
         # Determinar el valor de nCG
         if nCG_1 > 3:
@@ -228,13 +184,13 @@ class Pressures:
         
         return nCG
 
-    def longitudinal_pressure_factor_kL(self, LWL) -> float:
+    def longitudinal_pressure_factor_kL(self) -> float:
         """
         Parámetros:
             x (float): Posición longitudinal a lo largo de la longitud de la línea de flotación (LWL),
             medida desde el extremo de popa.
         """
-        xLWL = self.x / LWL  # Calcula la relación x/LWL
+        xLWL = self.x / self.LWL  # Calcula la relación x/LWL
         
         if xLWL > 0.6:
             kL = 1.0  # Si x/LWL es mayor que 0.6, kL es 1.0
@@ -252,7 +208,7 @@ class Pressures:
         """
         Calcula el valor de kAR ajustado al material y limitado a un máximo de 1 para Plating y Stiffeners.
         """
-        craft_type = self.craft.get_craft_type()  # Tipo de embarcación
+        craft_type = self.craft.type()  # Tipo de embarcación
         
         # Cálculo de AD para Plating y Stiffeners
         AD_plating = min((self.l * self.b) * 1e-6, 2.5 * (self.b**2) * 1e-6)
@@ -267,17 +223,17 @@ class Pressures:
             kR_stiffeners = 1 - 2e-4 * self.lu
         
         # Cálculo de kAR para Plating
-        kAR_plating = (kR_plating * 0.1 * (self.craft.get_mLDC()**0.15)) / (AD_plating**0.3)
+        kAR_plating = (kR_plating * 0.1 * (self.craft.mLDC()**0.15)) / (AD_plating**0.3)
         kAR_plating = min(kAR_plating, 1)  # kAR no debe ser mayor que 1
         
         # Cálculo de kAR para Stiffeners
-        kAR_stiffeners = (kR_stiffeners * 0.1 * (self.craft.get_mLDC()**0.15)) / (AD_stiffeners**0.3)
+        kAR_stiffeners = (kR_stiffeners * 0.1 * (self.craft.mLDC()**0.15)) / (AD_stiffeners**0.3)
         kAR_stiffeners = min(kAR_stiffeners, 1)  # kAR no debe ser mayor que 1
         
         # Ajustes basados en el material
-        if self.material == 'Fibra con nucleo (Sandwich)':
+        if self.craft.material == 'Fibra con nucleo (Sandwich)':
             min_kAR = 0.4
-        elif self.material == 'Fibra laminada':
+        elif self.craft.material == 'Fibra laminada':
             min_kAR = 0.25
         else:
             min_kAR = 0
@@ -290,7 +246,7 @@ class Pressures:
         return kAR_plating, kAR_stiffeners
   
     def hull_side_pressure_factor_kZ(self) -> tuple:
-        Z = self.craft.get_Z()
+        Z = self.craft.Z
         h_plating = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
         h_stiffeners = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
         
@@ -313,7 +269,7 @@ class Pressures:
         return kSUP_values
     
     #Pressure Zones
-    def bottom_pressure(self, material, LWL, BC, mLDC, V, B04) -> tuple:
+    def bottom_pressure(self) -> tuple:
         """
         Calcula la presión de fondo para Plating y Stiffeners, e indica si fue tomada en modo de planeo o desplazamiento.
         
@@ -321,15 +277,15 @@ class Pressures:
             tuple: Presión de fondo para Plating, Presión de fondo para Stiffeners, Estado de Plating (Desplazamiento/Planeo), Estado de Stiffeners (Desplazamiento/Planeo)
         """
         # Declaramos los factores necesarios para la presión de fondo
-        nCG = self.dynamic_load_factor_nCG(LWL, BC, mLDC, V, B04)
-        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(material, mLDC)
+        nCG = self.dynamic_load_factor_nCG()
+        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR()
         kDC = self.design_category_factor_kDC()
-        kL = self.longitudinal_pressure_factor_kL(LWL, BC, mLDC, V, B04)
+        kL = self.longitudinal_pressure_factor_kL()
         
         # Se calculan valores base y minimos de la presión de fondo en modo de desplazamiento y planeo
-        PBMD_BASE = 2.4 * (self.craft.get_mLDC()**0.33) + 20
-        PBMP_BASE = ((0.1 * self.craft.get_mLDC())/(self.craft.get_LWL() * self.craft.get_BC()))*((1 + kDC**0.5) * nCG)
-        PBM_MIN = 0.45 * (self.craft.get_mLDC() ** 0.33) + (0.9 * self.craft.get_LWL() * kDC)
+        PBMD_BASE = 2.4 * (self.craft.mLDC()**0.33) + 20
+        PBMP_BASE = ((0.1 * self.craft.mLDC())/(self.craft.LWL() * self.craft.BC()))*((1 + kDC**0.5) * nCG)
+        PBM_MIN = 0.45 * (self.craft.mLDC() ** 0.33) + (0.9 * self.craft.LWL() * kDC)
         
         # Calcula la presión de fondo en modo de desplazamiento
         PBMD_plating = PBMD_BASE * kAR_plating * kDC * kL
@@ -357,14 +313,14 @@ class Pressures:
         
         return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
 
-    def side_pressure(self, LWL, BC, mLDC) -> tuple:
+    def side_pressure(self) -> tuple:
         """
         Calcula la presión de costado para Plating y Stiffeners según las categorías de diseño y modos de planeo o desplazamiento.
         
         Retorna:
             tuple: Presión de costado para Plating, Presión de costado para Stiffeners.
         """
-        design_category = self.craft.get_design_category()
+        design_category = self.craft.design_category()
         
         # Declaramos los factores necesarios para la presión de costado
         nCG = self.dynamic_load_factor_nCG()
@@ -374,10 +330,10 @@ class Pressures:
         kZ_plating, kZ_stiffeners = self.hull_side_pressure_factor_kZ()
         
         # Se calculan valores base y minimos de la presión de costado en modo de desplazamiento y planeo
-        PDM_BASE = 0.35 * self.craft.get_LWL() + 14.6
-        PBMD_BASE = 2.4 * (self.craft.get_mLDC()**0.33) + 20
-        PBMP_BASE = ((0.1 * self.craft.get_mLDC()) / (self.craft.get_LWL() * self.craft.get_BC())) * ((1 + kDC**0.5) * nCG)
-        PSM_MIN = 0.9 * self.craft.get_LWL() * kDC
+        PDM_BASE = 0.35 * self.craft.LWL() + 14.6
+        PBMD_BASE = 2.4 * (self.craft.mLDC()**0.33) + 20
+        PBMP_BASE = ((0.1 * self.craft.mLDC()) / (self.craft.LWL() * self.craft.BC())) * ((1 + kDC**0.5) * nCG)
+        PSM_MIN = 0.9 * self.craft.LWL() * kDC
         
         # Categorías A y B: Comparamos PSMD y PSMP y tomamos el mayor
         if design_category in ['A', 'B']:
@@ -438,7 +394,7 @@ class Pressures:
         kL = self.longitudinal_pressure_distribution_kL()
         
         # Valores base para la presión en la cubierta
-        PDM_BASE = 0.35 * self.craft.get_LWL() + 14.6
+        PDM_BASE = 0.35 * self.craft.LWL() + 14.6
         PDM_MIN = 5  # Presión mínima permitida
         
         # Cálculo de la presión de la cubierta para Plating y Stiffeners
@@ -463,7 +419,7 @@ class Pressures:
         kSUP = self.superstructure_kSUP()  # Factor para superestructuras y casetas
         
         # Valor base de presión para superestructuras y casetas
-        PDM_BASE = 0.35 * self.craft.get_LWL() + 14.6
+        PDM_BASE = 0.35 * self.craft.LWL() + 14.6
         PDM_MIN = 5  # Presión mínima permitida
         
         # Cálculo de presión para Plating y Stiffeners

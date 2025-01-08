@@ -1,7 +1,3 @@
-"""
-    Main de la calculadora de ISO 12215-5
-"""
-
 import numpy as np
 from validations import val_data
 
