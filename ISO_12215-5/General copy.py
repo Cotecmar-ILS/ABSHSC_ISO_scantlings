@@ -14,6 +14,7 @@ class Craft:
         self.zone = zone
         
         # Principal Craft Data
+        print("\nIngrese los datos principales de la embarcación")
         self.LH = val_data("Eslora del casco (metros): ", True, True, -1, 2.5, 24)
         self.LWL = val_data("Eslora de flotación (metros): ", True, True, -1, 0, self.LH)
         self.BH = val_data("Manga del casco (metros): ")
@@ -34,13 +35,6 @@ class Craft:
         if B04 < 10 or B04 > 30:
             print(f"Advertencia: El ángulo de astilla muerta {B04}° está fuera del rango sugerido (10° a 30°).")
         return B04
-    
-    def get_craft_type(self) -> str:
-        # Determinar el tipo de embarcación basado en la relación V/LWL
-        if self.V / np.sqrt(self.LWL) >= 5:
-            return "planning_craft"
-        else: # V / LWL < 5
-            return "displacement_craft"
         
     @property
     def get_Db(self) -> float:
@@ -50,12 +44,61 @@ class Craft:
     def get_hB(self) -> float:
         return val_data("Altura de la columna de agua (metros): ")
     
+    def get_craft_type(self) -> str:
+        # Determinar el tipo de embarcación basado en la relación V/LWL
+        if self.V / np.sqrt(self.LWL) >= 5:
+            return "planning_craft"
+        else: # V / LWL < 5
+            return "displacement_craft"
+        
     """PANEL/STIFFENER DIMENSIONS"""
+    # Definir las zonas y sus atributos dependientes
+
     
+    def get_zone_data(self, zone_name) -> dict:
+        zones_data = {
+            'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
+            'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
+            'Espejo de Popa': ['b', 'l', 's', 'lu'],
+            'Cubierta de Principal': ['b', 'l', 'c'],
+            'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
+            'Cubiertas Humedas': ['b', 'l', 'c'],
+            'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
+            'Mamparos Estancos': ['b', 'l', 'hB'],
+            'Mamparos de Tanques Profundos': ['b', 'l', 'hB'],
+            'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
+            'Túneles de Waterjets': ['b', 'l'],
+            'Túneles de Bow Thrusters': ['b', 'l'],
+            'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
+        }
+        # Obtener los atributos requeridos para la zona
+        required_attributes = zones_data[zone_name]
+        
+        # Recolectar los atributos dinámicamente
+        zone_attributes = {}
+        for attribute in required_attributes:
+            zone_attributes[attribute] = get_dimensions(attribute)
+            
+        def get_dimensions(attribute, zone_name):
+             # Diccionario de lógica para cada atributo
+            attribute_prompts = {
+                'l': lambda: val_data(f"Longitud más larga de los paneles de la zona {zone_name} (mm): "),
+                'b': lambda: val_data(f"Longitud más corta de los paneles de la zona {zone_name} (mm): ", True, True, -1, 0, l),
+                'lu': lambda: val_data(f"Luz o espacio entre refuerzos de la zona {zone_name} (mm): ", True, True, 0),
+                's': lambda: val_data(f"Separación del alma o viga longitudinal de la zona {zone_name} (mm): "),
+                'c': lambda: val_data(f"Corona o curvatura del panel/refuerzo de la zona {zone_name} (mm): "),
+                'x': lambda: val_data(f"Distancia longitudinal desde popa hasta el punto de análisis de {zone_name} (metros): ", True, True, self.LH, 0),
+            }
+            # Ejecutar la función correspondiente al atributo
+            return attribute_prompts[attribute]()
+            
+        return zone_attributes
+        
     """CALCULATION DATA: FACTOR, PRESSURES, PARAMETERS, STRESSES"""
     # def get_tau(self) -> float:
     #     return self.get_value('tau', "Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
     
+    ####Estas variables son estaticas
     def get_h13(self) -> float:
         L = self.get_L()
         h13_values = {1: 4, 2: 2.5, 3: 0.5, 4: 4}
@@ -80,26 +123,21 @@ class Craft:
     def get_sigma_ub(self) -> float:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
     
-    def get_b(self) -> float:
-        return val_data(f"Longitud mas corta de los paneles de la zona {self.zone} (mm): ")
-    
-    def get_l(self) -> float:
-        #b = self.get_b(zone) #Revisar esto porque si no se guarda en diccionario se volveria a pedir b innecesariamente
-        return val_data(f"Longitud mas larga de los paneles de la zona {self.zone} (mm): ", True, True, 0)
-    
-    def get_s(self) -> float:
-        return val_data(f"Separación del alma o viga longitudinal, rigidizador, transversal, etc. de la zona: {self.zone} (metros): ")
-    
-    def get_lu(self) -> float:
-        #s = self.get_s(zone)
-        return val_data(f"Luz o espacio entre refuerzos de la zona {self.zone} (mm): ", True, True, 0) #Longitud del alma longitudinal, rigidizador, transversal o viga
-    
-    def get_c(self) -> float:
-        return val_data(f"Corona o curvatura del panel/refuerzo de la zona {self.zone} (mm): ")
-    
-    def get_x(self) -> float:
-        LH = self.get_LH()
-        return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {self.zone} (metros): ", True, True, LH, 0)
+    ###Estas variables son dinamicas
+    def get_dimensions(self, attribute): #Mejor dejar la forma anterior con los metodos getter de manera que pueda poner limites por ejemplo b no debe ser mayor que l
+        if attribute == 'l':
+            return val_data(f"Longitud mas larga de los paneles de la zona {self.zone} (mm): ")
+        elif attribute == 'b':
+            return val_data(f"Longitud mas corta de los paneles de la zona {self.zone} (mm): ", True, True, -1, 0, l)
+        elif attribute == 'lu':
+            return val_data(f"Luz o espacio entre refuerzos de la zona {self.zone} (mm): ", True, True, 0) #Longitud del alma longitudinal, rigidizador, transversal o viga
+        elif attribute == 's':
+            return val_data(f"Separación del alma o viga longitudinal, rigidizador, transversal, etc. de la zona: {self.zone} (metros): ")
+        elif attribute == 'c':
+            return val_data(f"Corona o curvatura del panel/refuerzo de la zona {self.zone} (mm): ")
+        elif attribute == 'x':
+            return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {self.zone} (metros): ", True, True, self.LH, 0)
+        
     
 class Pressures:
     
@@ -565,40 +603,20 @@ def main():
     available_materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
     material = display_menu(available_materials)
     
-    # Definir las zonas y sus atributos dependientes
-    zones_data = {
-        'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
-        'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
-        'Espejo de Popa': ['b', 'l', 's', 'lu'],
-        'Cubierta de Principal': ['b', 'l', 'c'],
-        'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
-        'Cubiertas Humedas': ['b', 'l', 'c'],
-        'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
-        'Mamparos Estancos': ['b', 'l', 'hB'],
-        'Mamparos de Tanques Profundos': ['b', 'l', 'hB'],
-        'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
-        'Túneles de Waterjets': ['b', 'l'],
-        'Túneles de Bow Thrusters': ['b', 'l'],
-        'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
-    }
-    
     craft = Craft(designer, boat, company, management, division, design_cat, material, zone_name=None, zone=None)
     pressure = Pressures(craft, {})
     plating = Plating(craft, {})
-    #scantling = Scantlings(craft, material, pressure=pressure, plating=plating)
     
     while True:
         zone_name, zone = get_selected_zone(material, zones_data)
         craft.zone = zone_name, zone
+        
         if zone is None:
             print("\nPrograma finalizado.")
             break
-        try:
-            required_attributes = zones_data[zone_name]
-            zone_attributes = {}
-            for attribute in required_attributes:
-                zone_attributes[attribute] = getattr(craft, f"get_{attribute}", None)
-            pressure.zone_attributes, plating.zone_attributes = zone_attributes
+        
+        try:            
+            pressure.zone_attributes, plating.zone_attributes = craft.get_zone_data(zone_name)
             """Sin embargo, ambos atributos (pressure.zone_attributes y plating.zone_attributes) 
             compartirán la misma referencia en memoria. Si luego modificas pressure.zone_attributes, 
             también se reflejará en plating.zone_attributes."""
@@ -606,6 +624,7 @@ def main():
             thickness = plating.calculate_plating(zone, zone_pressure)
             values[zone_name] = thickness
             print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
+            
         except ValueError as e:
             print(e)
 
