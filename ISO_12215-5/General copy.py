@@ -25,6 +25,23 @@ class Craft:
         self.B04 = self.get_B04()
         self.Z = val_data("Altura de francobordo (metros): ")
         self.type = self.get_craft_type()
+        
+        # Diccionario de zonas y sus atributos necesarios
+        self.zones_data = {
+            'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
+            'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
+            'Espejo de Popa': ['b', 'l', 's', 'lu'],
+            'Cubierta de Principal': ['b', 'l', 'c'],
+            'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
+            'Cubiertas Humedas': ['b', 'l', 'c'],
+            'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
+            'Mamparos Estancos': ['b', 'l', 'hB'],
+            'Mamparos de Tanques Profundos': ['b', 'l', 'hB'],
+            'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
+            'Túneles de Waterjets': ['b', 'l'],
+            'Túneles de Bow Thrusters': ['b', 'l'],
+            'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c'],
+        }
       
     def get_V(self) -> float:
         min_speed = 2.26 * np.sqrt(self.LWL)
@@ -54,45 +71,31 @@ class Craft:
     """PANEL/STIFFENER DIMENSIONS"""
     # Definir las zonas y sus atributos dependientes
 
-    
     def get_zone_data(self, zone_name) -> dict:
-        zones_data = {
-            'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
-            'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
-            'Espejo de Popa': ['b', 'l', 's', 'lu'],
-            'Cubierta de Principal': ['b', 'l', 'c'],
-            'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
-            'Cubiertas Humedas': ['b', 'l', 'c'],
-            'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
-            'Mamparos Estancos': ['b', 'l', 'hB'],
-            'Mamparos de Tanques Profundos': ['b', 'l', 'hB'],
-            'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
-            'Túneles de Waterjets': ['b', 'l'],
-            'Túneles de Bow Thrusters': ['b', 'l'],
-            'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
-        }
-        # Obtener los atributos requeridos para la zona
-        required_attributes = zones_data[zone_name]
         
-        # Recolectar los atributos dinámicamente
+        # Diccionario de funciones para solicitar cada atributo
+        attribute_prompts = {
+            'l': lambda: val_data(f"l: Longitud más larga de los paneles de la zona {zone_name} (mm): "),
+            'b': lambda: val_data(f"b: Longitud más corta de los paneles de la zona {zone_name} (mm): ", True, True, -1, 0, zone_attributes.get('l', float('inf'))),
+            'lu': lambda: val_data(f"lu: Luz o espacio entre refuerzos de la zona {zone_name} (mm): ", True, True, 0),
+            's': lambda: val_data(f"s: Separación del alma o viga longitudinal de la zona {zone_name} (mm): "),
+            'c': lambda: val_data(f"c: Corona o curvatura del panel/refuerzo de la zona {zone_name} (mm): "),
+            'x': lambda: val_data(f"x: Distancia longitudinal desde popa hasta el punto de análisis de la zona {zone_name} (metros): ", True, True, self.LH, 0, self.LH),
+            'hB': lambda: val_data(f"hB: Altura de la columna de agua en la zona {zone_name} (mm): "),
+        }
+
+        # Obtener los atributos necesarios para la zona seleccionada
+        required_attributes = self.zones_data[zone_name]
+
+        # Diccionario para almacenar los valores ingresados
         zone_attributes = {}
+
+        # Recolectar los valores dinámicamente
         for attribute in required_attributes:
-            zone_attributes[attribute] = get_dimensions(attribute)
-            
-        def get_dimensions(attribute, zone_name):
-             # Diccionario de lógica para cada atributo
-            attribute_prompts = {
-                'l': lambda: val_data(f"Longitud más larga de los paneles de la zona {zone_name} (mm): "),
-                'b': lambda: val_data(f"Longitud más corta de los paneles de la zona {zone_name} (mm): ", True, True, -1, 0, l),
-                'lu': lambda: val_data(f"Luz o espacio entre refuerzos de la zona {zone_name} (mm): ", True, True, 0),
-                's': lambda: val_data(f"Separación del alma o viga longitudinal de la zona {zone_name} (mm): "),
-                'c': lambda: val_data(f"Corona o curvatura del panel/refuerzo de la zona {zone_name} (mm): "),
-                'x': lambda: val_data(f"Distancia longitudinal desde popa hasta el punto de análisis de {zone_name} (metros): ", True, True, self.LH, 0),
-            }
-            # Ejecutar la función correspondiente al atributo
-            return attribute_prompts[attribute]()
-            
+            zone_attributes[attribute] = attribute_prompts[attribute]()  # Llama a la función `lambda`
+
         return zone_attributes
+
         
     """CALCULATION DATA: FACTOR, PRESSURES, PARAMETERS, STRESSES"""
     # def get_tau(self) -> float:
@@ -122,21 +125,6 @@ class Craft:
     
     def get_sigma_ub(self) -> float:
         return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
-    
-    ###Estas variables son dinamicas
-    def get_dimensions(self, attribute): #Mejor dejar la forma anterior con los metodos getter de manera que pueda poner limites por ejemplo b no debe ser mayor que l
-        if attribute == 'l':
-            return val_data(f"Longitud mas larga de los paneles de la zona {self.zone} (mm): ")
-        elif attribute == 'b':
-            return val_data(f"Longitud mas corta de los paneles de la zona {self.zone} (mm): ", True, True, -1, 0, l)
-        elif attribute == 'lu':
-            return val_data(f"Luz o espacio entre refuerzos de la zona {self.zone} (mm): ", True, True, 0) #Longitud del alma longitudinal, rigidizador, transversal o viga
-        elif attribute == 's':
-            return val_data(f"Separación del alma o viga longitudinal, rigidizador, transversal, etc. de la zona: {self.zone} (metros): ")
-        elif attribute == 'c':
-            return val_data(f"Corona o curvatura del panel/refuerzo de la zona {self.zone} (mm): ")
-        elif attribute == 'x':
-            return val_data(f"Distancia longitudinal desde popa hasta el punto de analisis de {self.zone} (metros): ", True, True, self.LH, 0)
         
     
 class Pressures:
