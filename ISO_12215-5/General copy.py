@@ -2,7 +2,7 @@ import numpy as np
 from validations import val_data
 
 class Craft:
-    def __init__(self, designer, boat, company, management, division, design_cat, material, zone_name, zone):
+    def __init__(self, designer, boat, company, management, division, design_cat, material, zone_name, zone_index):
         self.designer = designer
         self.boat = boat
         self.company = company
@@ -11,7 +11,7 @@ class Craft:
         self.design_cat = design_cat
         self.material = material
         self.zone_name = zone_name
-        self.zone = zone
+        self.zone_index = zone_index
         
         # Principal Craft Data
         print("\nIngrese los datos principales de la embarcación")
@@ -140,34 +140,35 @@ class Pressures:
         
         
     def calculate_pressure(self):
-        if self.craft.zone == 1:
+        print(f"Zone index: {self.craft.zone_index}")
+        if self.craft.zone_index == 1:
             bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure()
             return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
-        elif self.craft.zone == 2:
+        elif self.craft.zone_index == 2:
             pressure, index = self.side_pressure()
             return pressure, index
-        elif self.craft.zone == 3:
+        elif self.craft.zone_index == 3:
             pressure, index = self.deck_pressure()
             return pressure, index
-        elif self.craft.zone == 4:
+        elif self.craft.zone_index == 4:
             pressure = self.superstructures_deckhouses_pressure()
             return pressure, 0
-        elif self.craft.zone == 5:
+        elif self.craft.zone_index == 5:
             pressure = self.watertight_bulkheads_pressure()
             return pressure, 0
-        elif self.craft.zone == 6:
+        elif self.craft.zone_index == 6:
             pressure = self.integral_tank_bulkheads_pressure()
             return pressure, 0
-        elif self.craft.zone == 7:
+        elif self.craft.zone_index == 7:
             pressure = self.wash_plates_pressure()
             return pressure, 0
-        elif self.craft.zone == 8:
+        elif self.craft.zone_index == 8:
             pressure = self.collision_bulkheads_pressure()
             return pressure, 0
-        elif self.craft.zone == 9:
+        elif self.craft.zone_index == 9:
             pressure = self.nonwatertight_partial_bulkheads_pressure()
             return pressure, 0
-        elif self.craft.zone == 10:
+        elif self.craft.zone_index == 10:
             pressure = self.transmission_pillar_loads_pressure()
             return pressure, 0
         else:
@@ -175,7 +176,7 @@ class Pressures:
 
     def design_category_factor_kDC(self) -> float:        
         # Mapeo de categoría de diseño a valores de kDC
-        kDC_values = {'A': 1.0, 'B': 0.8, 'C': 0.6, 'D': 0.4}
+        kDC_values = {'A (“Oceano”)': 1.0, 'B ("Offshore")': 0.8, 'C ("Costera")': 0.6, 'D ("Aguas calmadas")': 0.4}
         
         # Retornar el valor correspondiente de kDC
         return kDC_values[self.craft.design_cat]
@@ -188,10 +189,10 @@ class Pressures:
         """
 
         # Calcular nCG usando la ecuación (1)
-        nCG_1 = 0.32 * ((self.craft.LWL() / (10 * self.craft.BC())) + 0.084) * (50 - self.craft.B04()) * ((self.craft.V()**2 * self.craft.BC()**2) / self.craft.mLDC())
+        nCG_1 = 0.32 * ((self.craft.LWL / (10 * self.craft.BC)) + 0.084) * (50 - self.craft.B04) * ((self.craft.V**2 * self.craft.BC**2) / self.craft.mLDC)
         
         # Calcular nCG usando la ecuación (2)
-        nCG_2 = (0.5 * self.craft.V()) / (self.craft.mLDC()**0.17)
+        nCG_2 = (0.5 * self.craft.V) / (self.craft.mLDC**0.17)
         
         # Determinar el valor de nCG
         if nCG_1 > 3:
@@ -214,7 +215,7 @@ class Pressures:
             x (float): Posición longitudinal a lo largo de la longitud de la línea de flotación (LWL),
             medida desde el extremo de popa.
         """
-        xLWL = self.x / self.LWL  # Calcula la relación x/LWL
+        xLWL = self.x / self.craft.LWL  # Calcula la relación x/LWL
         
         if xLWL > 0.6:
             kL = 1.0  # Si x/LWL es mayor que 0.6, kL es 1.0
@@ -232,14 +233,13 @@ class Pressures:
         """
         Calcula el valor de kAR ajustado al material y limitado a un máximo de 1 para Plating y Stiffeners.
         """
-        craft_type = self.craft.type()  # Tipo de embarcación
         
         # Cálculo de AD para Plating y Stiffeners
         AD_plating = min((self.l * self.b) * 1e-6, 2.5 * (self.b**2) * 1e-6)
         AD_stiffeners = max((self.lu * self.s) * 1e-6, 0.33 * (self.lu**2) * 1e-6)
         
         # Determinación de kR según el tipo de embarcación
-        if craft_type == 'planning_craft':
+        if self.craft.type == 'planning_craft':
             kR_plating = 1
             kR_stiffeners = 1
         else:
@@ -247,11 +247,11 @@ class Pressures:
             kR_stiffeners = 1 - 2e-4 * self.lu
         
         # Cálculo de kAR para Plating
-        kAR_plating = (kR_plating * 0.1 * (self.craft.mLDC()**0.15)) / (AD_plating**0.3)
+        kAR_plating = (kR_plating * 0.1 * (self.craft.mLDC**0.15)) / (AD_plating**0.3)
         kAR_plating = min(kAR_plating, 1)  # kAR no debe ser mayor que 1
         
         # Cálculo de kAR para Stiffeners
-        kAR_stiffeners = (kR_stiffeners * 0.1 * (self.craft.mLDC()**0.15)) / (AD_stiffeners**0.3)
+        kAR_stiffeners = (kR_stiffeners * 0.1 * (self.craft.mLDC**0.15)) / (AD_stiffeners**0.3)
         kAR_stiffeners = min(kAR_stiffeners, 1)  # kAR no debe ser mayor que 1
         
         # Ajustes basados en el material
@@ -307,9 +307,9 @@ class Pressures:
         kL = self.longitudinal_pressure_factor_kL()
         
         # Se calculan valores base y minimos de la presión de fondo en modo de desplazamiento y planeo
-        PBMD_BASE = 2.4 * (self.craft.mLDC()**0.33) + 20
-        PBMP_BASE = ((0.1 * self.craft.mLDC())/(self.craft.LWL() * self.craft.BC()))*((1 + kDC**0.5) * nCG)
-        PBM_MIN = 0.45 * (self.craft.mLDC() ** 0.33) + (0.9 * self.craft.LWL() * kDC)
+        PBMD_BASE = 2.4 * (self.craft.mLDC**0.33) + 20
+        PBMP_BASE = ((0.1 * self.craft.mLDC)/(self.craft.LWL * self.craft.BC))*((1 + kDC**0.5) * nCG)
+        PBM_MIN = 0.45 * (self.craft.mLDC ** 0.33) + (0.9 * self.craft.LWL * kDC)
         
         # Calcula la presión de fondo en modo de desplazamiento
         PBMD_plating = PBMD_BASE * kAR_plating * kDC * kL
@@ -344,7 +344,6 @@ class Pressures:
         Retorna:
             tuple: Presión de costado para Plating, Presión de costado para Stiffeners.
         """
-        design_category = self.craft.design_category()
         
         # Declaramos los factores necesarios para la presión de costado
         nCG = self.dynamic_load_factor_nCG()
@@ -354,13 +353,13 @@ class Pressures:
         kZ_plating, kZ_stiffeners = self.hull_side_pressure_factor_kZ()
         
         # Se calculan valores base y minimos de la presión de costado en modo de desplazamiento y planeo
-        PDM_BASE = 0.35 * self.craft.LWL() + 14.6
-        PBMD_BASE = 2.4 * (self.craft.mLDC()**0.33) + 20
-        PBMP_BASE = ((0.1 * self.craft.mLDC()) / (self.craft.LWL() * self.craft.BC())) * ((1 + kDC**0.5) * nCG)
-        PSM_MIN = 0.9 * self.craft.LWL() * kDC
+        PDM_BASE = 0.35 * self.craft.LWL + 14.6
+        PBMD_BASE = 2.4 * (self.craft.mLDC**0.33) + 20
+        PBMP_BASE = ((0.1 * self.craft.mLDC) / (self.craft.LWL * self.craft.BC)) * ((1 + kDC**0.5) * nCG)
+        PSM_MIN = 0.9 * self.craft.LWL * kDC
         
         # Categorías A y B: Comparamos PSMD y PSMP y tomamos el mayor
-        if design_category in ['A', 'B']:
+        if self.craft.design_cat in ['A', 'B']:
             # Calcula la presión de costado en modo de desplazamiento
             PSMD_plating = (PDM_BASE + kZ_plating * (PBMD_BASE - PDM_BASE)) * kAR_plating * kDC * kL
             PSMD_stiffeners = (PDM_BASE + kZ_stiffeners * (PBMD_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
@@ -384,7 +383,7 @@ class Pressures:
         # Categorías C y D: La presión del costado depende del modo donde la presión del fondo es mayor
         else:
             print("\nCategoría C y D: La presión del costado depende del modo donde la presión del fondo es mayor")
-            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure(LWL, BC, mLDC)
+            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure()
             
             if index_plating == "planeo":
                 # Si la presión de fondo mayor es la de planeo, usamos PSMP para Plating
@@ -418,7 +417,7 @@ class Pressures:
         kL = self.longitudinal_pressure_distribution_kL()
         
         # Valores base para la presión en la cubierta
-        PDM_BASE = 0.35 * self.craft.LWL() + 14.6
+        PDM_BASE = 0.35 * self.craft.LWL + 14.6
         PDM_MIN = 5  # Presión mínima permitida
         
         # Cálculo de la presión de la cubierta para Plating y Stiffeners
@@ -443,7 +442,7 @@ class Pressures:
         kSUP = self.superstructure_kSUP()  # Factor para superestructuras y casetas
         
         # Valor base de presión para superestructuras y casetas
-        PDM_BASE = 0.35 * self.craft.LWL() + 14.6
+        PDM_BASE = 0.35 * self.craft.LWL + 14.6
         PDM_MIN = 5  # Presión mínima permitida
         
         # Cálculo de presión para Plating y Stiffeners
@@ -475,13 +474,14 @@ class Plating:
         self.lu = zone_attributes.get('lu', None)
         self.c = zone_attributes.get('c', None)
         self.x = zone_attributes.get('x', None)
+        self.hB = zone_attributes.get('hB', None)
 
     def calculate_plating(self, pressure):
         k1 = 0.017
         k2 = self.panel_strength_k2()
         kC = self.curvature_correction_kC()
         
-        if self.craft.zone in [1, 2, 3, 4, 5]:
+        if self.craft.zone_index in [1, 2, 3, 4, 5]:
             if self.craft.material == 1:
                 return self.steel_thickness(pressure, k2, kC)
             elif self.craft.material == 2:
@@ -499,19 +499,19 @@ class Plating:
             # 'Túneles de Waterjets': ['b', 'l'],
             # 'Túneles de Bow Thrusters': ['b', 'l'],
             # 'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
-            if self.craft.zone == 8:
+            if self.craft.zone_index == 8:
                 thickness = self.bulkhead_scantling()
                 return thickness
-            elif self.craft.zone == 9:
+            elif self.craft.zone_index == 9:
                 thickness = self.tank_scantling()
                 return thickness
-            elif self.craft.zone == 10:
+            elif self.craft.zone_index == 10:
                 thickness = 0
                 return thickness
-            elif self.craft.zone == 11:
+            elif self.craft.zone_index == 11:
                 thickness = 0
                 return thickness
-            elif self.craft.zone == 12:
+            elif self.craft.zone_index == 12:
                 thickness = 0
                 return thickness
             
@@ -581,16 +581,14 @@ def main():
     values = {}
     
     print("\nSeleccione la categoría de diseño de su embarcación")
-    categories = ('Oceano', 'Offshore', 'Costera', 'Aguas calmadas')
-    design_cat_index = display_menu(categories)
+    categories = ('A (“Oceano”)', 'B ("Offshore")', 'C ("Costera")', 'D ("Aguas calmadas")')
+    design_cat_index, design_cat = display_menu(categories)
     
     print("\nSeleccione el material de su embarcación")
     available_materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
-    material_index = display_menu(available_materials)
+    material_index, material = display_menu(available_materials)
     
-    craft = Craft(designer, boat, company, management, division, design_cat_index, material_index, zone_name=None, zone=None)
-    pressure = Pressures(craft, {})
-    plating = Plating(craft, {})
+    craft = Craft(designer, boat, company, management, division, design_cat, material_index, zone_name=None, zone_index=None)
     
     # Determinar las zonas disponibles según el material
     available_zones = list(range(1, 12)) if material_index not in [1, 2] else list(range(1, 14))
@@ -603,16 +601,22 @@ def main():
             print("\nPrograma finalizado.")
             break
         
-        try:            
-            pressure.zone_attributes = plating.zone_attributes = craft.get_zone_data(zone_name)
-            """Sin embargo, ambos atributos (pressure.zone_attributes y plating.zone_attributes) 
-            compartirán la misma referencia en memoria. Si luego modificas pressure.zone_attributes, 
-            también se reflejará en plating.zone_attributes."""
+        try:
+            craft.zone_index = zone_index
+            craft.zone_name = zone_name           
+            zone_attributes = craft.get_zone_data(zone_name)
+            print("\nSe han definido los siguientes atributos para la zona:", zone_attributes)
             
-            zone_pressure = pressure.calculate_pressure(zone_index)
-            thickness = plating.calculate_plating(zone_index, zone_pressure)
-            #values[zone_name] = thickness
+            pressure = Pressures(craft, zone_attributes)
+            plating = Plating(craft, zone_attributes)
+            
+            zone_pressure = pressure.calculate_pressure()
+            print(f"\nPresión calculada para la zona: '{zone_name}' es de: {zone_pressure} MPa")
+            
+            thickness = plating.calculate_plating(zone_pressure)
             print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
+            
+            #values[zone_name] = thickness
             
         except ValueError as e:
             print(e)
@@ -626,25 +630,22 @@ def display_menu(items):
         items (list): Lista de elementos a mostrar en el menú.
 
     Returns:
-        tuple: Índice seleccionado (0-indexed) y el elemento correspondiente.
+        tuple: Índice seleccionado (0-indexed) y el elemento correspondiente, o (None, None) si el usuario selecciona 0.
     """
     # Mostrar el menú enumerado
     print("\nSeleccione una opción:")
     for idx, item in enumerate(items, 1):
         print(f"{idx}. {item}")
 
-    while True:
-        try:
-            # Solicitar entrada del usuario
-            choice = int(input("Ingrese el número correspondiente (o 0 para salir): "))
-            if choice == 0:
-                return None, None  # Opción para salir
-            elif 1 <= choice <= len(items):
-                return choice - 1, items[choice - 1]  # Índice (0-based) y elemento
-            else:
-                print("Selección no válida. Intente de nuevo.")
-        except ValueError:
-            print("Entrada inválida. Por favor, ingrese un número.")
+    # Solicitar entrada del usuario
+    choice = val_data("Ingrese el número correspondiente (o 0 para salir): ", False, True, 0, 0, len(items))
+
+    # Manejar la opción de salir
+    if choice == 0:
+        return None, None
+
+    # Retornar el índice y el elemento correspondiente
+    return choice, items[choice - 1]
 
 if __name__ == "__main__":
     main()
