@@ -1,5 +1,7 @@
 from typing import Optional, Union
 
+from typing import Optional, Union
+
 def val_data(
     texto: str,
     is_float: bool = True,
@@ -33,7 +35,7 @@ def val_data(
 
             # Validaciones
             error_msgs = []
-            if is_positive and valor <= 0:
+            if is_positive and valor <= 0 and (allowed_values is None or valor not in allowed_values):
                 error_msgs.append("El valor debe ser positivo.")
             if range_min is not None and valor < range_min:
                 error_msgs.append(f"El valor debe ser mayor o igual a {range_min}.")

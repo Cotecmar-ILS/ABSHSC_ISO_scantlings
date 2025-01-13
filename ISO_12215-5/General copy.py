@@ -510,7 +510,7 @@ class Plating:
         sigma_u = val_data("Esfuerzo ultimo a la tracción del material (MPa): ")
         sigma_y = val_data("Limite elastico por tracción del material (MPa): ")
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
-        thickness = self.b * kC * np.sqrt((pressure * k2)/(1000 * sigma_d))
+        thickness = self.b * kC * np.sqrt((pressure[0] * k2)/(1000 * sigma_d))
         return thickness
     
     def single_skin_plating(self, pressure, k2, kC):
@@ -560,12 +560,8 @@ def main():
     available_zones = list(range(1, 12)) if material_index not in [1, 2] else list(range(1, 14))
     
     while True:
-        print("\nSeleccione la zona que desea escantillonar:\n(Ingrese 0 para finalizar el programa)")
+        print("\nSeleccione la zona que desea escantillonar:")
         zone_index, zone_name = display_menu([list(craft.zones_data.keys())[i - 1] for i in available_zones])
-        
-        if zone_index is None:
-            print("\nPrograma finalizado.")
-            break
         
         try:
             # Actualizar la zona en Craft
@@ -582,17 +578,22 @@ def main():
             
             # Calcular presión
             zone_pressure = pressure.calculate_pressure()
-            print(f"\nPresión calculada para la zona '{zone_name}': {zone_pressure:.3f} MPa")
+            print(f"\nPresión calculada para la zona '{zone_name}': {zone_pressure} MPa")
             
             # Calcular espesor
             thickness = plating.calculate_plating(zone_pressure)
-            print(f"\nEl espesor mínimo requerido para la zona '{zone_name}': {thickness:.3f} mm")
+            print(f"\nEl espesor mínimo requerido para la zona '{zone_name}': {thickness} mm")
             
             #values[zone_name] = thickness
             
         except ValueError as e:
             print(f"Error: {e}")
 
+        program_continue = val_data("\nIngrese 1 para calcular el escantillonado de otra zona o 0 para salir: " , False, True, 0, 0, 1, 0)
+        if program_continue == 0:
+            print("\nPrograma finalizado.")
+            break
+        
 def display_menu(items):
     """
     Muestra un menú enumerado basado en una lista de elementos y devuelve
@@ -610,7 +611,7 @@ def display_menu(items):
         print(f"{idx}. {item}")
 
     # Solicitar entrada del usuario
-    choice = val_data("Ingrese el número correspondiente (o 0 para salir): ", False, True, 0, 0, len(items))
+    choice = val_data("Ingrese el número correspondiente: ", False, True, 0, 0, len(items) + 1, 0)
 
     # Manejar la opción de salir
     if choice == 0:
