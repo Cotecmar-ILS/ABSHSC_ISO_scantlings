@@ -14,7 +14,7 @@ class Craft:
         self.zone_index = zone_index
         
         # Principal Craft Data
-        print("\nIngrese los datos principales de la embarcación")
+        print("\nIngrese los atributos principales de la embarcación")
         self.LH = val_data("Eslora del casco (metros): ", True, True, -1, 2.5, 24)
         self.LWL = val_data("Eslora de flotación (metros): ", True, True, -1, 0, self.LH)
         self.BH = val_data("Manga del casco (metros): ")
@@ -70,7 +70,6 @@ class Craft:
         
     """PANEL/STIFFENER DIMENSIONS"""
     # Definir las zonas y sus atributos dependientes
-
     def get_zone_data(self, zone_name) -> dict:
         
         # Diccionario de funciones para solicitar cada atributo
@@ -95,36 +94,7 @@ class Craft:
             zone_attributes[attribute] = attribute_prompts[attribute]()  # Llama a la función `lambda`
 
         return zone_attributes
-
-    """CALCULATION DATA: FACTOR, PRESSURES, PARAMETERS, STRESSES"""
-    # def get_tau(self) -> float:
-    #     return self.get_value('tau', "Ángulo de trimado a velocidad máxima (grados): ", True, True, -1, 3)
     
-    ####Estas variables son estaticas
-    def get_h13(self) -> float:
-        L = self.get_L()
-        h13_values = {1: 4, 2: 2.5, 3: 0.5, 4: 4}
-        h13 = max(h13_values.get(self.design_cat), (L / 12))
-        return h13
-    
-    def get_sigma_y(self) -> float:
-        return self.get_value('sigma_y', "Limite elastico por tracción del material (MPa): ")
-    
-    def get_sigma_u(self) -> float:
-        return self.get_value('sigma_u', "Esfuerzo ultimo a la tracción del material (MPa): ")
-    
-    def get_sigma_uf(self) -> float:
-        return self.get_value('sigma_uf', "Resistencia ultima a la flexión (MPa): ")
-    
-    def get_sigma_uo(self) -> float:
-        return self.get_value('sigma_uo', "Resistencia a la tracción de la fibra externa (MPa): ")
-    
-    def get_sigma_ui(self) -> float:
-        return self.get_value('sigma_ui', "Resistencia a la tracción de la fibra interna (MPa): ")
-    
-    def get_sigma_ub(self) -> float:
-        return self.get_value('sigma_ub', "Menor de las resistencias a la tracción o a la compresión (MPa): ")
-        
 class Pressures:
     
     def __init__(self, craft: object, zone_attributes: dict):
@@ -482,10 +452,8 @@ class Plating:
         kC = self.curvature_correction_kC()
         
         if self.craft.zone_index in [1, 2, 3, 4, 5]:
-            if self.craft.material == 1:
-                return self.steel_thickness(pressure, k2, kC)
-            elif self.craft.material == 2:
-                return self.aluminum_thickness(pressure, k2, kC)
+            if self.craft.material in [1, 2]:
+                return self.metal_plating(pressure, k2, kC)
             elif self.craft.material == 3:
                 thickness = self.single_skin_plating(pressure, k2, kC)
                 return thickness
@@ -538,38 +506,36 @@ class Plating:
         kC = max(min(kC, 1.0), 0.5)
         return kC
     
-    def steel_thickness(self, pressure, k2, kC):
-        sigma_u = self.craft.get_sigma_u()
-        sigma_y = self.craft.get_sigma_y()
+    def metal_plating(self, pressure, k2, kC):
+        sigma_u = val_data("Esfuerzo ultimo a la tracción del material (MPa): ")
+        sigma_y = val_data("Limite elastico por tracción del material (MPa): ")
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
-        thickness = self.b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
-        return thickness
-    
-    def aluminum_thickness(self, pressure, k2, kC):
-        sigma_u = self.craft.get_sigma_u()
-        sigma_y = self.craft.get_sigma_y()
-        sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
-        thickness = self.b * kC * np.srt((pressure * k2)/(1000 * sigma_d))
+        thickness = self.b * kC * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
     def single_skin_plating(self, pressure, k2, kC):
-        sigma_d = 0.5 * self.craft.get_sigma_uf()
+        sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ")
+        sigma_d = 0.5 * sigma_uf
         thickness = self.b * kC * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
     def wood_plating(self, pressure, k2):
-        sigma_d = 0.5 * self.craft.get_sigma_uf()
+        sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ")
+        sigma_d = 0.5 * sigma_uf
         thickness = self.b * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
     def fiber_core_plating(self, pressure):
-        pass
+        sigma_uo = val_data("Resistencia a la tracción de la fibra externa (MPa): ")
+        sigma_ui = val_data("Resistencia a la tracción de la fibra interna (MPa): ")
+        sigma_ub = val_data("Menor de las resistencias a la tracción o a la compresión (MPa): ")
+        return None
     
     def wash_plates_plating(self):
-        return self.craft.superstructure_deckhouses_pressure()[1]
+        return None
     
     def watertight_bulkheads_plating(self):
-        return self.craft.watertight_bulkheads_pressure()
+        return None
 
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
@@ -602,24 +568,30 @@ def main():
             break
         
         try:
+            # Actualizar la zona en Craft
             craft.zone_index = zone_index
-            craft.zone_name = zone_name           
+            craft.zone_name = zone_name
+                    
+            # Obtener datos de la zona
             zone_attributes = craft.get_zone_data(zone_name)
-            print("\nSe han definido los siguientes atributos para la zona:", zone_attributes)
+            print("\nAtributos definidos para la zona:", zone_attributes)
             
+            # Instanciar las clases con los datos de la zona seleccionada
             pressure = Pressures(craft, zone_attributes)
             plating = Plating(craft, zone_attributes)
             
+            # Calcular presión
             zone_pressure = pressure.calculate_pressure()
-            print(f"\nPresión calculada para la zona: '{zone_name}' es de: {zone_pressure} MPa")
+            print(f"\nPresión calculada para la zona '{zone_name}': {zone_pressure:.3f} MPa")
             
+            # Calcular espesor
             thickness = plating.calculate_plating(zone_pressure)
-            print(f"\nEl espesor mínimo requerido en la zona '{zone_name}' es de: {thickness:.3f} mm")
+            print(f"\nEl espesor mínimo requerido para la zona '{zone_name}': {thickness:.3f} mm")
             
             #values[zone_name] = thickness
             
         except ValueError as e:
-            print(e)
+            print(f"Error: {e}")
 
 def display_menu(items):
     """
