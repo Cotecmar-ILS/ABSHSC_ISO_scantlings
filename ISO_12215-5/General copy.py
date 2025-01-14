@@ -15,15 +15,15 @@ class Craft:
         
         # Principal Craft Data
         print("\nIngrese los atributos principales de la embarcación")
-        self.LH = val_data("Eslora del casco (metros): ", True, True, -1, 2.5, 24)
-        self.LWL = val_data("Eslora de flotación (metros): ", True, True, -1, 0, self.LH)
-        self.BH = val_data("Manga del casco (metros): ")
-        self.BWL = val_data("Manga de flotación (metros): ", True, True, -1, 0, self.BH)
-        self.BC = val_data(f"Manga entre pantoques ('Chine beam') a {0.4 * self.LWL} metros de la popa (metros): ", True, True, -1, 0, self.BH)
-        self.mLDC = val_data("Desplazamiento de la embarcación (toneladas): ") / 1000
+        self.LH = val_data("LH: Eslora del casco (metros): ", 2.5, 24)
+        self.LWL = val_data("LWL:Eslora de flotación (metros): ", 1e-6, self.LH)
+        self.BH = val_data("BH: Manga del casco (metros): ")
+        self.BWL = val_data("BWL: Manga de flotación (metros): ", 1e-6, self.BH)
+        self.BC = val_data(f"BC: Manga entre pantoques ('Chine beam') a {0.4 * self.LWL} metros de la popa (metros): ", 1e-6, self.BH)
+        self.mLDC = val_data("mLDC: Desplazamiento de la embarcación en condición de plena carga (toneladas): ") / 1000
         self.V = self.get_V()
         self.B04 = self.get_B04()
-        self.Z = val_data("Altura de francobordo (metros): ")
+        self.Z = val_data("Z: Altura de francobordo (metros): ")
         self.type = self.get_craft_type()
         
         # Diccionario de zonas y sus atributos necesarios
@@ -45,12 +45,12 @@ class Craft:
       
     def get_V(self) -> float:
         min_speed = 2.26 * np.sqrt(self.LWL)
-        return val_data(f"Velocidad máxima (nudos, debe ser >= {min_speed:.2f}): ", True, True, -1, min_speed)
+        return val_data(f"V: Velocidad máxima en condición de plena carga (nudos, debe ser >= {min_speed:.2f}): ", min_speed)
 
     def get_B04(self) -> float:
-        B04 = val_data(f"Ángulo de astilla muerta de fondo a {0.4 * self.LWL:.2f} metros de la popa (°grados): ")
+        B04 = val_data(f"B0,4: Ángulo de astilla muerta de fondo a {0.4 * self.LWL:.2f} metros de la popa (°grados): ")
         if B04 < 10 or B04 > 30:
-            print(f"Advertencia: El ángulo de astilla muerta {B04}° está fuera del rango sugerido (10° a 30°).")
+            print(f"Advertencia: El ángulo de astilla muerta {B04}° se tomó fuera del rango sugerido (10° a 30°).")
         return B04
         
     @property
@@ -58,7 +58,7 @@ class Craft:
         return val_data("Profundidad del mamparo (metros): ")
     
     @property
-    def get_hB(self) -> float:
+    def get_hB(self) -> float: #Actualizar implementacion, borrar o dejar en get_zone_data
         return val_data("Altura de la columna de agua (metros): ")
     
     def get_craft_type(self) -> str:
@@ -75,11 +75,11 @@ class Craft:
         # Diccionario de funciones para solicitar cada atributo
         attribute_prompts = {
             'l': lambda: val_data(f"l: Longitud más larga de los paneles de la zona {zone_name} (mm): "),
-            'b': lambda: val_data(f"b: Longitud más corta de los paneles de la zona {zone_name} (mm): ", True, True, -1, 0, zone_attributes.get('l', float('inf'))),
-            'lu': lambda: val_data(f"lu: Luz o espacio entre refuerzos de la zona {zone_name} (mm): ", True, True, 0),
+            'b': lambda: val_data(f"b: Longitud más corta de los paneles de la zona {zone_name} (mm): ", 1e-6, zone_attributes.get('l', float('inf'))),
+            'lu': lambda: val_data(f"lu: Luz o espacio entre refuerzos de la zona {zone_name} (mm): "),
             's': lambda: val_data(f"s: Separación del alma o viga longitudinal de la zona {zone_name} (mm): "),
             'c': lambda: val_data(f"c: Corona o curvatura del panel/refuerzo de la zona {zone_name} (mm): "),
-            'x': lambda: val_data(f"x: Distancia longitudinal desde popa hasta el punto de análisis de la zona {zone_name} (metros): ", True, True, self.LH, 0, self.LH),
+            'x': lambda: val_data(f"x: Distancia longitudinal desde popa hasta el punto de análisis de la zona {zone_name} (metros): ", 0, self.LH, self.LH),
             'hB': lambda: val_data(f"hB: Altura de la columna de agua en la zona {zone_name} (mm): "),
         }
 
@@ -241,8 +241,8 @@ class Pressures:
   
     def hull_side_pressure_factor_kZ(self) -> tuple:
         Z = self.craft.Z
-        h_plating = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
-        h_stiffeners = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", True, True, 0, 0, Z)
+        h_plating = val_data("Ingrese la altura del centro del panel por encima de la linea de flotación (metros): ", 0, Z, 0)
+        h_stiffeners = val_data("Ingrese la altura del centro del refuerzo por encima de la linea de flotación (metros): ", 0, Z, 0)
         
         kZ_platting = (Z-h_plating)/Z
         kZ_stiffeners = (Z-h_stiffeners)/Z
@@ -508,7 +508,7 @@ class Plating:
     
     def metal_plating(self, pressure, k2, kC):
         sigma_u = val_data("Esfuerzo ultimo a la tracción del material (MPa): ")
-        sigma_y = val_data("Limite elastico por tracción del material (MPa): ")
+        sigma_y = val_data("Limite elastico por tracción del material (MPa): ", 1e-6, sigma_u)
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
         thickness = self.b * kC * np.sqrt((pressure[0] * k2)/(1000 * sigma_d))
         return thickness
@@ -589,7 +589,7 @@ def main():
         except ValueError as e:
             print(f"Error: {e}")
 
-        program_continue = val_data("\nIngrese 1 para escantillonar otra zona o 0 para salir: " , False, True, 0, 0, 1, 0)
+        program_continue = val_data("\nIngrese 1 para escantillonar otra zona o 0 para salir: " , 0, 1, 0)
         if program_continue == 0:
             print("\nPrograma finalizado.")
             break
@@ -611,7 +611,7 @@ def display_menu(items):
         print(f"{idx}. {item}")
 
     # Solicitar entrada del usuario
-    choice = val_data("Ingrese el número correspondiente: ", False, True, 0, 0, len(items) + 1)
+    choice = val_data("Ingrese el número correspondiente: ", 1, len(items), None, False)
 
     # Manejar la opción de salir
     if choice == 0:

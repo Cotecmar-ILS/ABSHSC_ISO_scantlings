@@ -2,63 +2,70 @@ from typing import Optional, Union
 
 def val_data(
     texto: str,
+    range_min: Optional[Union[int, float]] = 1e-6,  # Valor mínimo predeterminado (positivo)
+    range_max: Optional[Union[int, float]] = None,  # Sin límite máximo por defecto
+    default_value: Optional[Union[int, float, str]] = None,  # Sin valor por defecto
     is_float: bool = True,
-    default_value: Optional[Union[int, float, str]] = -1,
-    range_min: Optional[Union[int, float]] = None,
-    range_max: Optional[Union[int, float]] = None,
-    allowed_values: Optional[list[Union[int, float, str]]] = None,
+    allowed_values: Optional[list[Union[int, float, str]]] = None,  # Sin valores permitidos específicos por defecto
 ) -> Union[int, float, str]:
     """
     Valida y convierte el valor ingresado por el usuario según los parámetros especificados.
 
     Args:
         texto (str): Mensaje mostrado al usuario.
+        range_min (float): Valor mínimo permitido. Default es 1e-6 (positivo y mayor que cero).
+        range_max (float | None): Valor máximo permitido. Default es None (sin límite).
         is_float (bool): Si el valor esperado es un número decimal. Default es True.
-        default_value (int | float | str): Valor por defecto si el usuario no ingresa uno.
-        range_min (int | float): Valor mínimo permitido. Default es None.
-        range_max (int | float): Valor máximo permitido. Default es None.
-        allowed_values (list): Lista de valores permitidos. Default es None.
+        default_value (int | float | str | None): Valor por defecto si el usuario no ingresa uno.
+        allowed_values (list | None): Lista de valores permitidos. Default es None (sin restricciones).
 
     Returns:
         int | float | str: El valor ingresado validado.
     """
     while True:
         try:
-            # Solicitar y preparar la entrada
+            # Solicitar entrada y preparar el valor
             valor = input(texto).strip().replace(',', '.')
 
-            # Verificar si se debe usar el valor por defecto
-            if not valor and default_value is not None:
-                return float(default_value) if is_float else int(default_value)
-            elif not valor:
-                print("Error: Debe ingresar un valor.\n")
+            # Si el valor está vacío, usar default_value si está definido
+            if not valor:
+                if default_value is not None:
+                    return float(default_value) if is_float else int(default_value)
+                else:
+                    print("Debe ingresar un valor. Inténtelo nuevamente.\n")
+                    continue
+
+            # Validar si el valor ingresado está en la lista de valores permitidos antes de la conversión
+            if allowed_values is not None and valor in map(str, allowed_values):
+                return float(valor) if is_float else int(valor)
+
+            # Validar si el valor ingresado es un número y convertirlo
+            if is_float:
+                valor = float(valor)  # Convertir directamente a float si se permite
+            elif '.' in valor:
+                # Si no se permite float pero hay un punto decimal, mostrar error
+                print("Error: Se esperaba un número entero. Por favor, ingrese un valor válido.\n")
                 continue
-
-            # Convertir a float o int según corresponda
-            valor = float(valor) if is_float else int(valor)
-
-            # Lista de errores acumulados
-            error_msgs = []
-
-            # Validar valores permitidos
-            if allowed_values is not None and valor in allowed_values:
-                # Si está en los valores permitidos, no es necesario validar rangos.
-                return valor
             else:
-                # Validar rango mínimo
-                if range_min is not None and valor < range_min:
-                    error_msgs.append(f"El valor debe ser mayor o igual a {range_min}.")
-                # Validar rango máximo
-                if range_max is not None and valor > range_max:
-                    error_msgs.append(f"El valor debe ser menor o igual a {range_max}.")
+                valor = int(valor)  # Convertir a int si no hay punto decimal
 
-            # Si hay errores, mostrarlos
+            # Validaciones de rango
+            error_msgs = []
+            if range_min is not None and valor < range_min:
+                # Si range_min > 0, mostrar un mensaje claro
+                if range_min == 1e-6:
+                    error_msgs.append("El valor debe ser mayor a 0.")
+                else:
+                    error_msgs.append(f"El valor debe ser mayor o igual a {range_min}.")
+            if range_max is not None and valor > range_max:
+                error_msgs.append(f"El valor debe ser menor o igual a {range_max}.")
+
+            # Mostrar errores acumulados o retornar el valor
             if error_msgs:
                 print("Error: " + " ".join(error_msgs) + "\n")
-                continue
+            else:
+                return valor
 
-            # Si pasa todas las validaciones, retornarlo
-            return valor
-
-        except ValueError as e:
-            print(f"Error: {str(e)}. Intente nuevamente.\n")
+        except ValueError:
+            # Mensaje claro para valores no numéricos
+            print("Error: El valor ingresado no es numérico. Por favor, ingrese un número válido.\n")
