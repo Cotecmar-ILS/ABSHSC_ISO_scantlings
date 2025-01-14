@@ -589,7 +589,7 @@ def main():
         except ValueError as e:
             print(f"Error: {e}")
 
-        program_continue = val_data("\nIngrese 1 para calcular el escantillonado de otra zona o 0 para salir: " , False, True, 0, 0, 1, 0)
+        program_continue = val_data("\nIngrese 1 para escantillonar otra zona o 0 para salir: " , False, True, 0, 0, 1, 0)
         if program_continue == 0:
             print("\nPrograma finalizado.")
             break
@@ -611,7 +611,7 @@ def display_menu(items):
         print(f"{idx}. {item}")
 
     # Solicitar entrada del usuario
-    choice = val_data("Ingrese el número correspondiente: ", False, True, 0, 0, len(items) + 1, 0)
+    choice = val_data("Ingrese el número correspondiente: ", False, True, 0, 0, len(items) + 1)
 
     # Manejar la opción de salir
     if choice == 0:
