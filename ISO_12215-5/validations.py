@@ -26,6 +26,11 @@ def val_data(
         try:
             # Solicitar entrada y preparar el valor
             valor = input(texto).strip().replace(',', '.')
+            
+            # Verificar si contiene caracteres no permitidos
+            if '_' in valor:
+                print("Error: El valor ingresado contiene caracteres no válidos ('_').\n")
+                continue
 
             # Si el valor está vacío, usar default_value si está definido
             if not valor:

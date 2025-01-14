@@ -71,7 +71,7 @@ class Craft:
     """PANEL/STIFFENER DIMENSIONS"""
     # Definir las zonas y sus atributos dependientes
     def get_zone_data(self, zone_name) -> dict:
-        
+        print(f"\nIngrese los atributos correspondientes de la zona: {zone_name}")
         # Diccionario de funciones para solicitar cada atributo
         attribute_prompts = {
             'l': lambda: val_data(f"l: Longitud más larga de los paneles de la zona {zone_name} (mm): "),
@@ -110,7 +110,6 @@ class Pressures:
         
         
     def calculate_pressure(self):
-        print(f"Zone index: {self.craft.zone_index}")
         if self.craft.zone_index == 1:
             bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure()
             return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
@@ -605,8 +604,6 @@ def display_menu(items):
     Returns:
         tuple: Índice seleccionado (0-indexed) y el elemento correspondiente, o (None, None) si el usuario selecciona 0.
     """
-    # Mostrar el menú enumerado
-    print("\nSeleccione una opción:")
     for idx, item in enumerate(items, 1):
         print(f"{idx}. {item}")
 
