@@ -29,17 +29,17 @@ class Craft:
         # Diccionario de zonas y sus atributos necesarios
         self.zones_data = {
             'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
-            'Casco de Costado': ['b', 'l', 's', 'lu', 'c'],
-            'Espejo de Popa': ['b', 'l', 's', 'lu'],
+            'Casco de Costado': ['b', 'l', 's', 'lu', 'c', 'x'],
+            'Espejo de Popa': ['b', 'l', 's', 'lu'], #NO ESTA EN LA ISO
             'Cubierta de Principal': ['b', 'l', 'c'],
             'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
             'Cubiertas Humedas': ['b', 'l', 'c'],
             'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
-            'Mamparos Estancos': ['b', 'l', 'hB'],
-            'Mamparos de Tanques Profundos': ['b', 'l', 'hB'],
+            'Mamparos Estancos': ['b', 'l', 's', 'lu', 'hB'],
+            'Mamparos de Tanques Profundos': ['b', 'l', 's', 'lu', 'hB'],
             'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
             'Túneles de Waterjets': ['b', 'l'],
-            'Túneles de Bow Thrusters': ['b', 'l'],
+            'Túneles de Bow Thrusters': ['b', 'l'], #NO ESTA EN LA ISO
             'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c'],
         }
       
@@ -58,7 +58,7 @@ class Craft:
         return val_data("Profundidad del mamparo (metros): ")
     
     @property
-    def get_hB(self) -> float: #Actualizar implementacion, borrar o dejar en get_zone_data
+    def get_hB(self) -> float: #Actualizar implementacion, borrar estas lineas o pedir mediante get_zone_data
         return val_data("Altura de la columna de agua (metros): ")
     
     def get_craft_type(self) -> str:
@@ -328,7 +328,7 @@ class Pressures:
         PSM_MIN = 0.9 * self.craft.LWL * kDC
         
         # Categorías A y B: Comparamos PSMD y PSMP y tomamos el mayor
-        if self.craft.design_cat in ['A', 'B']:
+        if self.craft.design_cat in [1, 2]: #(A, B)
             # Calcula la presión de costado en modo de desplazamiento
             PSMD_plating = (PDM_BASE + kZ_plating * (PBMD_BASE - PDM_BASE)) * kAR_plating * kDC * kL
             PSMD_stiffeners = (PDM_BASE + kZ_stiffeners * (PBMD_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
