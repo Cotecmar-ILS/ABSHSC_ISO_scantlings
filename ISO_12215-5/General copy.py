@@ -1,3 +1,6 @@
+"""Scantlings Design Calculator (SDC)"""
+
+
 import numpy as np
 from validations import val_data
 
@@ -352,7 +355,7 @@ class Pressures:
         # Categorías C y D: La presión del costado depende del modo donde la presión del fondo es mayor
         else:
             print("\nCategoría C y D: La presión del costado depende del modo donde la presión del fondo es mayor")
-            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure()
+            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure() #Debe cambiar porque ahora mismo se usa l y b del costado para verificar el fondo en vez de l y b del fondo para verificar cual presión es mayor
             
             if index_plating == "planeo":
                 # Si la presión de fondo mayor es la de planeo, usamos PSMP para Plating
