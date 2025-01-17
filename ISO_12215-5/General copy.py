@@ -33,17 +33,12 @@ class Craft:
         self.zones_data = {
             'Casco de Fondo': ['b', 'l', 's', 'lu', 'c', 'x'],
             'Casco de Costado': ['b', 'l', 's', 'lu', 'c', 'x'],
-            'Espejo de Popa': ['b', 'l', 's', 'lu'], #NO ESTA EN LA ISO
-            'Cubierta de Principal': ['b', 'l', 'c'],
-            'Cubiertas Inferiores/Otras Cubiertas': ['b', 'l', 'c'],
-            'Cubiertas Humedas': ['b', 'l', 'c'],
-            'Cubiertas de Superestructura y Casetas de Cubierta': ['b', 'l'],
+            'Cubierta Superior': ['b', 'l', 'c'],
+            'Superestructura y Casetas de Cubierta': ['b', 'l'], #Frente, Lados, Extremos y Techos por implementar
             'Mamparos Estancos': ['b', 'l', 's', 'lu', 'hB'],
-            'Mamparos de Tanques Profundos': ['b', 'l', 's', 'lu', 'hB'],
-            'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
-            'Túneles de Waterjets': ['b', 'l'],
-            'Túneles de Bow Thrusters': ['b', 'l'], #NO ESTA EN LA ISO
-            'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c'],
+            'Mamparos de Tanques': ['b', 'l', 's', 'lu', 'hB'],
+            'Mamparos de colisión': ['b', 'l', 's', 'lu', 'hB'],
+            'Mamparos estructurales': ['b', 'l', 's', 'lu', 'hB'],
         }
       
     def get_V(self) -> float:
@@ -154,12 +149,6 @@ class Pressures:
         return kDC_values[self.craft.design_cat]
     
     def dynamic_load_factor_nCG(self) -> float:
-        """
-        Calcula el factor de carga dinámica nCG para embarcaciones de motor en modo de planeo.
-        Retorna:
-        float: El valor de nCG, limitado a un máximo de 7.
-        """
-
         # Calcular nCG usando la ecuación (1)
         nCG_1 = 0.32 * ((self.craft.LWL / (10 * self.craft.BC)) + 0.084) * (50 - self.craft.B04) * ((self.craft.V**2 * self.craft.BC**2) / self.craft.mLDC)
         
@@ -262,7 +251,7 @@ class Pressures:
             "Superior > 800 mm sobre cubierta": 0.35, # Área caminada
             #"Niveles Superiores": 0 (REVISAR)                  # Elementos no expuestos al clima ###REVISAR
         }
-        return kSUP_values
+        return 1
     
     #Pressure Zones
     def bottom_pressure(self) -> tuple:
@@ -427,15 +416,25 @@ class Pressures:
         
         return superdeck_pressure_plating, superdeck_pressure_stiffeners
     
+    """BULKHEADS"""
     def watertight_bulkheads_pressure(self): #Pasar hB mediante el main
         """ Presión para mamparos estancos. """
         PWB = 7 * self.hB
         return PWB
     
-    def integral_tank_bulkheads_pressure(self):
-        """ Presión para mamparos de tanques integrales. """
+    def integral_tank_collision_bulkheads_pressure(self):
+        """ Presión para mamparos de tanques integrales y colisiones. """
         PTB = 10 * self.hB
         return PTB
+
+    def structural_bulkheads_pressure(self): #corregir
+        """ Presión para mamparos estructurales no estancos. """
+        if self.craft.material == 1:
+            PTB = 10 * self.hB
+            return PTB
+        elif self.craft.material in [2, 3, 4]:
+            PTB = 7 * self.hB
+            return PTB
 
 class Plating:
     def __init__(self, craft: object, zone_attributes: dict):
@@ -580,7 +579,7 @@ def main():
             
             # Calcular presión
             zone_pressure = pressure.calculate_pressure()
-            print(f"\nPresión calculada para la zona '{zone_name}': {zone_pressure} MPa")
+            print(f"\nPresión calculada para la zona '{zone_name}': Plating:{zone_pressure[0]}, Stifeners MPa")
             
             # Calcular espesor
             thickness = plating.calculate_plating(zone_pressure)
