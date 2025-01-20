@@ -1,6 +1,5 @@
 """Scantlings Design Calculator (SDC)"""
 
-
 import numpy as np
 from validations import val_data
 
@@ -526,7 +525,7 @@ class Plating:
         thickness = self.b * np.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def fiber_core_plating(self, pressure):
+    def sandwich_plating(self, pressure):
         sigma_uo = val_data("Resistencia a la tracción de la fibra externa (MPa): ")
         sigma_ui = val_data("Resistencia a la tracción de la fibra interna (MPa): ")
         sigma_ub = val_data("Menor de las resistencias a la tracción o a la compresión (MPa): ")
@@ -558,10 +557,10 @@ def main():
     craft = Craft(designer, boat, company, management, division, design_cat, material_index, zone_name=None, zone_index=None)
     
     # Determinar las zonas disponibles según el material
-    available_zones = list(range(1, 12)) if material_index not in [1, 2] else list(range(1, 14))
+    available_zones = list(range(1, 4)) if material_index not in [1, 2] else list(range(1, 8))
     
     while True:
-        print("\nSeleccione la zona que desea escantillonar:")
+        print("\nSeleccione la zona que desea escantillonar: ")
         zone_index, zone_name = display_menu([list(craft.zones_data.keys())[i - 1] for i in available_zones])
         
         try:
@@ -579,11 +578,11 @@ def main():
             
             # Calcular presión
             zone_pressure = pressure.calculate_pressure()
-            print(f"\nPresión calculada para la zona '{zone_name}': Plating:{zone_pressure[0]}, Stifeners MPa")
+            print(f"\nPresión calculada para la zona '{zone_name}': Enchapado: {zone_pressure[0]}, Refuerzos: {zone_pressure[1]} MPa")
             
             # Calcular espesor
             thickness = plating.calculate_plating(zone_pressure)
-            print(f"\nEl espesor mínimo requerido para la zona '{zone_name}': {thickness} mm")
+            print(f"\nEspesor mínimo requerido para la zona '{zone_name}': {thickness} mm")
             
             #values[zone_name] = thickness
             
