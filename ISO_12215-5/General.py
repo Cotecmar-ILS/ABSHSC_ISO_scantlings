@@ -468,16 +468,16 @@ class Plating:
                 
                 else: # self.material == 'Fibra con nucleo (Sandwich)'
                     k3 = self.panel_stiffness_k3()
-                    print("\nSeleccione el tipo de fibra de diseño de la fibra *exterior*")
-                    self.display_menu(self.SKIN_TYPE)
-                    choice1 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
-                    print("\nSeleccione el tipo de fibra de diseño de la fibra *interior*")
-                    self.display_menu(self.SKIN_TYPE)
-                    choice2 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
-                    print("\nSeleccione el tipo de nucleo del sandwich")
-                    self.display_menu(self.CORE_MATERIAL)
-                    choice3 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.CORE_MATERIAL))
-                    x =  self.SKIN_TYPE[choice1 - 1], self.SKIN_TYPE[choice2 - 1], self.CORE_MATERIAL[choice3 - 1]
+                    # print("\nSeleccione el tipo de fibra de diseño de la fibra *exterior*")
+                    # self.display_menu(self.SKIN_TYPE)
+                    # choice1 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
+                    # print("\nSeleccione el tipo de fibra de diseño de la fibra *interior*")
+                    # self.display_menu(self.SKIN_TYPE)
+                    # choice2 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
+                    # print("\nSeleccione el tipo de nucleo del sandwich")
+                    # self.display_menu(self.CORE_MATERIAL)
+                    # choice3 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.CORE_MATERIAL))
+                    # x =  self.SKIN_TYPE[choice1 - 1], self.SKIN_TYPE[choice2 - 1], self.CORE_MATERIAL[choice3 - 1]
                     
                     thickness = self.sandwich_plating(pressure, k1, k2, k3, kC)
                     
@@ -565,16 +565,14 @@ class Plating:
         
         #Minimum required section modulus of the sandwich 1 cm wide [cm4/cm]:
         second_I = ((self.b**3) * (kC**3) * pressure * k3) / (12e6 * k1 * Eio)
-        if self.craft.skin[0] != self.craft.skin[1]:
-            second_I = ((self.b**3) * (kC**3) * pressure * k3) / (12e3 * k1) #EI
-            #This approach is better when the inner and outer faces are very different, e.g. carbon inner and carbon/aramid outer.
         
         # Shear strength aspect ratio factor kSHC
         lb = self.l / self.b
         kSHC = 0.035 + 0.394 * lb - 0.09 * lb**2 if lb < 2 else 0.5
         
-        print("Seleccione el material del nucleo del sandwich: ")
-        core_material = display_menu('Madera Balsa', 'PVC entrecruzado', 'PVC lineal', 'SAN')
+        print("\nSeleccione el material del nucleo del sandwich: ")
+        core_materials_options = ('Madera Balsa', 'PVC entrecruzado', 'PVC lineal', 'SAN')
+        core_material = display_menu(core_materials_options)
 
         if core_material == 1:
             tau_d = tau_u * 0.5
@@ -597,7 +595,7 @@ class Plating:
         thickness = (kC**0.5) * ((kSHC * pressure * self.b)/(1000 * tau_d))
     
         #sandwich thickness = tc + 0.5 (t i + to) is the distance between mid-thickness of the skins of the sandwich, in milimetres
-        print(SM_inner, SM_outter, second_I, thickness)
+        
         return SM_inner, SM_outter, second_I, thickness
     
     def wash_plates_plating(self):
