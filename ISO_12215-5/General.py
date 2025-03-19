@@ -22,7 +22,7 @@ class Craft:
         self.BH = val_data("BH: Manga del casco (metros): ")
         self.BWL = val_data("BWL: Manga de flotación (metros): ", 1e-6, self.BH)
         self.BC = val_data(f"BC: Manga entre pantoques ('Chine beam') a {0.4 * self.LWL} metros de la popa (metros): ", 1e-6, self.BH)
-        self.mLDC = val_data("mLDC: Desplazamiento de la embarcación en condición de plena carga (toneladas): ") / 1000
+        self.mLDC = val_data("mLDC: Desplazamiento de la embarcación en condición de plena carga (toneladas): ") * 1000
         self.V = self.get_V()
         self.B04 = self.get_B04()
         self.Z = val_data("Z: Altura de francobordo (metros): ")
@@ -105,7 +105,7 @@ class Pressures:
         self.x = zone_attributes.get('x', None)
         self.hB = zone_attributes.get('hB', None)
         
-        
+
     def calculate_pressure(self):
         if self.craft.zone_index == 1:
             bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure()
