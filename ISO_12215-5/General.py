@@ -604,12 +604,12 @@ class Plating:
 
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
-    designer = input("Diseñador: ")
+    designer = input("Diseñador: ") #Son necesarios estos inputs?
     boat = input("Embarcación: ")
     company = input("Empresa: ")
     management = input("Gerencia: ")
     division = input("División: ")
-    values = {}
+    values = {} # Diccionario pensado para almacenar los valores
     
     print("\nSeleccione la categoría de diseño de su embarcación")
     categories = ('A (“Oceano”)', 'B ("Offshore")', 'C ("Costera")', 'D ("Aguas calmadas")')
