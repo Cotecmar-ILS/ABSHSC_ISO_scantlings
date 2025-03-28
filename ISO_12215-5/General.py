@@ -16,13 +16,13 @@ class Craft:
         'Mamparos estructurales':['b', 'l', 's', 'lu', 'hB'],
     }
     
-    def __init__(self, designer, boat, company, management, division, design_cat, material):
+    def __init__(self, designer, boat, company, management, division, design_cat_index, material):
         self.designer = designer
         self.boat = boat
         self.company = company
         self.management = management
         self.division = division
-        self.design_cat = design_cat
+        self.design_cat_index = design_cat_index
         self.material = material
         
         # Principal Craft Data
@@ -147,10 +147,10 @@ class Pressures:
 
     def design_category_factor_kDC(self) -> float:        
         # Mapeo de categoría de diseño a valores de kDC
-        kDC_values = {'A (“Oceano”)': 1.0, 'B ("Offshore")': 0.8, 'C ("Costera")': 0.6, 'D ("Aguas calmadas")': 0.4}
+        kDC_values = {1: 1.0, 2: 0.8, 3: 0.6, 4: 0.4}
         
         # Retornar el valor correspondiente de kDC
-        return kDC_values[self.craft.design_cat]
+        return kDC_values[self.craft.design_cat_index]
     
     def dynamic_load_factor_nCG(self) -> float:
         # Calcular nCG usando la ecuación (1)
@@ -160,21 +160,15 @@ class Pressures:
         nCG_2 = (0.5 * self.craft.V) / (self.craft.mLDC**0.17)
         
         # Determinar el valor de nCG
-        if nCG_1 > 3:
-            nCG = min(nCG_1, nCG_2)
-        else:
-            nCG = nCG_1  # Si nCG_1 es menor o igual a 3, lo usamos directamente
-        
-        # Limitar nCG a un máximo de 7
-        nCG = min(nCG, 7)
+        nCG = min(nCG_1, 7) if nCG_1 <= 3 else min(nCG_2, 7)
         
         # Imprimir una advertencia si nCG es mayor que 7 (aunque este caso no debería ocurrir dado el min anterior)
         if nCG > 7:
-            print(f"\nCUIDADO: El valor de carga dinámica (nCG)= {nCG} no debe ser mayor a 7, revise sus parámetros iniciales")
+            print(f"\nCUIDADO: El valor de carga dinámica (nCG)= {nCG} no debería ser mayor a 7, revise sus parámetros iniciales")
         
         return nCG
 
-    def longitudinal_pressure_factor_kL(self, zone) -> float:
+    def longitudinal_pressure_factor_kL(self, zone, nCG) -> float:
         """
         Parámetros:
             x (float): Posición longitudinal a lo largo de la longitud de la línea de flotación (LWL),
@@ -182,16 +176,10 @@ class Pressures:
         """
         xLWL = zone.x / self.craft.LWL  # Calcula la relación x/LWL
         
-        if xLWL > 0.6:
-            kL = 1.0  # Si x/LWL es mayor que 0.6, kL es 1.0
-        else:
-            nCG = self.dynamic_load_factor_nCG()  # Calcular nCG
-            nCG_clamped = min(max(nCG, 3.0), 6.0)  # Limitar nCG entre 3 y 6
-            
-            # Aplica la ecuación para valores de x/LWL <= 0.6
-            kL = ((1 - 0.167 * nCG_clamped) * (xLWL / 0.6)) + (0.167 * nCG_clamped)
-            kL = min(kL, 1.0)  # Asegurarse de que kL no sea mayor que 1.0
+        nCG_clamped = min(max(nCG, 3.0), 6.0)  # Limitar nCG entre 3 y 6
         
+        kL = ((1 - 0.167 * nCG_clamped) / 0.6) * (xLWL) + (0.167 * nCG_clamped) if xLWL <= 0.6 else 1
+                
         return kL
 
     def area_pressure_factor_kAR(self, zone) -> tuple:
@@ -269,11 +257,11 @@ class Pressures:
         nCG = self.dynamic_load_factor_nCG()
         kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(zone)
         kDC = self.design_category_factor_kDC()
-        kL = self.longitudinal_pressure_factor_kL(zone)
+        kL = self.longitudinal_pressure_factor_kL(zone, nCG)
         
         # Se calculan valores base y minimos de la presión de fondo en modo de desplazamiento y planeo
         PBMD_BASE = 2.4 * (self.craft.mLDC**0.33) + 20
-        PBMP_BASE = ((0.1 * self.craft.mLDC)/(self.craft.LWL * self.craft.BC))*((1 + kDC**0.5) * nCG)
+        PBMP_BASE = ((0.1 * self.craft.mLDC)/(self.craft.LWL * self.craft.BC))*(1 + (kDC**0.5) * nCG)
         PBM_MIN = 0.45 * (self.craft.mLDC ** 0.33) + (0.9 * self.craft.LWL * kDC)
         
         # Calcula la presión de fondo en modo de desplazamiento
@@ -285,8 +273,8 @@ class Pressures:
         PBMD_stiffeners = max(PBM_MIN, PBMD_stiffeners)
 
         # Calcula la presión de fondo en modo de planeo
-        PBMP_plating = PBMP_BASE * kAR_plating * kDC * kL
-        PBMP_stiffeners = PBMP_BASE * kAR_stiffeners * kDC * kL
+        PBMP_plating = PBMP_BASE * kAR_plating * kL
+        PBMP_stiffeners = PBMP_BASE * kAR_stiffeners * kL
         
         # Asegúrate de que la presión no sea inferior al mínimo
         PBMP_plating = max(PBM_MIN, PBMP_plating)
@@ -451,7 +439,9 @@ class Plating:
         
         if zone.zone_index in [1, 2, 3, 4, 5]:
             if self.craft.material in [1, 2]:
-                return self.metal_plating(zone, pressure, k2, kC)
+                sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+                sigma_y = val_data("Limite elastico por tracción (MPa): ", 1e-6, sigma_u)
+                return max(self.minimum_thickness(zone, sigma_y), self.metal_plating(zone, pressure, k2, kC, sigma_u, sigma_y))
             
             elif self.craft.material == 3:
                 return self.wood_plating(pressure, k2)
@@ -525,9 +515,7 @@ class Plating:
         kC = max(min(kC, 1.0), 0.5)
         return kC
     
-    def metal_plating(self, zone, pressure, k2, kC):
-        sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-        sigma_y = val_data("Limite elastico por tracción (MPa): ", 1e-6, sigma_u)
+    def metal_plating(self, zone, pressure, k2, kC, sigma_u, sigma_y):
         sigma_d = min(0.6 * sigma_u, 0.9 * sigma_y)
         thickness = zone.b * kC * math.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
@@ -602,6 +590,26 @@ class Plating:
     def watertight_bulkheads_plating(self):
         return None
 
+    def minimum_thickness(self, zone, sigma_y):
+        if self.craft.material == 1:
+            A = 1
+            k5 = math.sqrt(240/sigma_y)
+            k7 = 0.015 if zone.zone_index == 1 else 0
+            k8 = 0.08
+        elif self.craft.material == 2:
+            A = 1
+            k5 = math.sqrt(125/sigma_y)
+            k7 = 0.02 if zone.zone_index == 1 else 0
+            k8 = 0.1
+        elif self.craft.material == 4:
+            A = 3
+            k5 = math.sqrt(30/sigma_y)
+            k7 = 0.05 if zone.zone_index == 1 else 0
+            k8 = 0.3      
+        
+        tmin = k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33))
+        return tmin
+
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
     designer = input("Diseñador: ") #Son necesarios estos inputs?
@@ -620,7 +628,7 @@ def main():
     material_index, material = display_menu(available_materials)
     
     # Instanciar las clases estáticas
-    craft = Craft(designer, boat, company, management, division, design_cat, material_index)
+    craft = Craft(designer, boat, company, management, division, design_cat_index, material_index)
     pressure = Pressures(craft)
     plating = Plating(craft)
     
@@ -637,11 +645,11 @@ def main():
             
             # Calcular presión
             zone_pressure = pressure.calculate_pressure(zone)
-            print(f"\nPresión calculada para la zona '{zone_name}': Enchapado: {zone_pressure[0]:.2f}, Refuerzos: {zone_pressure[1]:.2f} MPa")
+            print(f"\nPresión calculada para la zona '{zone_name}': Forro exterior = {zone_pressure[0]:.2f} MPa, Refuerzos = {zone_pressure[1]:.2f} MPa")
             
             # Calcular espesor
             thickness = plating.calculate_plating(zone, zone_pressure[0])
-            print(f"\nEspesor mínimo requerido para la zona '{zone_name}': {thickness:.2f} mm")
+            print(f"\nEspesor mínimo requerido para la zona '{zone_name}' = {thickness:.2f} mm")
             
             #values[zone_name] = thickness
             
