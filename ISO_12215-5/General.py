@@ -1,19 +1,19 @@
 """Scantlings Design Calculator (SDC)"""
-import math #Se puede quitar para optimizar y cuando se necesita calcular la raiz cuadrada, elevar a la 1/2
+import math #Se puede quitar para optimizar y cuando se necesita calcular la raiz cuadrada, elevar a la 1/2. O exportar solo la raiz cuadrada
 from validations import val_data
 
 class Craft:
         
     # Mapeado de zonas y sus atributos
     ZONE_DIM = {
-        'Casco de Fondo':      ['b', 'l', 's', 'lu', 'c', 'x'],
-        'Casco de Costado':    ['b', 'l', 's', 'lu', 'c', 'x'],
-        'Cubierta Superior':   ['b', 'l', 'c'],
-        'Superestructura y Casetas de Cubierta': ['b', 'l'],
-        'Mamparos Estancos':   ['b', 'l', 's', 'lu', 'hB'],
-        'Mamparos de Tanques': ['b', 'l', 's', 'lu', 'hB'],
-        'Mamparos de colisión':['b', 'l', 's', 'lu', 'hB'],
-        'Mamparos estructurales':['b', 'l', 's', 'lu', 'hB'],
+        'Casco de Fondo':      ['b', 'l', 's', 'lu', 'c', 'x'], #1
+        'Casco de Costado':    ['b', 'l', 's', 'lu', 'c', 'x'], #2
+        'Cubierta Superior':   ['b', 'l', 'c'],                 #3
+        'Superestructura y Casetas de Cubierta': ['b', 'l'],    #4
+        'Mamparos Estancos':   ['b', 'l', 's', 'lu', 'hB'],     #5
+        'Mamparos de Tanques': ['b', 'l', 's', 'lu', 'hB'],     #6
+        'Mamparos de colisión':['b', 'l', 's', 'lu', 'hB'],     #7
+        'Mamparos estructurales':['b', 'l', 's', 'lu', 'hB'],   #8
     }
     
     def __init__(self, designer, boat, company, management, division, design_cat_index, material):
@@ -437,60 +437,35 @@ class Plating:
         k2 = self.panel_strength_k2(zone)
         kC = self.curvature_correction_kC(zone)
         
-        if zone.zone_index in [1, 2, 3, 4, 5]:
-            if self.craft.material in [1, 2]:
-                sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-                sigma_y = val_data("Limite elastico por tracción (MPa): ", 1e-6, sigma_u)
-                return max(self.minimum_thickness(zone, sigma_y), self.metal_plating(zone, pressure, k2, kC, sigma_u, sigma_y))
-            
-            elif self.craft.material == 3:
-                return self.wood_plating(pressure, k2)
-            
-            elif self.craft.material in [4, 5]:
-                if self.craft.material == 4:
-                    print("\nSeleccione el tipo de fibra de diseño")
-                    self.display_menu(self.SKIN_TYPE)
-                    choice = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
-                    
-                    thickness = self.single_skin_plating(pressure, k2, kC)
-                
-                else: # self.material == 'Fibra con nucleo (Sandwich)'
-                    k3 = self.panel_stiffness_k3(zone)
-                    # print("\nSeleccione el tipo de fibra de diseño de la fibra *exterior*")
-                    # self.display_menu(self.SKIN_TYPE)
-                    # choice1 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
-                    # print("\nSeleccione el tipo de fibra de diseño de la fibra *interior*")
-                    # self.display_menu(self.SKIN_TYPE)
-                    # choice2 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
-                    # print("\nSeleccione el tipo de nucleo del sandwich")
-                    # self.display_menu(self.CORE_MATERIAL)
-                    # choice3 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.CORE_MATERIAL))
-                    # x =  self.SKIN_TYPE[choice1 - 1], self.SKIN_TYPE[choice2 - 1], self.CORE_MATERIAL[choice3 - 1]
-                    
-                    thickness = self.sandwich_plating(zone, pressure, k1, k2, k3, kC)
-                    
-                return thickness
+        if self.craft.material in [1, 2]:
+            sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+            sigma_y = val_data("Limite elastico por tracción (MPa): ", 1e-6, sigma_u)
+            return max(self.minimum_thickness(zone, sigma_y), self.metal_plating(zone, pressure, k2, kC, sigma_u, sigma_y))
         
-        else:
-            # 'Superestructura y Casetas de Cubierta - Frente, Lados, Extremos y Techos': ['b', 'l'],
-            # 'Túneles de Waterjets': ['b', 'l'],
-            # 'Túneles de Bow Thrusters': ['b', 'l'],
-            # 'Cubiertas de Operación o Almacenamiento de Vehículos': ['b', 'l', 'c']
-            if zone.zone_index == 8:
-                thickness = self.bulkhead_scantling()
-                return thickness
-            elif zone.zone_index == 9:
-                thickness = self.tank_scantling()
-                return thickness
-            elif zone.zone_index == 10:
-                thickness = 0
-                return thickness
-            elif zone.zone_index == 11:
-                thickness = 0
-                return thickness
-            elif zone.zone_index == 12:
-                thickness = 0
-                return thickness
+        elif self.craft.material == 3:
+            sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ")
+            return max(self.minimum_thickness(zone, sigma_uf), self.wood_plating(zone, pressure, k2, sigma_uf))
+        
+        elif self.craft.material == 4:
+            # print("\nSeleccione el tipo de fibra de diseño")
+            # self.display_menu(self.SKIN_TYPE)
+            # choice = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
+            sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ") 
+            return max(self.minimum_thickness(zone, sigma_uf), self.single_skin_plating(zone, pressure, k2, kC, sigma_uf))
+            
+        else: # self.material == 'Fibra con nucleo (Sandwich)'
+            k3 = self.panel_stiffness_k3(zone)
+            # print("\nSeleccione el tipo de fibra de diseño de la fibra *exterior*")
+            # self.display_menu(self.SKIN_TYPE)
+            # choice1 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
+            # print("\nSeleccione el tipo de fibra de diseño de la fibra *interior*")
+            # self.display_menu(self.SKIN_TYPE)
+            # choice2 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
+            # print("\nSeleccione el tipo de nucleo del sandwich")
+            # self.display_menu(self.CORE_MATERIAL)
+            # choice3 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.CORE_MATERIAL))
+            # x =  self.SKIN_TYPE[choice1 - 1], self.SKIN_TYPE[choice2 - 1], self.CORE_MATERIAL[choice3 - 1]
+            return self.sandwich_plating(zone, pressure, k1, k2, k3, kC)
             
     def panel_strength_k2(self, zone):
         if self.craft.material == 4:
@@ -520,16 +495,14 @@ class Plating:
         thickness = zone.b * kC * math.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def single_skin_plating(self, pressure, k2, kC):
-        sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ")
+    def single_skin_plating(self, zone, pressure, k2, kC, sigma_uf):
         sigma_d = 0.5 * sigma_uf
-        thickness = self.b * kC * math.sqrt((pressure * k2)/(1000 * sigma_d))
+        thickness = zone.b * kC * math.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def wood_plating(self, pressure, k2):
-        sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ")
+    def wood_plating(self, zone, pressure, k2, sigma_uf):
         sigma_d = 0.5 * sigma_uf
-        thickness = self.b * math.sqrt((pressure * k2)/(1000 * sigma_d))
+        thickness = zone.b * math.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
     def sandwich_plating(self, pressure, k1, k2, k3, kC):
@@ -590,25 +563,30 @@ class Plating:
     def watertight_bulkheads_plating(self):
         return None
 
-    def minimum_thickness(self, zone, sigma_y):
+    def minimum_thickness(self, zone, sigma):
         if self.craft.material == 1:
             A = 1
-            k5 = math.sqrt(240/sigma_y)
+            k5 = math.sqrt(240/sigma)
             k7 = 0.015 if zone.zone_index == 1 else 0
             k8 = 0.08
+            return k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33)) if zone.zone_index in [1, 2] else 1.5 + 0.07 * self.craft.LWL
         elif self.craft.material == 2:
             A = 1
-            k5 = math.sqrt(125/sigma_y)
+            k5 = math.sqrt(125/sigma)
             k7 = 0.02 if zone.zone_index == 1 else 0
             k8 = 0.1
-        elif self.craft.material == 4:
+            return k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33)) if zone.zone_index in [1, 2] else 1.35 + 0.06 * self.craft.LWL
+        elif self.craft.material == 3:
             A = 3
-            k5 = math.sqrt(30/sigma_y)
+            k5 = math.sqrt(30/sigma)
             k7 = 0.05 if zone.zone_index == 1 else 0
             k8 = 0.3      
-        
-        tmin = k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33))
-        return tmin
+            return k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33)) if zone.zone_index in [1, 2] else 3.8 + 0.17 * self.craft.LWL
+        else: #self.craft.material in [3, 4]:
+            k5 = 1 #Corregir por tipo de fibra
+            k7 = 0.03 if zone.zone_index == 1 else 0
+            k8 = 0.15
+            return 0.43  * k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33)) if zone.zone_index in [1, 2] else k5 * (1.45 + 0.14 * self.craft.LWL)
 
 def main():
     print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
@@ -624,7 +602,7 @@ def main():
     design_cat_index, design_cat = display_menu(categories)
     
     print("\nSeleccione el material de su embarcación")
-    available_materials = ('Acero', 'Aluminio', 'Fibra laminada', 'Madera laminada o contrachapada', 'Fibra con nucleo (Sandwich)')
+    available_materials = ('Acero', 'Aluminio', 'Madera laminada o contrachapada', 'Fibra laminada', 'Fibra con nucleo (Sandwich)')
     material_index, material = display_menu(available_materials)
     
     # Instanciar las clases estáticas
