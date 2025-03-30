@@ -109,7 +109,7 @@ class Zone:
 class Pressures:
     
     def __init__(self, craft: object):
-        self.craft = craft    
+        self.craft = craft
 
     def calculate_pressure(self, zone):
         if zone.zone_index == 1:
@@ -142,8 +142,6 @@ class Pressures:
         elif self.zone.zone_index == 10:
             pressure = self.transmission_pillar_loads_pressure()
             return pressure, 0
-        else:
-            return "La zona escogida no se encuentra disponible"
 
     def design_category_factor_kDC(self) -> float:        
         # Mapeo de categoría de diseño a valores de kDC
@@ -433,7 +431,6 @@ class Plating:
         self.craft = craft
 
     def calculate_plating(self, zone, pressure):
-        k1 = 0.017
         k2 = self.panel_strength_k2(zone)
         kC = self.curvature_correction_kC(zone)
         
@@ -454,18 +451,25 @@ class Plating:
             return max(self.minimum_thickness(zone, sigma_uf), self.single_skin_plating(zone, pressure, k2, kC, sigma_uf))
             
         else: # self.material == 'Fibra con nucleo (Sandwich)'
-            k3 = self.panel_stiffness_k3(zone)
+            print("\nSeleccione el material del nucleo del sandwich: ")
+            available_cores = ('Madera Balsa', 'PVC entrecruzado', 'PVC lineal', 'SAN')
+            core_index, core = display_menu(available_cores)
+            tau_u = val_data(f"Resistencia última al cortante del núcleo de {core} (MPa): ")
+            
+            # k3 = self.panel_stiffness_k3(zone)
+
             # print("\nSeleccione el tipo de fibra de diseño de la fibra *exterior*")
-            # self.display_menu(self.SKIN_TYPE)
-            # choice1 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
+            # display_menu(self.SKIN_TYPE)
+            # choice1 = val_data("Ingrese el número correspondiente: ", 1, len(self.SKIN_TYPE))
+
             # print("\nSeleccione el tipo de fibra de diseño de la fibra *interior*")
-            # self.display_menu(self.SKIN_TYPE)
-            # choice2 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
-            # print("\nSeleccione el tipo de nucleo del sandwich")
-            # self.display_menu(self.CORE_MATERIAL)
-            # choice3 = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.CORE_MATERIAL))
-            # x =  self.SKIN_TYPE[choice1 - 1], self.SKIN_TYPE[choice2 - 1], self.CORE_MATERIAL[choice3 - 1]
-            return self.sandwich_plating(zone, pressure, k1, k2, k3, kC)
+            # display_menu(self.SKIN_TYPE)
+            # choice2 = val_data("Ingrese el número correspondiente: ", 1, len(self.SKIN_TYPE))
+
+            # skin_ext = self.SKIN_TYPE[choice1 - 1]
+            # skin_int = self.SKIN_TYPE[choice2 - 1]
+
+            return self.sandwich_plating2(zone, pressure, kC, core_index, tau_u)
             
     def panel_strength_k2(self, zone):
         if self.craft.material == 4:
@@ -556,6 +560,22 @@ class Plating:
         #sandwich thickness = tc + 0.5 (t i + to) is the distance between mid-thickness of the skins of the sandwich, in milimetres
         
         return SM_inner, SM_outter, second_I, thickness
+    
+    def sandwich_plating2(self, zone, pressure, kC, core_index, tau_u):
+        # Shear strength aspect ratio factor kSHC
+        lb = zone.l / zone.b
+        kSHC = 0.035 + 0.394 * lb - 0.09 * lb**2 if lb < 2 else 0.5
+        # Design shear strength of sandwich cores 
+        if core_index == 1:
+            tau_d = tau_u * 0.5
+        elif core_index == 2:
+            tau_d = tau_u * 0.55
+        elif core_index == 3:
+            tau_d = tau_u * 0.65
+        else: #core_index == 4:
+            tau_d = tau_u * 0.5
+        #Thickness required by shear load capabilities:
+        return (kC**0.5) * ((kSHC * pressure * zone.b)/(1000 * tau_d))
     
     def wash_plates_plating(self):
         return None
