@@ -16,15 +16,14 @@ class Craft:
         'Mamparos estructurales':['b', 'l', 's', 'lu', 'hB'],   #8
     }
     
-    def __init__(self, designer, boat, company, management, division, design_cat_index, material):
-        self.designer = designer
-        self.boat = boat
-        self.company = company
-        self.management = management
-        self.division = division
+    def __init__(self, design_cat_index, material):
+        # self.designer = designer
+        # self.boat = boat
+        # self.company = company
+        # self.management = management
+        # self.division = division
         self.design_cat_index = design_cat_index
         self.material = material
-        
         # Principal Craft Data
         print("\nIngrese los atributos principales de la embarcación")
         self.LH = val_data("LH: Eslora del casco (metros): ", 2.5, 24)
@@ -35,7 +34,7 @@ class Craft:
         self.mLDC = val_data("mLDC: Desplazamiento de la embarcación en condición de plena carga (toneladas): ") * 1000
         self.V = self.get_V()
         self.B04 = self.get_B04()
-        self.Z = val_data("Z: Altura de francobordo (metros): ")
+        self.Z = val_data("Z: Altura del francobordo (metros): ")
         self.type = self.get_craft_type()
         
     def get_V(self) -> float:
@@ -70,14 +69,6 @@ class Zone:
         self.c = self.zone_attributes.get('c', None)
         self.x = self.zone_attributes.get('x', None)
         self.hB =self.zone_attributes.get('hB', None)
-        
-    @property
-    def get_Db(self) -> float:
-        return val_data("Profundidad del mamparo (metros): ")
-    
-    @property
-    def get_hB(self) -> float: #Actualizar implementacion, borrar estas lineas o pedir mediante get_zone_data
-        return val_data("Altura de la columna de agua (metros): ")
     
     """PANEL/STIFFENER DIMENSIONS"""
     # Definir las zonas y sus atributos dependientes
@@ -113,34 +104,32 @@ class Pressures:
 
     def calculate_pressure(self, zone):
         if zone.zone_index == 1:
-            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure(zone)
-            return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
-        elif self.zone.zone_index == 2:
-            pressure, index = self.side_pressure()
-            return pressure, index
-        elif self.zone.zone_index == 3:
-            pressure, index = self.deck_pressure()
-            return pressure, index
-        elif self.zone.zone_index == 4:
-            pressure = self.superstructures_deckhouses_pressure()
+            # Casco de fondo
+            bottom_pressure_plating, bottom_pressure_stiffeners = self.bottom_pressure(zone)
+            return bottom_pressure_plating, bottom_pressure_stiffeners
+        elif zone.zone_index == 2:
+            # Casco de costado
+            side_pressure_plating, side_pressure_stiffeners = self.side_pressure(zone)
+            return side_pressure_plating, side_pressure_stiffeners
+        elif zone.zone_index == 3:
+            # Cubierta superior
+            deck_pressure_plating, deck_pressure_stiffeners = self.deck_pressure(zone)
+            return deck_pressure_plating, deck_pressure_stiffeners
+        elif zone.zone_index == 4:
+            # Superestructura y casetas de cubierta
+            superstructure_pressure_plating, superstructure_pressure_stiffeners = self.superstructures_deckhouses_pressure(zone)
+            return superstructure_pressure_plating, superstructure_pressure_stiffeners
+        elif zone.zone_index == 5:
+            pressure = self.watertight_bulkheads_pressure(zone)
             return pressure, 0
-        elif self.zone.zone_index == 5:
-            pressure = self.watertight_bulkheads_pressure()
+        elif zone.zone_index == 6:
+            pressure = self.integral_tank_bulkheads_pressure(zone)
             return pressure, 0
-        elif self.zone.zone_index == 6:
-            pressure = self.integral_tank_bulkheads_pressure()
+        elif zone.zone_index == 7:
+            pressure = self.wash_plates_pressure(zone)
             return pressure, 0
-        elif self.zone.zone_index == 7:
-            pressure = self.wash_plates_pressure()
-            return pressure, 0
-        elif self.zone.zone_index == 8:
-            pressure = self.collision_bulkheads_pressure()
-            return pressure, 0
-        elif self.zone.zone_index == 9:
-            pressure = self.nonwatertight_partial_bulkheads_pressure()
-            return pressure, 0
-        elif self.zone.zone_index == 10:
-            pressure = self.transmission_pillar_loads_pressure()
+        else:# zone.zone_index == 8:
+            pressure = self.collision_bulkheads_pressure(zone)
             return pressure, 0
 
     def design_category_factor_kDC(self) -> float:        
@@ -281,91 +270,51 @@ class Pressures:
         # Siempre usa la mayor presión de fondo entre desplazamiento y planeo
         bottom_pressure_plating = max(PBMD_plating, PBMP_plating)
         bottom_pressure_stiffeners = max(PBMD_stiffeners, PBMP_stiffeners)
+        
+        return bottom_pressure_plating, bottom_pressure_stiffeners
 
-        # Índice para indicar si se utilizó la presión en modo de planeo o desplazamiento
-        index_plating = "planning" if bottom_pressure_plating == PBMP_plating else "displacement"
-        index_stiffeners = "planning" if bottom_pressure_stiffeners == PBMP_stiffeners else "displacement"
-        
-        return bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners
-
-    def side_pressure(self) -> tuple:
-        """
-        Calcula la presión de costado para Plating y Stiffeners según las categorías de diseño y modos de planeo o desplazamiento.
-        
-        Retorna:
-            tuple: Presión de costado para Plating, Presión de costado para Stiffeners.
-        """
-        
+    def side_pressure(self, zone) -> tuple:
         # Declaramos los factores necesarios para la presión de costado
         nCG = self.dynamic_load_factor_nCG()
-        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR()
+        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(zone)
         kDC = self.design_category_factor_kDC()
-        kL = self.longitudinal_pressure_factor_kL()
+        kL = self.longitudinal_pressure_factor_kL(zone, nCG)
         kZ_plating, kZ_stiffeners = self.hull_side_pressure_factor_kZ()
         
         # Se calculan valores base y minimos de la presión de costado en modo de desplazamiento y planeo
         PDM_BASE = 0.35 * self.craft.LWL + 14.6
         PBMD_BASE = 2.4 * (self.craft.mLDC**0.33) + 20
-        PBMP_BASE = ((0.1 * self.craft.mLDC) / (self.craft.LWL * self.craft.BC)) * ((1 + kDC**0.5) * nCG)
+        PBMP_BASE = ((0.1 * self.craft.mLDC) / (self.craft.LWL * self.craft.BC)) * (1 +(kDC**0.5) * nCG)
         PSM_MIN = 0.9 * self.craft.LWL * kDC
         
-        # Categorías A y B: Comparamos PSMD y PSMP y tomamos el mayor
-        if self.craft.design_cat in [1, 2]: #(A, B)
-            # Calcula la presión de costado en modo de desplazamiento
-            PSMD_plating = (PDM_BASE + kZ_plating * (PBMD_BASE - PDM_BASE)) * kAR_plating * kDC * kL
-            PSMD_stiffeners = (PDM_BASE + kZ_stiffeners * (PBMD_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
-            
-            # Asegúrate de que la presión no sea inferior al mínimo
-            PSMD_plating = max(PSM_MIN, PSMD_plating)
-            PSMD_stiffeners = max(PSM_MIN, PSMD_stiffeners)
-            
-            # Calcula la presión de costado en modo de planeo
-            PSMP_plating = (PDM_BASE + kZ_plating * (0.25 * PBMP_BASE - PDM_BASE)) * kAR_plating * kDC * kL
-            PSMP_stiffeners = (PDM_BASE + kZ_stiffeners * (0.25 * PBMP_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
-            
-            # Asegúrate de que la presión no sea inferior al mínimo
-            PSMP_plating = max(PSM_MIN, PSMP_plating)
-            PSMP_stiffeners = max(PSM_MIN, PSMP_stiffeners)
-            
-            # Siempre usa la mayor presión de costado entre desplazamiento y planeo
-            side_pressure_plating = max(PSMD_plating, PSMP_plating)
-            side_pressure_stiffeners = max(PSMD_stiffeners, PSMP_stiffeners)
-
-        # Categorías C y D: La presión del costado depende del modo donde la presión del fondo es mayor
-        else:
-            print("\nCategoría C y D: La presión del costado depende del modo donde la presión del fondo es mayor")
-            bottom_pressure_plating, bottom_pressure_stiffeners, index_plating, index_stiffeners = self.bottom_pressure() #Debe cambiar porque ahora mismo se usa l y b del costado para verificar el fondo en vez de l y b del fondo para verificar cual presión es mayor
-            
-            if index_plating == "planeo":
-                # Si la presión de fondo mayor es la de planeo, usamos PSMP para Plating
-                PSMP_plating = (PDM_BASE + kZ_plating * (0.25 * PBMP_BASE - PDM_BASE)) * kAR_plating * kDC * kL
-                side_pressure_plating = max(PSM_MIN, PSMP_plating)
-            else:
-                # Si la presión de fondo mayor es la de desplazamiento, usamos PSMD para Plating
-                PSMD_plating = (PDM_BASE + kZ_plating * (PBMD_BASE - PDM_BASE)) * kAR_plating * kDC * kL
-                side_pressure_plating = max(PSM_MIN, PSMD_plating)
-
-            if index_stiffeners == "planeo":
-                # Si la presión de fondo mayor es la de planeo, usamos PSMP para Stiffeners
-                PSMP_stiffeners = (PDM_BASE + kZ_stiffeners * (0.25 * PBMP_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
-                side_pressure_stiffeners = max(PSM_MIN, PSMP_stiffeners)
-            else:
-                # Si la presión de fondo mayor es la de desplazamiento, usamos PSMD para Stiffeners
-                PSMD_stiffeners = (PDM_BASE + kZ_stiffeners * (PBMD_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
-                side_pressure_stiffeners = max(PSM_MIN, PSMD_stiffeners)
+        # Calcula la presión de costado en modo de desplazamiento
+        PSMD_plating = (PDM_BASE + kZ_plating * (PBMD_BASE - PDM_BASE)) * kAR_plating * kDC * kL
+        PSMD_stiffeners = (PDM_BASE + kZ_stiffeners * (PBMD_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
+        
+        # Asegúrate de que la presión no sea inferior al mínimo
+        PSMD_plating = max(PSM_MIN, PSMD_plating)
+        PSMD_stiffeners = max(PSM_MIN, PSMD_stiffeners)
+        
+        # Calcula la presión de costado en modo de planeo
+        PSMP_plating = (PDM_BASE + kZ_plating * (0.25 * PBMP_BASE - PDM_BASE)) * kAR_plating * kDC * kL
+        PSMP_stiffeners = (PDM_BASE + kZ_stiffeners * (0.25 * PBMP_BASE - PDM_BASE)) * kAR_stiffeners * kDC * kL
+        
+        # Asegúrate de que la presión no sea inferior al mínimo
+        PSMP_plating = max(PSM_MIN, PSMP_plating)
+        PSMP_stiffeners = max(PSM_MIN, PSMP_stiffeners)
+        
+        # Comparamos PSMD y PSMP y tomamos el mayor
+        side_pressure_plating = max(PSMD_plating, PSMP_plating)
+        side_pressure_stiffeners = max(PSMD_stiffeners, PSMP_stiffeners)
         
         return side_pressure_plating, side_pressure_stiffeners
     
-    def deck_pressure(self):
-        """
-        Calcula la presión sobre la cubierta para Plating y Stiffeners.
-        Retorna:
-            tuple: Presión sobre la cubierta para Plating y Stiffeners, asegurando que no sea inferior a un valor mínimo.
-        """
+    def deck_pressure(self, zone):
         # Obtener los factores de ajuste de la presión
-        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR()
+        nCG = self.dynamic_load_factor_nCG()
+        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(zone)
         kDC = self.design_category_factor_kDC()
-        kL = self.longitudinal_pressure_distribution_kL()
+        kL = self.longitudinal_pressure_factor_kL(zone, nCG)
         
         # Valores base para la presión en la cubierta
         PDM_BASE = 0.35 * self.craft.LWL + 14.6
@@ -381,15 +330,10 @@ class Pressures:
         
         return deck_pressure_plating, deck_pressure_stiffeners
 
-    def superstructure_deckhouses_pressure(self):
-        """
-        Calcula la presión sobre las superestructuras y casetas de cubierta para Plating y Stiffeners.
-        Retorna:
-            tuple: Presión sobre las superestructuras y casetas de cubierta para Plating y Stiffeners.
-        """
+    def superstructure_deckhouses_pressure(self, zone):
         # Factores de ajuste de la presión
+        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR(zone)
         kDC = self.design_category_factor_kDC()
-        kAR_plating, kAR_stiffeners = self.area_pressure_factor_kAR()
         kSUP = self.superstructure_kSUP()  # Factor para superestructuras y casetas
         
         # Valor base de presión para superestructuras y casetas
@@ -407,7 +351,7 @@ class Pressures:
         return superdeck_pressure_plating, superdeck_pressure_stiffeners
     
     """BULKHEADS"""
-    def watertight_bulkheads_pressure(self): #Pasar hB mediante el main
+    def watertight_bulkheads_pressure(self):
         """ Presión para mamparos estancos. """
         PWB = 7 * self.hB
         return PWB
@@ -417,7 +361,7 @@ class Pressures:
         PTB = 10 * self.hB
         return PTB
 
-    def structural_bulkheads_pressure(self): #corregir
+    def structural_bulkheads_pressure(self):
         """ Presión para mamparos estructurales no estancos. """
         if self.craft.material == 1:
             PTB = 10 * self.hB
@@ -425,7 +369,15 @@ class Pressures:
         elif self.craft.material in [2, 3, 4]:
             PTB = 7 * self.hB
             return PTB
-
+    
+    @property
+    def hB(self) -> float:
+        return val_data("Altura de la columna de agua (metros): ")
+    
+    # @property
+    # def get_Db(self) -> float:
+    #     return val_data("Profundidad del mamparo (metros): ")
+    
 class Plating:
     def __init__(self, craft: object):
         self.craft = craft
@@ -469,7 +421,7 @@ class Plating:
             # skin_ext = self.SKIN_TYPE[choice1 - 1]
             # skin_int = self.SKIN_TYPE[choice2 - 1]
 
-            return self.sandwich_plating2(zone, pressure, kC, core_index, tau_u)
+            return max(self.minimum_thickness(zone, sigma_uf), self.sandwich_plating(zone, pressure, kC, core_index, tau_u))
             
     def panel_strength_k2(self, zone):
         if self.craft.material == 4:
@@ -509,7 +461,7 @@ class Plating:
         thickness = zone.b * math.sqrt((pressure * k2)/(1000 * sigma_d))
         return thickness
     
-    def sandwich_plating(self, pressure, k1, k2, k3, kC):
+    def sandwich_plating1(self, pressure, k1, k2, k3, kC):
         sigma_ut = val_data("Resistencia a la tracción de la fibra externa (MPa): ")
         sigma_uc = val_data("Resistencia a la compresión de la fibra interna (MPa): ")
         Ei = val_data("Módulo de elasticidad de la fibra interna (MPa): ")
@@ -561,21 +513,24 @@ class Plating:
         
         return SM_inner, SM_outter, second_I, thickness
     
-    def sandwich_plating2(self, zone, pressure, kC, core_index, tau_u):
-        # Shear strength aspect ratio factor kSHC
+    def sandwich_plating(self, zone, pressure, kC, core_index, tau_u):
+        # 1. Relación de aspecto (l/b) y factor kSHC
         lb = zone.l / zone.b
         kSHC = 0.035 + 0.394 * lb - 0.09 * lb**2 if lb < 2 else 0.5
-        # Design shear strength of sandwich cores 
-        if core_index == 1:
-            tau_d = tau_u * 0.5
-        elif core_index == 2:
-            tau_d = tau_u * 0.55
-        elif core_index == 3:
-            tau_d = tau_u * 0.65
-        else: #core_index == 4:
-            tau_d = tau_u * 0.5
-        #Thickness required by shear load capabilities:
-        return (kC**0.5) * ((kSHC * pressure * zone.b)/(1000 * tau_d))
+        # 2. Reducción del esfuerzo último según tipo de núcleo
+        core_factors = {1: 0.50, 2: 0.55, 3: 0.65, 4: 0.50}
+        tau_d = tau_u * core_factors.get(core_index)
+        # 3. Esfuerzo mínimo según eslora (LH)
+        if self.craft.LH < 10:
+            tau_min = 0.25
+        elif 10 <= self.craft.LH <= 15:
+            tau_min = 0.25 + 0.03 * (self.craft.LH - 10)
+        else:
+            tau_min = 0.40
+        tau_d = max(tau_d, tau_min)
+        # 4. Cálculo final del espesor del núcleo
+        sandwich_thickness = (kC ** 0.5) * ((kSHC * pressure * zone.b) / (1000 * tau_d)) #distance between mid-thickness of the skins of the sandwich
+        return sandwich_thickness
     
     def wash_plates_plating(self):
         return None
@@ -609,13 +564,13 @@ class Plating:
             return 0.43  * k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33)) if zone.zone_index in [1, 2] else k5 * (1.45 + 0.14 * self.craft.LWL)
 
 def main():
-    print("ESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n")
-    designer = input("Diseñador: ") #Son necesarios estos inputs?
-    boat = input("Embarcación: ")
-    company = input("Empresa: ")
-    management = input("Gerencia: ")
-    division = input("División: ")
-    values = {} # Diccionario pensado para almacenar los valores
+    print("\nESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n*Para embarcaciones entre los 2.5 y 24 m de eslora*\n")
+    # designer = input("Diseñador: ") #Son necesarios estos inputs ahora?
+    # boat = input("Embarcación: ")
+    # company = input("Empresa: ")
+    # management = input("Gerencia: ")
+    # division = input("División: ")
+    # values = {} # Diccionario pensado para almacenar los valores
     
     print("\nSeleccione la categoría de diseño de su embarcación")
     categories = ('A (“Oceano”)', 'B ("Offshore")', 'C ("Costera")', 'D ("Aguas calmadas")')
@@ -626,7 +581,7 @@ def main():
     material_index, material = display_menu(available_materials)
     
     # Instanciar las clases estáticas
-    craft = Craft(designer, boat, company, management, division, design_cat_index, material_index)
+    craft = Craft(design_cat_index, material_index)
     pressure = Pressures(craft)
     plating = Plating(craft)
     
