@@ -6,15 +6,14 @@ class Craft:
         
     # Mapeado de zonas y sus atributos
     ZONE_DIM = {
-        'Casco de Fondo':      ['b', 'l', 's', 'lu', 'c', 'x'], #1
-        'Casco de Costado':    ['b', 'l', 's', 'lu', 'c', 'x'], #2
-        'Cubierta Superior':   ['b', 'l', 'c'],                 #3
-        'Superestructura y Casetas de Cubierta': ['b', 'l'],    #4
-        'Mamparos Estancos':   ['b', 'l', 's', 'lu', 'hB'],     #5
-        'Mamparos de Tanques': ['b', 'l', 's', 'lu', 'hB'],     #6
-        'Mamparos de colisión':['b', 'l', 's', 'lu', 'hB'],     #7
-        'Mamparos estructurales':['b', 'l', 's', 'lu', 'hB'],   #8
+        'Casco de Fondo':      ['b', 'l', 's', 'lu', 'c', 'x'],                 #1
+        'Casco de Costado':    ['b', 'l', 's', 'lu', 'c', 'x'],                 #2
+        'Cubierta Superior':   ['b', 'l', 'c'],                                 #3
+        'Superestructura y Casetas de Cubierta': ['b', 'l'],                    #4
+        'Mamparos Estancos':   ['b', 'l', 's', 'lu', 'hB'],                     #5
+        'Mamparos de Tanques / Colisiónes': ['b', 'l', 's', 'lu', 'hB']         #6
     }
+    # 'Mamparos estructurales (No estancos)':['b', 'l', 's', 'lu', 'hB'],     #x
     
     def __init__(self, design_cat_index, material):
         # self.designer = designer
@@ -53,8 +52,8 @@ class Craft:
             return "planning_craft"
         else: # V / LWL < 5
             return "displacement_craft"
-          
-class Zone:    
+
+class Zone:
     def __init__(self, craft, zone_name, zone_index):
         self.craft = craft
         self.zone_name = zone_name
@@ -96,7 +95,7 @@ class Zone:
             zone_attributes[attribute] = attribute_prompts[attribute]()  # Llama a la función `lambda`
 
         return zone_attributes
-        
+
 class Pressures:
     
     def __init__(self, craft: object):
@@ -120,19 +119,15 @@ class Pressures:
             superstructure_pressure_plating, superstructure_pressure_stiffeners = self.superstructures_deckhouses_pressure(zone)
             return superstructure_pressure_plating, superstructure_pressure_stiffeners
         elif zone.zone_index == 5:
-            pressure = self.watertight_bulkheads_pressure(zone)
-            return pressure, 0
-        elif zone.zone_index == 6:
-            pressure = self.integral_tank_bulkheads_pressure(zone)
-            return pressure, 0
-        elif zone.zone_index == 7:
-            pressure = self.wash_plates_pressure(zone)
-            return pressure, 0
-        else:# zone.zone_index == 8:
-            pressure = self.collision_bulkheads_pressure(zone)
-            return pressure, 0
+            # Mamparos Estancos
+            wt_pressure_plating, wt_pressure_stiffeners = self.watertight_bulkheads_pressure()
+            return wt_pressure_plating, wt_pressure_stiffeners
+        else: # zone.zone_index == 6:
+            # Mamparos de colision & Tanques integrales
+            intank_pressure_plating, intank_pressure_stiffeners = self.integral_tank_collision_bulkheads_pressure()
+            return intank_pressure_plating, intank_pressure_stiffeners
 
-    def design_category_factor_kDC(self) -> float:        
+    def design_category_factor_kDC(self) -> float:
         # Mapeo de categoría de diseño a valores de kDC
         kDC_values = {1: 1.0, 2: 0.8, 3: 0.6, 4: 0.4}
         
@@ -231,7 +226,7 @@ class Pressures:
             #"Niveles Superiores": 0 (REVISAR)                  # Elementos no expuestos al clima ###REVISAR
         }
         return 1
-    
+ 
     #Pressure Zones
     def bottom_pressure(self, zone) -> tuple:
         """
@@ -351,32 +346,22 @@ class Pressures:
         return superdeck_pressure_plating, superdeck_pressure_stiffeners
     
     """BULKHEADS"""
-    def watertight_bulkheads_pressure(self):
-        """ Presión para mamparos estancos. """
-        PWB = 7 * self.hB
-        return PWB
-    
-    def integral_tank_collision_bulkheads_pressure(self):
-        """ Presión para mamparos de tanques integrales y colisiones. """
-        PTB = 10 * self.hB
-        return PTB
-
-    def structural_bulkheads_pressure(self):
-        """ Presión para mamparos estructurales no estancos. """
-        if self.craft.material == 1:
-            PTB = 10 * self.hB
-            return PTB
-        elif self.craft.material in [2, 3, 4]:
-            PTB = 7 * self.hB
-            return PTB
-    
     @property
     def hB(self) -> float:
         return val_data("Altura de la columna de agua (metros): ")
     
-    # @property
+        # @property
+    
     # def get_Db(self) -> float:
     #     return val_data("Profundidad del mamparo (metros): ")
+    
+    def watertight_bulkheads_pressure(self):
+        PWB_plating = PWB_stiffeners = 7 * self.hB
+        return PWB_plating, PWB_stiffeners
+    
+    def integral_tank_collision_bulkheads_pressure(self):
+        PTB_plating = PTB_stiffeners = 10 * self.hB
+        return PTB_plating, PTB_stiffeners
     
 class Plating:
     def __init__(self, craft: object):
@@ -401,28 +386,37 @@ class Plating:
             # choice = val_data("\nIngrese el número correspondiente: ", False, True, 0, 1, len(self.SKIN_TYPE))
             sigma_uf = val_data("Resistencia ultima a la flexión (MPa): ") 
             return max(self.minimum_thickness(zone, sigma_uf), self.single_skin_plating(zone, pressure, k2, kC, sigma_uf))
-            
-        else: # self.material == 'Fibra con nucleo (Sandwich)'
+        
+        else: # self.material == 'Fibra con nucleo (Sandwich)':
             print("\nSeleccione el material del nucleo del sandwich: ")
             available_cores = ('Madera Balsa', 'PVC entrecruzado', 'PVC lineal', 'SAN')
             core_index, core = display_menu(available_cores)
             tau_u = val_data(f"Resistencia última al cortante del núcleo de {core} (MPa): ")
-            
             # k3 = self.panel_stiffness_k3(zone)
-
             # print("\nSeleccione el tipo de fibra de diseño de la fibra *exterior*")
             # display_menu(self.SKIN_TYPE)
             # choice1 = val_data("Ingrese el número correspondiente: ", 1, len(self.SKIN_TYPE))
-
             # print("\nSeleccione el tipo de fibra de diseño de la fibra *interior*")
             # display_menu(self.SKIN_TYPE)
             # choice2 = val_data("Ingrese el número correspondiente: ", 1, len(self.SKIN_TYPE))
-
             # skin_ext = self.SKIN_TYPE[choice1 - 1]
             # skin_int = self.SKIN_TYPE[choice2 - 1]
-
             return max(self.minimum_thickness(zone, sigma_uf), self.sandwich_plating(zone, pressure, kC, core_index, tau_u))
             
+        # if zone.zone_index in [1, 2, 3, 4, 6, 7]:
+        #     Logic implemented up 
+        # else: # zone.zone_index == 5:
+        #     if self.craft.material in [1, 2]:
+        #         sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+        #         sigma_y = val_data("Limite elastico por tracción (MPa): ", 1e-6, sigma_u)
+        #         return max(self.minimum_thickness(zone, sigma_y), self.metal_plating(zone, pressure, k2, kC, sigma_u, sigma_y))
+            
+        #     elif self.craft.material == 3:
+        #         Db = val_data("Profundidad del mamparo hasta la cubierta (metros): ")
+        #         return 7 * Db
+        #     else:
+        #         raise Exception("Material no disponible")
+        
     def panel_strength_k2(self, zone):
         if self.craft.material == 4:
             return 0.5
