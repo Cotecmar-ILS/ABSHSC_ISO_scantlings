@@ -580,11 +580,12 @@ def main():
     plating = Plating(craft)
     
     # Determinar las zonas disponibles según el material
-    available_zones = list(range(1, 4)) if material_index not in [1, 2] else list(range(1, 8))
+    #available_zones = list(range(1, 4)) if material_index not in [1, 2] else list(range(1, 8))
     
     while True:
         print("\nSeleccione la zona que desea escantillonar: ")
-        zone_index, zone_name = display_menu([list(craft.ZONE_DIM.keys())[i - 1] for i in available_zones])
+        #zone_index, zone_name = display_menu([list(craft.ZONE_DIM.keys())[i - 1] for i in available_zones])
+        zone_index, zone_name = display_menu(list(craft.ZONE_DIM.keys()))
         
         try:
             zone = Zone(craft, zone_name, zone_index)
