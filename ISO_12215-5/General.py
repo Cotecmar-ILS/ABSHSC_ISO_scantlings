@@ -685,9 +685,9 @@ def main():
             choice_index, choice = display_menu(['Si', 'No'])
             if choice_index == 1:
                 AW, SM, I = stiffeners.calculate_stiffeners(zone, zone_pressure[1])
-                print(f"\nÁrea de alma (AW): {AW:.4f} cm^2")
-                print(f"Módulo de sección (SM): {SM:.4f} cm^3")
-                print(f"Momento de inercia (I): {I:.4f} cm^4") if I != 0 else None
+                print(f"\nÁrea de alma (AW): {AW:.2f} cm^2")
+                print(f"Módulo de sección (SM): {SM:.2f} cm^3")
+                print(f"Momento de inercia (I): {I:.2f} cm^4") if I != 0 else None
                     
             #values[zone_name] = thickness
             
