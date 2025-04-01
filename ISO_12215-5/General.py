@@ -1,4 +1,4 @@
-"""Scantlings Design Calculator (SDC)""" #Implementar stiffeners dimensions asi como c_u
+"""Scantlings Design Calculator (SDC)"""
 import math #Se puede quitar para optimizar y cuando se necesita calcular la raiz cuadrada, elevar a la 1/2. O exportar solo la raiz cuadrada
 from validations import val_data
 
@@ -564,77 +564,68 @@ class Stiffeners:
         
     def calculate_stiffeners(self, zone, pressure):
         print("\nSeleccione el tipo de refuerzo analizado")
-        r_type_idx, r_type_label = display_menu(["Pegados al casco", "Flotantes"])
+        r_type_idx, _ = display_menu(["Pegados al casco", "Flotantes"])
         cu = val_data("Corona o curvatura del refuerzo de la zona (mm): ")
-        
-        # 1) Pedimos σ y τ en función del material
-        if self.craft.material in [1, 2]:
-            sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
-            sigma_y = val_data("Límite elástico por tracción (MPa): ", 1e-6, sigma_u)
-            sigma_d = self.calculate_sigma_d(sigma_y)
-            tau_d = self.calculate_tau_d(sigma_y)
-        elif self.craft.material == 3:
-            sigma_uf = val_data("Resistencia mínima a la flexión (MPa): ")
-            tau = val_data("Resistencia al cortante (MPa): ")
-            sigma_d = self.calculate_sigma_d(sigma_uf)
-            tau_d = self.calculate_tau_d(tau)
-        else: # self.craft.material in [4, 5]:
-            sigma_utc = val_data("Resistencia mínima de tensión del laminado (MPa): ")
-            tau = val_data("Resistencia al cortante (MPa): ")
-            sigma_d = self.calculate_sigma_d(sigma_utc)
-            tau_d = self.calculate_tau_d(tau)
 
-        # 2) Cálculo de kSA y kCS
-        kSA = self.calculate_kSA(r_type_idx)
+        # 1) Definimos la lectura de entradas (σ y τ) según el material:
+        match self.craft.material:
+            case 1 | 2:
+                sigma_u = val_data("Esfuerzo último a la tracción (MPa): ")
+                sigma_y = val_data("Límite elástico por tracción (MPa): ", 1e-6, sigma_u)
+                sigma_d = self.calculate_sigma_d(sigma_y)
+                tau_d = self.calculate_tau_d(sigma_y)
+
+            case 3:
+                sigma_uf = val_data("Resistencia mínima a la flexión (MPa): ")
+                tau_val = val_data("Resistencia al cortante (MPa): ")
+                sigma_d = self.calculate_sigma_d(sigma_uf)
+                tau_d = self.calculate_tau_d(tau_val)
+
+            case 4 | 5:
+                sigma_utc = val_data("Resistencia mínima a la tracción del laminado (MPa): ")
+                tau_val = val_data("Resistencia al cortante (MPa): ")
+                sigma_d = self.calculate_sigma_d(sigma_utc)
+                tau_d = self.calculate_tau_d(tau_val)
+
+            case _:
+                raise ValueError(f"Material {self.craft.material} no soportado en stiffeners.")
+
+        # 2) kSA: uso de un diccionario en vez de if/elif
+        stiffeners_factors = {1: 5, 2: 7.5}  # 1="Pegados", 2="Flotantes"
+        kSA = stiffeners_factors.get(r_type_idx, 5)  # default 5 si hay error
+
+        # 3) Curvatura
         kCS = self.curvature_correction_kCS(zone, cu)
 
-        # 3) Cálculo de área y módulo de sección
+        # 4) Cálculo de área y módulo
         AW = self.web_area(zone, pressure, kSA, tau_d)
         SM = self.section_modulus(zone, pressure, kCS, sigma_d)
-        
-        # 4) Para materiales 4 o 5 (FRP, sandwich), calculamos segundo momento de area
+
+        # 5) Si es FRP o sandwich, calculamos inercia
         if self.craft.material in [4, 5]:
             E_tc = val_data("Promedio del módulo (compresión+tensión) del laminado [MPa]: ", 1e-6)
             I = self.second_area_moment(zone, pressure, kCS, E_tc)
             return AW, SM, I
         else:
             return AW, SM, 0
-            
+
     def calculate_kSA(self, r_type_idx):
         # r_type_idx 1 => "Pegados al casco", 2 => "Flotantes"
         return 5 if r_type_idx == 1 else 7.5
     
     def curvature_correction_kCS(self, zone, cu):
         cu_lu = cu / zone.lu
-        if cu_lu <= 0.03:
-            kCS = 1.0
-        elif cu_lu <= 0.18:
-            kCS = 1.1 - 3.33 * cu_lu
-        else:
-            kCS = 0.5
+        kCS = 1.0 if cu_lu <= 0.03 else (1.1 - 3.33 * cu_lu if cu_lu <= 0.18 else 0.5)
         return max(min(kCS, 1.0), 0.5)
     
     def calculate_tau_d(self, tau):
-        if self.craft.material == 1:
-            return 0.45 * tau
-        elif self.craft.material == 2:
-            return 0.4 * tau
-        elif self.craft.material == 3:
-            return 0.4 * tau
-        else:  # self.craft.material in [4, 5]:
-            return 0.5 * tau
-    
+        factors = {1: 0.45, 2: 0.4, 3: 0.4, 4: 0.5, 5: 0.5}
+        return factors.get(self.craft.material, 0.5) * tau
+
     def calculate_sigma_d(self, sigma):
-        # Ajusta según tu material index
-        if self.craft.material == 1:
-            return 0.8 * sigma
-        elif self.craft.material == 2:
-            return 0.7 * sigma
-        elif self.craft.material == 3:
-            return 0.4 * sigma
-        else:  # self.craft.material in [4, 5]:
-            return 0.5 * sigma
-    
+        factors = {1: 0.8, 2: 0.7, 3: 0.4, 4: 0.5, 5: 0.5}
+        return factors.get(self.craft.material, 0.5) * sigma
+
     def web_area(self, zone, pressure, kSA, tau_d):
         AW = ((kSA * pressure * zone.s * zone.lu) / (tau_d)) * 1e-6
         return AW
@@ -649,7 +640,7 @@ class Stiffeners:
 
 def main():
     print("\nESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n*Para embarcaciones entre los 2.5 y 24 m de eslora*\n")
-    # designer = input("Diseñador: ") #Son necesarios estos inputs ahora?
+    # designer = input("Diseñador: ")
     # boat = input("Embarcación: ")
     # company = input("Empresa: ")
     # management = input("Gerencia: ")
