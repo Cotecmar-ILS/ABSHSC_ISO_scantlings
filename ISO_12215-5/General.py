@@ -565,7 +565,7 @@ class Stiffeners:
     def calculate_stiffeners(self, zone, pressure):
         print("\nSeleccione el tipo de refuerzo analizado")
         r_type_idx, _ = display_menu(["Pegados al casco", "Flotantes"])
-        cu = val_data("Corona o curvatura del refuerzo de la zona (mm): ")
+        cu = val_data("\nCorona o curvatura del refuerzo de la zona (mm): ")
 
         # 1) Definimos la lectura de entradas (σ y τ) según el material:
         match self.craft.material:
