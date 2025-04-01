@@ -1,4 +1,4 @@
-"""Scantlings Design Calculator (SDC)"""
+"""Scantlings Design Calculator (SDC)""" #Implementar stiffeners dimensions asi como c_u
 import math #Se puede quitar para optimizar y cuando se necesita calcular la raiz cuadrada, elevar a la 1/2. O exportar solo la raiz cuadrada
 from validations import val_data
 
@@ -81,7 +81,7 @@ class Zone:
             'b': lambda: val_data(f"b: Longitud más corta de los paneles de la zona {zone_name} (mm): ", 1e-6, min(zone_attributes.get('l', float('inf')), 330 * self.craft.LH)),
             'lu': lambda: val_data(f"lu: Luz o espacio entre refuerzos de la zona {zone_name} (mm): "),
             's': lambda: val_data(f"s: Separación del alma o viga longitudinal de la zona {zone_name} (mm): "),
-            'c': lambda: val_data(f"c: Corona o curvatura del panel/refuerzo de la zona {zone_name} (mm): "),
+            'c': lambda: val_data(f"c: Corona o curvatura del panel de la zona {zone_name} (mm): "),
             'x': lambda: val_data(f"x: Distancia longitudinal desde popa hasta el punto de análisis de la zona {zone_name} (metros): ", 0, self.craft.LH, self.craft.LH),
             'hB': lambda: val_data(f"hB: Altura de la columna de agua en la zona {zone_name} (mm): "),
         }
@@ -433,7 +433,7 @@ class Plating:
         if cb <= 0.03:
             kC = 1.0
         elif cb <= 0.18 and cb > 0.03: #Ajustado
-            kC = 1.1 - (3.33 * self.c) / self.b
+            kC = 1.1 - (3.33 * zone.c) / zone.b
         else:  # cb > 0.18
             kC = 0.5
         # Aplica las restricciones de que kC no debe ser menor a 0.5 ni mayor a 1.0
@@ -557,6 +557,96 @@ class Plating:
             k8 = 0.15
             return 0.43  * k5 * (A + k7 * self.craft.V + k8 * pow(self.craft.mLDC, 0.33)) if zone.zone_index in [1, 2] else k5 * (1.45 + 0.14 * self.craft.LWL)
 
+class Stiffeners:
+    def __init__(self, craft):
+        self.craft = craft
+        self.k1s = 0.05
+        
+    def calculate_stiffeners(self, zone, pressure):
+        print("\nSeleccione el tipo de refuerzo analizado")
+        r_type_idx, r_type_label = display_menu(["Pegados al casco", "Flotantes"])
+        cu = val_data("Corona o curvatura del refuerzo de la zona (mm): ")
+        
+        # 1) Pedimos σ y τ en función del material
+        if self.craft.material in [1, 2]:
+            sigma_u = val_data("Esfuerzo ultimo a la tracción (MPa): ")
+            sigma_y = val_data("Límite elástico por tracción (MPa): ", 1e-6, sigma_u)
+            sigma_d = self.calculate_sigma_d(sigma_y)
+            tau_d = self.calculate_tau_d(sigma_y)
+        elif self.craft.material == 3:
+            sigma_uf = val_data("Resistencia mínima a la flexión (MPa): ")
+            tau = val_data("Resistencia al cortante (MPa): ")
+            sigma_d = self.calculate_sigma_d(sigma_uf)
+            tau_d = self.calculate_tau_d(tau)
+        else: # self.craft.material in [4, 5]:
+            sigma_utc = val_data("Resistencia mínima de tensión del laminado (MPa): ")
+            tau = val_data("Resistencia al cortante (MPa): ")
+            sigma_d = self.calculate_sigma_d(sigma_utc)
+            tau_d = self.calculate_tau_d(tau)
+
+        # 2) Cálculo de kSA y kCS
+        kSA = self.calculate_kSA(r_type_idx)
+        kCS = self.curvature_correction_kCS(zone, cu)
+
+        # 3) Cálculo de área y módulo de sección
+        AW = self.web_area(zone, pressure, kSA, tau_d)
+        SM = self.section_modulus(zone, pressure, kCS, sigma_d)
+        
+        # 4) Para materiales 4 o 5 (FRP, sandwich), calculamos segundo momento de area
+        if self.craft.material in [4, 5]:
+            E_tc = val_data("Promedio del módulo (compresión+tensión) del laminado [MPa]: ", 1e-6)
+            I = self.second_area_moment(zone, pressure, kCS, E_tc)
+            return AW, SM, I
+        else:
+            return AW, SM, 0
+            
+    def calculate_kSA(self, r_type_idx):
+        # r_type_idx 1 => "Pegados al casco", 2 => "Flotantes"
+        return 5 if r_type_idx == 1 else 7.5
+    
+    def curvature_correction_kCS(self, zone, cu):
+        cu_lu = cu / zone.lu
+        if cu_lu <= 0.03:
+            kCS = 1.0
+        elif cu_lu <= 0.18:
+            kCS = 1.1 - 3.33 * cu_lu
+        else:
+            kCS = 0.5
+        return max(min(kCS, 1.0), 0.5)
+    
+    def calculate_tau_d(self, tau):
+        if self.craft.material == 1:
+            return 0.45 * tau
+        elif self.craft.material == 2:
+            return 0.4 * tau
+        elif self.craft.material == 3:
+            return 0.4 * tau
+        else:  # self.craft.material in [4, 5]:
+            return 0.5 * tau
+    
+    def calculate_sigma_d(self, sigma):
+        # Ajusta según tu material index
+        if self.craft.material == 1:
+            return 0.8 * sigma
+        elif self.craft.material == 2:
+            return 0.7 * sigma
+        elif self.craft.material == 3:
+            return 0.4 * sigma
+        else:  # self.craft.material in [4, 5]:
+            return 0.5 * sigma
+    
+    def web_area(self, zone, pressure, kSA, tau_d):
+        AW = ((kSA * pressure * zone.s * zone.lu) / (tau_d)) * 1e-6
+        return AW
+    
+    def section_modulus(self, zone, pressure, kCS, sigma_d):
+        SM = ((83.33 * kCS * pressure * zone.s * (zone.lu**2)) / (sigma_d)) * 1e-9
+        return SM
+    
+    def second_area_moment(self, zone, pressure, kCS, E_tc):
+        I = ((26 * (kCS**1.5) * pressure * zone.s * (zone.lu**3)) / (self.k1s * E_tc)) * 1e-11
+        return I
+
 def main():
     print("\nESCANTILLONADO ISO 12215-5 - ISO 12215-5 SCANTLINGS\n*Para embarcaciones entre los 2.5 y 24 m de eslora*\n")
     # designer = input("Diseñador: ") #Son necesarios estos inputs ahora?
@@ -578,6 +668,7 @@ def main():
     craft = Craft(design_cat_index, material_index)
     pressure = Pressures(craft)
     plating = Plating(craft)
+    stiffeners = Stiffeners(craft)
     
     # Determinar las zonas disponibles según el material
     #available_zones = list(range(1, 4)) if material_index not in [1, 2] else list(range(1, 8))
@@ -599,6 +690,14 @@ def main():
             thickness = plating.calculate_plating(zone, zone_pressure[0])
             print(f"\nEspesor mínimo requerido para la zona '{zone_name}' = {thickness:.2f} mm")
             
+            print("\nDesea calcular los parametros de los refuerzos para esta zona?: ")
+            choice_index, choice = display_menu(['Si', 'No'])
+            if choice_index == 1:
+                AW, SM, I = stiffeners.calculate_stiffeners(zone, zone_pressure[1])
+                print(f"\nÁrea de alma (AW): {AW:.4f} cm^2")
+                print(f"Módulo de sección (SM): {SM:.4f} cm^3")
+                print(f"Momento de inercia (I): {I:.4f} cm^4") if I != 0 else None
+                    
             #values[zone_name] = thickness
             
         except ValueError as e:
